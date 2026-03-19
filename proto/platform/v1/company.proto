@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package platform.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/platform/v1;platformv1";
+
+// CompanyService manages company hierarchy.
+service CompanyService {
+  rpc CreateCompany(CreateCompanyRequest) returns (CompanyResponse);
+  rpc GetCompany(GetCompanyRequest) returns (CompanyResponse);
+  rpc UpdateCompany(UpdateCompanyRequest) returns (CompanyResponse);
+  rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
+  rpc GetAncestors(GetAncestorsRequest) returns (ListCompaniesResponse);
+  rpc GetDescendants(GetDescendantsRequest) returns (ListCompaniesResponse);
+  rpc GetEffectiveSettings(GetEffectiveSettingsRequest) returns (GetEffectiveSettingsResponse);
+}
+
+message CreateCompanyRequest {
+  string name = 1;
+  string slug = 2;
+  string company_type = 3; // holding, subsidiary, brand, standalone
+  optional string parent_company_id = 4;
+  optional string settings_json = 5;
+}
+
+message GetCompanyRequest {
+  string id = 1;
+}
+
+message UpdateCompanyRequest {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  string company_type = 4;
+  optional int32 inherited_role_cap = 5;
+  optional string inherited_access_level = 6;
+  optional string settings_json = 7;
+}
+
+message ListCompaniesRequest {}
+
+message GetAncestorsRequest {
+  string company_id = 1;
+}
+
+message GetDescendantsRequest {
+  string company_id = 1;
+}
+
+message GetEffectiveSettingsRequest {
+  string company_id = 1;
+}
+
+message GetEffectiveSettingsResponse {
+  string settings_json = 1;
+}
+
+message CompanyResponse {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  string company_type = 4;
+  optional string parent_company_id = 5;
+  optional int32 inherited_role_cap = 6;
+  optional string inherited_access_level = 7;
+  string settings_json = 8;
+  bool is_active = 9;
+  string created_at = 10;
+  string updated_at = 11;
+}
+
+message ListCompaniesResponse {
+  repeated CompanyResponse companies = 1;
+}

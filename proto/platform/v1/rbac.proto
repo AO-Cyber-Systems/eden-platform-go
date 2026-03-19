@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package platform.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/platform/v1;platformv1";
+
+// RBACService manages roles and permissions.
+service RBACService {
+  rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
+  rpc CreateRole(CreateRoleRequest) returns (RoleResponse);
+  rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
+  rpc RemoveRole(RemoveRoleRequest) returns (RemoveRoleResponse);
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse);
+  rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+  rpc ResolveMembership(ResolveMembershipRequest) returns (ResolveMembershipResponse);
+}
+
+message ListRolesRequest {
+  string company_id = 1;
+}
+
+message ListRolesResponse {
+  repeated RoleResponse roles = 1;
+}
+
+message RoleResponse {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  int32 level = 4;
+  bool is_system = 5;
+}
+
+message CreateRoleRequest {
+  string company_id = 1;
+  string name = 2;
+  string description = 3;
+  int32 level = 4;
+  repeated string permission_ids = 5;
+}
+
+message AssignRoleRequest {
+  string company_id = 1;
+  string user_id = 2;
+  string role_id = 3;
+}
+
+message AssignRoleResponse {}
+
+message RemoveRoleRequest {
+  string company_id = 1;
+  string user_id = 2;
+  string role_id = 3;
+}
+
+message RemoveRoleResponse {}
+
+message ListPermissionsRequest {}
+
+message ListPermissionsResponse {
+  repeated PermissionResponse permissions = 1;
+}
+
+message PermissionResponse {
+  string id = 1;
+  string feature = 2;
+  string action = 3;
+  string resource = 4;
+}
+
+message GetUserPermissionsRequest {
+  string company_id = 1;
+  string user_id = 2;
+}
+
+message GetUserPermissionsResponse {
+  repeated PermissionResponse permissions = 1;
+  RoleResponse role = 2;
+}
+
+message CheckPermissionRequest {
+  string company_id = 1;
+  string user_id = 2;
+  string feature = 3;
+  string action = 4;
+}
+
+message CheckPermissionResponse {
+  bool allowed = 1;
+}
+
+message ResolveMembershipRequest {
+  string company_id = 1;
+  string user_id = 2;
+}
+
+message ResolveMembershipResponse {
+  string company_id = 1;
+  string user_id = 2;
+  int32 role_level = 3;
+  string role_name = 4;
+  string source_company_id = 5;
+  bool is_direct = 6;
+  int32 capped_level = 7;
+  string access_level = 8;
+}

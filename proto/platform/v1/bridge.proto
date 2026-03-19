@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package platform.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/platform/v1;platformv1";
+
+// BridgeService handles platform event bridge operations.
+service BridgeService {
+  rpc ListAdapters(ListAdaptersRequest) returns (ListAdaptersResponse);
+  rpc DispatchAction(DispatchActionRequest) returns (DispatchActionResponse);
+  rpc ListActions(ListActionsRequest) returns (ListActionsResponse);
+}
+
+message ListAdaptersRequest {}
+
+message ListAdaptersResponse {
+  repeated AdapterInfo adapters = 1;
+}
+
+message AdapterInfo {
+  string prefix = 1;
+  repeated string event_types = 2;
+  repeated ActionSchema actions = 3;
+}
+
+message ActionSchema {
+  string type = 1;
+  string label = 2;
+  bool requires_input = 3;
+  string input_hint = 4;
+  bool destructive = 5;
+}
+
+message DispatchActionRequest {
+  string action_type = 1;
+  string source_id = 2;
+  string company_id = 3;
+  string input = 4;
+}
+
+message DispatchActionResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ListActionsRequest {
+  string event_type = 1;
+}
+
+message ListActionsResponse {
+  repeated ActionSchema actions = 1;
+}

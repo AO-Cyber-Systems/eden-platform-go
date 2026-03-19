@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package platform.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/platform/v1;platformv1";
+
+// AuditService provides audit log queries.
+service AuditService {
+  rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse);
+}
+
+message ListAuditLogsRequest {
+  string company_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+  optional string actor_id = 4;
+  optional string action = 5;
+  optional string resource = 6;
+}
+
+message ListAuditLogsResponse {
+  repeated AuditLogEntry entries = 1;
+  int32 total = 2;
+}
+
+message AuditLogEntry {
+  string id = 1;
+  string company_id = 2;
+  string actor_id = 3;
+  string action = 4;
+  string resource = 5;
+  string resource_id = 6;
+  string details_json = 7;
+  string ip_address = 8;
+  string created_at = 9;
+}
