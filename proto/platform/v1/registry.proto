@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package platform.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/platform/v1;platformv1";
+
+// RegistryService returns sidebar/widgets for authenticated users.
+service RegistryService {
+  rpc GetNavItems(GetNavItemsRequest) returns (GetNavItemsResponse);
+  rpc GetWidgets(GetWidgetsRequest) returns (GetWidgetsResponse);
+  rpc GetSearchScopes(GetSearchScopesRequest) returns (GetSearchScopesResponse);
+  rpc GetBadgeCounts(GetBadgeCountsRequest) returns (GetBadgeCountsResponse);
+}
+
+message GetNavItemsRequest {
+  string company_id = 1;
+}
+
+message GetNavItemsResponse {
+  repeated NavItem items = 1;
+}
+
+message NavItem {
+  string id = 1;
+  string label = 2;
+  string icon = 3;
+  string path = 4;
+  string feature = 5;
+  int32 priority = 6;
+}
+
+message GetWidgetsRequest {
+  string company_id = 1;
+}
+
+message GetWidgetsResponse {
+  repeated Widget widgets = 1;
+}
+
+message Widget {
+  string id = 1;
+  string label = 2;
+  string type = 3;
+  string feature = 4;
+  int32 priority = 5;
+}
+
+message GetSearchScopesRequest {
+  string company_id = 1;
+}
+
+message GetSearchScopesResponse {
+  repeated SearchScope scopes = 1;
+}
+
+message SearchScope {
+  string id = 1;
+  string label = 2;
+  string feature = 3;
+}
+
+message GetBadgeCountsRequest {
+  string company_id = 1;
+}
+
+message GetBadgeCountsResponse {
+  map<string, int32> counts = 1;
+}

@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package platform.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/platform/v1;platformv1";
+
+// WebhookService manages webhook subscriptions and deliveries.
+service WebhookService {
+  rpc RegisterWebhook(RegisterWebhookRequest) returns (WebhookResponse);
+  rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse);
+  rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse);
+  rpc ListDeliveries(ListDeliveriesRequest) returns (ListDeliveriesResponse);
+}
+
+message RegisterWebhookRequest {
+  string company_id = 1;
+  string url = 2;
+  repeated string events = 3;
+}
+
+message WebhookResponse {
+  string id = 1;
+  string company_id = 2;
+  string url = 3;
+  string secret = 4;
+  repeated string events = 5;
+  bool active = 6;
+  string created_at = 7;
+}
+
+message ListWebhooksRequest {
+  string company_id = 1;
+}
+
+message ListWebhooksResponse {
+  repeated WebhookResponse webhooks = 1;
+}
+
+message DeleteWebhookRequest {
+  string id = 1;
+}
+
+message DeleteWebhookResponse {}
+
+message ListDeliveriesRequest {
+  string webhook_id = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message ListDeliveriesResponse {
+  repeated DeliveryResponse deliveries = 1;
+}
+
+message DeliveryResponse {
+  string id = 1;
+  string webhook_id = 2;
+  string event_type = 3;
+  string status = 4;
+  int32 status_code = 5;
+  int32 attempts = 6;
+  string created_at = 7;
+}
