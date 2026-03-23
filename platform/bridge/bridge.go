@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -94,6 +95,8 @@ type BridgeService struct {
 	streamName   string
 	subjectRoot  string
 	consumerName string
+	wg           sync.WaitGroup
+	cancel       context.CancelFunc
 }
 
 // BridgeConfig holds configuration for the bridge service.
@@ -179,7 +182,12 @@ func (b *BridgeService) Start(ctx context.Context) error {
 		return err
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	b.cancel = cancel
+
+	b.wg.Add(1)
 	go func() {
+		defer b.wg.Done()
 		for {
 			select {
 			case <-ctx.Done():
@@ -237,9 +245,18 @@ func (b *BridgeService) processMessage(ctx context.Context, msg jetstream.Msg) {
 	_ = msg.Ack()
 }
 
-// Close shuts down the NATS connection.
-func (b *BridgeService) Close() {
+// Stop cancels the consumer goroutine, waits for it to finish, and closes the NATS connection.
+func (b *BridgeService) Stop() {
+	if b.cancel != nil {
+		b.cancel()
+	}
+	b.wg.Wait()
 	if b.conn != nil {
 		b.conn.Close()
 	}
+}
+
+// Close shuts down the NATS connection. Deprecated: use Stop() for graceful shutdown.
+func (b *BridgeService) Close() {
+	b.Stop()
 }

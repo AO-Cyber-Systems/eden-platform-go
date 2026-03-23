@@ -12,6 +12,7 @@ import (
 	"math"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -24,6 +25,7 @@ const maxConsecutiveFailures = 10
 type Service struct {
 	store  WebhookStore
 	client *http.Client
+	wg     sync.WaitGroup
 }
 
 // NewService creates a new webhook service.
@@ -65,15 +67,19 @@ func (s *Service) Trigger(ctx context.Context, companyID uuid.UUID, eventType, p
 			continue
 		}
 
-		go s.deliver(wh, delivery)
+		s.wg.Add(1)
+		go func() {
+			defer s.wg.Done()
+			s.deliver(ctx, wh, delivery)
+		}()
 	}
 
 	return nil
 }
 
 // deliver attempts to deliver a webhook payload.
-func (s *Service) deliver(wh Webhook, delivery WebhookDelivery) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+func (s *Service) deliver(parent context.Context, wh Webhook, delivery WebhookDelivery) {
+	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
 	defer cancel()
 
 	timestamp := time.Now().Unix()
@@ -128,6 +134,21 @@ func (s *Service) recordFailure(ctx context.Context, wh Webhook, delivery Webhoo
 		_ = s.store.UpdateWebhookStatus(ctx, wh.ID, false)
 		slog.Warn("webhook auto-paused after consecutive failures",
 			"webhook_id", wh.ID, "fail_count", failCount)
+	}
+}
+
+// Shutdown waits for all in-flight webhook deliveries to complete or the context to expire.
+func (s *Service) Shutdown(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }
 
