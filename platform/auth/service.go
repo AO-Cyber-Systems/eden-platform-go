@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 )
 
 // AuthResponse contains the tokens and user info returned after successful authentication.
@@ -35,14 +35,6 @@ func NewService(store TxAuthStore, jwtManager *JWTManager, passwordHasher *Passw
 		passwordHasher: passwordHasher,
 	}
 }
-
-// Well-known role IDs
-var (
-	OwnerRoleID  = uuid.MustParse("10000000-0000-0000-0000-000000000001")
-	AdminRoleID  = uuid.MustParse("10000000-0000-0000-0000-000000000002")
-	MemberRoleID = uuid.MustParse("10000000-0000-0000-0000-000000000003")
-	ViewerRoleID = uuid.MustParse("10000000-0000-0000-0000-000000000004")
-)
 
 // SignUp creates a new user account, a default company, and assigns the user as owner.
 func (s *Service) SignUp(ctx context.Context, email, password, displayName string) (*AuthResponse, error) {
@@ -83,7 +75,7 @@ func (s *Service) SignUp(ctx context.Context, email, password, displayName strin
 		return nil, fmt.Errorf("create company: %w", err)
 	}
 
-	if err := tx.CreateCompanyMembership(ctx, companyID, user.ID, OwnerRoleID); err != nil {
+	if err := tx.CreateCompanyMembership(ctx, companyID, user.ID, rbac.OwnerRoleID); err != nil {
 		return nil, fmt.Errorf("create company membership: %w", err)
 	}
 

@@ -10,6 +10,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// DefaultCacheTTL is the default permission cache duration.
+const DefaultCacheTTL = 5 * time.Minute
+
 type cacheEntry struct {
 	permissions map[string]bool
 	roleLevel   RoleLevel
@@ -31,7 +34,7 @@ func NewEnforcer(store RBACStore, matrix PermissionMatrix) *Enforcer {
 	}
 	return &Enforcer{
 		store:    store,
-		cacheTTL: 5 * time.Minute,
+		cacheTTL: DefaultCacheTTL,
 		matrix:   matrix,
 	}
 }

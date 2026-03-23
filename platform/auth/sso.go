@@ -17,6 +17,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	"github.com/google/uuid"
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
@@ -298,7 +299,7 @@ func (s *SSOService) jitProvision(ctx context.Context, email, name string, compa
 	}
 
 	// Ensure company membership exists (try create, ignore duplicate)
-	_ = s.store.CreateCompanyMembership(ctx, companyID, user.ID, MemberRoleID)
+	_ = s.store.CreateCompanyMembership(ctx, companyID, user.ID, rbac.MemberRoleID)
 
 	// Get role for token
 	role, err := s.store.GetUserRole(ctx, companyID, user.ID)

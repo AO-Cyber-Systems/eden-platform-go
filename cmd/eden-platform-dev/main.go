@@ -128,10 +128,10 @@ func seedRBACData(backend *devstore.Backend) {
 
 	// Seed system roles matching auth role IDs
 	systemRoles := []rbac.Role{
-		{ID: auth.OwnerRoleID, Name: "owner", Level: rbac.RoleLevelOwner, IsSystem: true},
-		{ID: auth.AdminRoleID, Name: "admin", Level: rbac.RoleLevelAdmin, IsSystem: true},
-		{ID: auth.MemberRoleID, Name: "member", Level: rbac.RoleLevelMember, IsSystem: true},
-		{ID: auth.ViewerRoleID, Name: "viewer", Level: rbac.RoleLevelViewer, IsSystem: true},
+		{ID: rbac.OwnerRoleID, Name: "owner", Level: rbac.RoleLevelOwner, IsSystem: true},
+		{ID: rbac.AdminRoleID, Name: "admin", Level: rbac.RoleLevelAdmin, IsSystem: true},
+		{ID: rbac.MemberRoleID, Name: "member", Level: rbac.RoleLevelMember, IsSystem: true},
+		{ID: rbac.ViewerRoleID, Name: "viewer", Level: rbac.RoleLevelViewer, IsSystem: true},
 	}
 
 	for _, role := range systemRoles {
@@ -162,12 +162,12 @@ func seedRBACData(backend *devstore.Backend) {
 	// Assign permissions to roles
 	// Owner gets all
 	for _, pid := range permIDs {
-		_ = rbacStore.AddRolePermission(ctx, auth.OwnerRoleID, pid)
+		_ = rbacStore.AddRolePermission(ctx, rbac.OwnerRoleID, pid)
 	}
 	// Admin gets all except settings:admin
 	for key, pid := range permIDs {
 		if key != "settings:admin" {
-			_ = rbacStore.AddRolePermission(ctx, auth.AdminRoleID, pid)
+			_ = rbacStore.AddRolePermission(ctx, rbac.AdminRoleID, pid)
 		}
 	}
 	// Member gets view, create, edit
@@ -175,12 +175,12 @@ func seedRBACData(backend *devstore.Backend) {
 		if key == "settings:admin" || key == "projects:delete" {
 			continue
 		}
-		_ = rbacStore.AddRolePermission(ctx, auth.MemberRoleID, pid)
+		_ = rbacStore.AddRolePermission(ctx, rbac.MemberRoleID, pid)
 	}
 	// Viewer gets view only
 	for key, pid := range permIDs {
 		if strings.HasSuffix(key, ":view") {
-			_ = rbacStore.AddRolePermission(ctx, auth.ViewerRoleID, pid)
+			_ = rbacStore.AddRolePermission(ctx, rbac.ViewerRoleID, pid)
 		}
 	}
 

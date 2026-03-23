@@ -122,10 +122,10 @@ type CompanyStore struct {
 
 func authRoles() map[uuid.UUID]auth.Role {
 	return map[uuid.UUID]auth.Role{
-		auth.OwnerRoleID:  {ID: auth.OwnerRoleID, Name: "owner", RoleLevel: 90},
-		auth.AdminRoleID:  {ID: auth.AdminRoleID, Name: "admin", RoleLevel: 80},
-		auth.MemberRoleID: {ID: auth.MemberRoleID, Name: "member", RoleLevel: 40},
-		auth.ViewerRoleID: {ID: auth.ViewerRoleID, Name: "viewer", RoleLevel: 20},
+		rbac.OwnerRoleID:  {ID: rbac.OwnerRoleID, Name: "owner", RoleLevel: 90},
+		rbac.AdminRoleID:  {ID: rbac.AdminRoleID, Name: "admin", RoleLevel: 80},
+		rbac.MemberRoleID: {ID: rbac.MemberRoleID, Name: "member", RoleLevel: 40},
+		rbac.ViewerRoleID: {ID: rbac.ViewerRoleID, Name: "viewer", RoleLevel: 20},
 	}
 }
 
