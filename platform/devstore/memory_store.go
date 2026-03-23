@@ -31,6 +31,9 @@ type memoryState struct {
 	rbacPermissions map[uuid.UUID]rbac.Permission
 	rolePermissions map[uuid.UUID][]uuid.UUID  // roleID -> []permissionID
 	rbacMemberships map[string]rbac.Membership // "companyID:userID" -> Membership
+
+	// Audit state
+	auditLogs []auditLogEntry
 }
 
 type Backend struct {
@@ -55,6 +58,7 @@ func NewMemoryBackend() *Backend {
 			rbacPermissions: map[uuid.UUID]rbac.Permission{},
 			rolePermissions: map[uuid.UUID][]uuid.UUID{},
 			rbacMemberships: map[string]rbac.Membership{},
+			auditLogs:       []auditLogEntry{},
 		},
 	}
 }
@@ -69,6 +73,10 @@ func (b *Backend) CompanyStore() *CompanyStore {
 
 func (b *Backend) RBACStore() *RBACStore {
 	return &RBACStore{backend: b}
+}
+
+func (b *Backend) AuditStore() *AuditStore {
+	return &AuditStore{backend: b}
 }
 
 // SeedRBACRole seeds a system role into the RBAC store.
@@ -500,6 +508,7 @@ func (s *memoryState) clone() *memoryState {
 		rbacPermissions: map[uuid.UUID]rbac.Permission{},
 		rolePermissions: map[uuid.UUID][]uuid.UUID{},
 		rbacMemberships: map[string]rbac.Membership{},
+		auditLogs:       append([]auditLogEntry(nil), s.auditLogs...),
 	}
 
 	for id, user := range s.usersByID {
