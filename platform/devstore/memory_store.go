@@ -11,6 +11,7 @@ import (
 
 	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/aocybersystems/eden-platform-go/platform/company"
+	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	"github.com/google/uuid"
 )
 
@@ -24,6 +25,12 @@ type memoryState struct {
 	refreshTokens   map[string]auth.RefreshTokenRecord
 	ssoConfigs      map[string]auth.SSOConfig
 	defaultSettings json.RawMessage
+
+	// RBAC state
+	rbacRoles       map[uuid.UUID]rbac.Role
+	rbacPermissions map[uuid.UUID]rbac.Permission
+	rolePermissions map[uuid.UUID][]uuid.UUID  // roleID -> []permissionID
+	rbacMemberships map[string]rbac.Membership // "companyID:userID" -> Membership
 }
 
 type Backend struct {
@@ -44,6 +51,10 @@ func NewMemoryBackend() *Backend {
 			refreshTokens:   map[string]auth.RefreshTokenRecord{},
 			ssoConfigs:      map[string]auth.SSOConfig{},
 			defaultSettings: defaultSettings,
+			rbacRoles:       map[uuid.UUID]rbac.Role{},
+			rbacPermissions: map[uuid.UUID]rbac.Permission{},
+			rolePermissions: map[uuid.UUID][]uuid.UUID{},
+			rbacMemberships: map[string]rbac.Membership{},
 		},
 	}
 }
@@ -54,6 +65,10 @@ func (b *Backend) AuthStore() *AuthStore {
 
 func (b *Backend) CompanyStore() *CompanyStore {
 	return &CompanyStore{backend: b}
+}
+
+func (b *Backend) RBACStore() *RBACStore {
+	return &RBACStore{backend: b}
 }
 
 // SetSSOConfig seeds an SSO configuration into the devstore.
@@ -467,6 +482,10 @@ func (s *memoryState) clone() *memoryState {
 		refreshTokens:   map[string]auth.RefreshTokenRecord{},
 		ssoConfigs:      map[string]auth.SSOConfig{},
 		defaultSettings: append(json.RawMessage(nil), s.defaultSettings...),
+		rbacRoles:       map[uuid.UUID]rbac.Role{},
+		rbacPermissions: map[uuid.UUID]rbac.Permission{},
+		rolePermissions: map[uuid.UUID][]uuid.UUID{},
+		rbacMemberships: map[string]rbac.Membership{},
 	}
 
 	for id, user := range s.usersByID {
@@ -492,6 +511,18 @@ func (s *memoryState) clone() *memoryState {
 	}
 	for key, config := range s.ssoConfigs {
 		cloned.ssoConfigs[key] = config
+	}
+	for id, role := range s.rbacRoles {
+		cloned.rbacRoles[id] = role
+	}
+	for id, perm := range s.rbacPermissions {
+		cloned.rbacPermissions[id] = perm
+	}
+	for roleID, permIDs := range s.rolePermissions {
+		cloned.rolePermissions[roleID] = append([]uuid.UUID(nil), permIDs...)
+	}
+	for key, membership := range s.rbacMemberships {
+		cloned.rbacMemberships[key] = membership
 	}
 	return cloned
 }
