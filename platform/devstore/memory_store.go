@@ -56,6 +56,13 @@ func (b *Backend) CompanyStore() *CompanyStore {
 	return &CompanyStore{backend: b}
 }
 
+// SetSSOConfig seeds an SSO configuration into the devstore.
+func (b *Backend) SetSSOConfig(companyID uuid.UUID, provider string, config auth.SSOConfig) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.state.ssoConfigs[companyID.String()+":"+provider] = config
+}
+
 type AuthStore struct {
 	backend *Backend
 	state   *memoryState

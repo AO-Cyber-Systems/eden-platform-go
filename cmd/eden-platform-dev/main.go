@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"log/slog"
 	"net/http"
 	"path/filepath"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/aocybersystems/eden-platform-go/platform/devstore"
 	platformregistry "github.com/aocybersystems/eden-platform-go/platform/registry"
 	"github.com/aocybersystems/eden-platform-go/platform/server"
+	"github.com/google/uuid"
 )
 
 func main() {
@@ -40,13 +42,18 @@ func main() {
 
 	authService := auth.NewService(authStore, jwtManager, auth.NewPasswordHasher())
 	companyService := company.NewService(companyStore)
+	ssoService := auth.NewSSOService(authStore, jwtManager, "http://localhost"+cfg.ServerAddr)
+
+	seedSSOForDev(backend)
 
 	mux := http.NewServeMux()
+	ssoService.RegisterHTTPHandlers(mux)
+
 	authInterceptor := server.NewAuthInterceptor(jwtManager, server.DefaultPublicProcedures())
 	server.RegisterPlatformHandlers(
 		mux,
 		server.PlatformHandlers{
-			Auth:     connectapi.NewAuthHandler(authService),
+			Auth:     connectapi.NewAuthHandler(authService, ssoService),
 			Company:  connectapi.NewCompanyHandler(companyService, companyStore),
 			Registry: connectapi.NewRegistryHandler(reg, companyStore),
 		},
@@ -59,6 +66,26 @@ func main() {
 	if err := http.ListenAndServe(cfg.ServerAddr, handler); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func seedSSOForDev(backend *devstore.Backend) {
+	testCompanyID := uuid.MustParse("20000000-0000-0000-0000-000000000001")
+
+	backend.SetSSOConfig(testCompanyID, "oidc", auth.SSOConfig{
+		CompanyID:    testCompanyID,
+		Provider:     "oidc",
+		IssuerURL:    "https://accounts.google.com",
+		ClientID:     "dev-oidc-client-id",
+		ClientSecret: "dev-oidc-client-secret",
+	})
+
+	backend.SetSSOConfig(testCompanyID, "saml", auth.SSOConfig{
+		CompanyID:   testCompanyID,
+		Provider:    "saml",
+		MetadataURL: "https://login.microsoftonline.com/dev-tenant/federationmetadata/2007-06/federationmetadata.xml",
+	})
+
+	slog.Info("seeded SSO config for dev", "company_id", testCompanyID)
 }
 
 func seedRegistry() *platformregistry.Registry {
