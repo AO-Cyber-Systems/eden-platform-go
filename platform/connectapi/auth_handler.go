@@ -3,18 +3,21 @@ package connectapi
 import (
 	"context"
 	"errors"
+	"strings"
 
 	connect "connectrpc.com/connect"
 	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
 	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
-	service *auth.Service
+	service    *auth.Service
+	ssoService *auth.SSOService
 }
 
-func NewAuthHandler(service *auth.Service) *AuthHandler {
-	return &AuthHandler{service: service}
+func NewAuthHandler(service *auth.Service, ssoService *auth.SSOService) *AuthHandler {
+	return &AuthHandler{service: service, ssoService: ssoService}
 }
 
 func (h *AuthHandler) SignUp(ctx context.Context, req *connect.Request[platformv1.SignUpRequest]) (*connect.Response[platformv1.AuthResponse], error) {
@@ -53,9 +56,40 @@ func (h *AuthHandler) Logout(ctx context.Context, req *connect.Request[platformv
 }
 
 func (h *AuthHandler) InitiateOIDC(ctx context.Context, req *connect.Request[platformv1.InitiateOIDCRequest]) (*connect.Response[platformv1.InitiateOIDCResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("oidc not implemented in dev server"))
+	companyID, err := uuid.Parse(req.Msg.GetCompanyId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid company_id"))
+	}
+
+	authURL, state, err := h.ssoService.InitiateOIDC(ctx, companyID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not configured") {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&platformv1.InitiateOIDCResponse{
+		AuthUrl: authURL,
+		State:   state,
+	}), nil
 }
 
 func (h *AuthHandler) InitiateSAML(ctx context.Context, req *connect.Request[platformv1.InitiateSAMLRequest]) (*connect.Response[platformv1.InitiateSAMLResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("saml not implemented in dev server"))
+	companyID, err := uuid.Parse(req.Msg.GetCompanyId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid company_id"))
+	}
+
+	redirectURL, err := h.ssoService.InitiateSAML(ctx, companyID)
+	if err != nil {
+		if strings.Contains(err.Error(), "not configured") {
+			return nil, connect.NewError(connect.CodeNotFound, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&platformv1.InitiateSAMLResponse{
+		RedirectUrl: redirectURL,
+	}), nil
 }

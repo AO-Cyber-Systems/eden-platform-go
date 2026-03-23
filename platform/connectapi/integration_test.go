@@ -43,7 +43,7 @@ func TestGeneratedClientsWorkAgainstPlatformHandlers(t *testing.T) {
 	server.RegisterPlatformHandlers(
 		mux,
 		server.PlatformHandlers{
-			Auth:     NewAuthHandler(auth.NewService(authStore, jwtManager, auth.NewPasswordHasher())),
+			Auth:     NewAuthHandler(auth.NewService(authStore, jwtManager, auth.NewPasswordHasher()), auth.NewSSOService(authStore, jwtManager, "http://localhost:0")),
 			Company:  NewCompanyHandler(company.NewService(companyStore), companyStore),
 			Registry: NewRegistryHandler(reg, companyStore),
 		},
