@@ -12,6 +12,7 @@ import (
 	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/aocybersystems/eden-platform-go/platform/company"
 	"github.com/aocybersystems/eden-platform-go/platform/rbac"
+	"github.com/aocybersystems/eden-platform-go/platform/webhook"
 	"github.com/google/uuid"
 )
 
@@ -34,6 +35,10 @@ type memoryState struct {
 
 	// Audit state
 	auditLogs []auditLogEntry
+
+	// Webhook state
+	webhooks   map[uuid.UUID]webhook.Webhook
+	deliveries map[uuid.UUID]webhook.WebhookDelivery
 }
 
 type Backend struct {
@@ -59,6 +64,8 @@ func NewMemoryBackend() *Backend {
 			rolePermissions: map[uuid.UUID][]uuid.UUID{},
 			rbacMemberships: map[string]rbac.Membership{},
 			auditLogs:       []auditLogEntry{},
+			webhooks:        map[uuid.UUID]webhook.Webhook{},
+			deliveries:      map[uuid.UUID]webhook.WebhookDelivery{},
 		},
 	}
 }
@@ -77,6 +84,10 @@ func (b *Backend) RBACStore() *RBACStore {
 
 func (b *Backend) AuditStore() *AuditStore {
 	return &AuditStore{backend: b}
+}
+
+func (b *Backend) WebhookStore() *WebhookStore {
+	return &WebhookStore{backend: b}
 }
 
 // SeedRBACRole seeds a system role into the RBAC store.
@@ -509,6 +520,15 @@ func (s *memoryState) clone() *memoryState {
 		rolePermissions: map[uuid.UUID][]uuid.UUID{},
 		rbacMemberships: map[string]rbac.Membership{},
 		auditLogs:       append([]auditLogEntry(nil), s.auditLogs...),
+		webhooks:        map[uuid.UUID]webhook.Webhook{},
+		deliveries:      map[uuid.UUID]webhook.WebhookDelivery{},
+	}
+
+	for id, wh := range s.webhooks {
+		cloned.webhooks[id] = wh
+	}
+	for id, d := range s.deliveries {
+		cloned.deliveries[id] = d
 	}
 
 	for id, user := range s.usersByID {
