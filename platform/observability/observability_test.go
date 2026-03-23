@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	connect "connectrpc.com/connect"
+	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 )
 
@@ -191,5 +192,95 @@ func TestInterceptor_MetricsDirectIncrement(t *testing.T) {
 	}
 	if !foundHistogram {
 		t.Error("http_request_duration_seconds not found")
+	}
+}
+
+func TestNewAuthMetrics_RegistersCounters(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	am := NewAuthMetrics(reg)
+	if am == nil {
+		t.Fatal("expected non-nil AuthMetrics")
+	}
+
+	families, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("gather error: %v", err)
+	}
+
+	// Auth metrics are counter vecs; they only appear after first use.
+	// Increment once to make them visible.
+	am.RecordLogin(true)
+	am.RecordSignup(true)
+	am.RecordTokenRefresh(true)
+
+	families, err = reg.Gather()
+	if err != nil {
+		t.Fatalf("gather error: %v", err)
+	}
+
+	names := make(map[string]bool)
+	for _, f := range families {
+		names[f.GetName()] = true
+	}
+	for _, expected := range []string{"auth_logins_total", "auth_signups_total", "auth_token_refreshes_total"} {
+		if !names[expected] {
+			t.Errorf("expected metric %q not found in gathered families", expected)
+		}
+	}
+}
+
+func TestAuthMetrics_RecordLogin(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	am := NewAuthMetrics(reg)
+
+	am.RecordLogin(true)
+	am.RecordLogin(true)
+	am.RecordLogin(false)
+
+	var successMetric dto.Metric
+	if err := am.loginsTotal.WithLabelValues("success").Write(&successMetric); err != nil {
+		t.Fatalf("write metric: %v", err)
+	}
+	if got := successMetric.GetCounter().GetValue(); got != 2 {
+		t.Errorf("expected 2 successful logins, got %v", got)
+	}
+
+	var failMetric dto.Metric
+	if err := am.loginsTotal.WithLabelValues("failure").Write(&failMetric); err != nil {
+		t.Fatalf("write metric: %v", err)
+	}
+	if got := failMetric.GetCounter().GetValue(); got != 1 {
+		t.Errorf("expected 1 failed login, got %v", got)
+	}
+}
+
+func TestAuthMetrics_RecordSignup(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	am := NewAuthMetrics(reg)
+
+	am.RecordSignup(true)
+	am.RecordSignup(false)
+
+	var successMetric dto.Metric
+	if err := am.signupsTotal.WithLabelValues("success").Write(&successMetric); err != nil {
+		t.Fatalf("write metric: %v", err)
+	}
+	if got := successMetric.GetCounter().GetValue(); got != 1 {
+		t.Errorf("expected 1 successful signup, got %v", got)
+	}
+}
+
+func TestAuthMetrics_RecordTokenRefresh(t *testing.T) {
+	reg := prometheus.NewRegistry()
+	am := NewAuthMetrics(reg)
+
+	am.RecordTokenRefresh(true)
+
+	var metric dto.Metric
+	if err := am.tokenRefreshesTotal.WithLabelValues("success").Write(&metric); err != nil {
+		t.Fatalf("write metric: %v", err)
+	}
+	if got := metric.GetCounter().GetValue(); got != 1 {
+		t.Errorf("expected 1 token refresh, got %v", got)
 	}
 }

@@ -18,6 +18,7 @@ import (
 	"github.com/aocybersystems/eden-platform-go/platform/config"
 	"github.com/aocybersystems/eden-platform-go/platform/connectapi"
 	"github.com/aocybersystems/eden-platform-go/platform/devstore"
+	"github.com/aocybersystems/eden-platform-go/platform/observability"
 	"github.com/aocybersystems/eden-platform-go/platform/pgstore"
 	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	platformregistry "github.com/aocybersystems/eden-platform-go/platform/registry"
@@ -28,6 +29,8 @@ import (
 )
 
 func main() {
+	observability.InitLogging("", "")
+
 	useDB := flag.Bool("db", false, "Use PostgreSQL instead of in-memory devstore")
 	flag.Parse()
 
@@ -119,6 +122,9 @@ func runServer(
 
 	reg := seedRegistry()
 
+	metrics := observability.NewMetrics()
+	obsInterceptor := observability.NewObservabilityInterceptor(metrics)
+
 	mux := http.NewServeMux()
 	ssoService.RegisterHTTPHandlers(mux)
 
@@ -141,9 +147,10 @@ func runServer(
 			Webhook:  connectapi.NewWebhookHandler(webhookService, webhookStore, deliveryQ),
 			Bridge:   connectapi.NewBridgeHandler(adapterRegistry),
 		},
-		connect.WithInterceptors(authInterceptor, rbacInterceptor),
+		connect.WithInterceptors(obsInterceptor, authInterceptor, rbacInterceptor),
 	)
 	mux.Handle("/up", (&server.HealthChecker{}).Handler())
+	mux.Handle("/metrics", metrics.MetricsHandler())
 
 	handler := server.CORSMiddleware(server.LoggingMiddleware(mux))
 	log.Printf("eden platform dev server listening on %s", cfg.ServerAddr)
