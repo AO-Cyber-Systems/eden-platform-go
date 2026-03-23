@@ -71,6 +71,20 @@ func (b *Backend) RBACStore() *RBACStore {
 	return &RBACStore{backend: b}
 }
 
+// SeedRBACRole seeds a system role into the RBAC store.
+func (b *Backend) SeedRBACRole(role rbac.Role) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.state.rbacRoles[role.ID] = role
+}
+
+// SeedRBACPermission seeds a permission into the RBAC store.
+func (b *Backend) SeedRBACPermission(perm rbac.Permission) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.state.rbacPermissions[perm.ID] = perm
+}
+
 // SetSSOConfig seeds an SSO configuration into the devstore.
 func (b *Backend) SetSSOConfig(companyID uuid.UUID, provider string, config auth.SSOConfig) {
 	b.mu.Lock()

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
 	"log/slog"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	connect "connectrpc.com/connect"
 	"github.com/aocybersystems/eden-platform-go/platform/auth"
@@ -12,8 +14,10 @@ import (
 	"github.com/aocybersystems/eden-platform-go/platform/config"
 	"github.com/aocybersystems/eden-platform-go/platform/connectapi"
 	"github.com/aocybersystems/eden-platform-go/platform/devstore"
+	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	platformregistry "github.com/aocybersystems/eden-platform-go/platform/registry"
 	"github.com/aocybersystems/eden-platform-go/platform/server"
+	platformv1connect "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1/platformv1connect"
 	"github.com/google/uuid"
 )
 
@@ -45,11 +49,22 @@ func main() {
 	ssoService := auth.NewSSOService(authStore, jwtManager, "http://localhost"+cfg.ServerAddr)
 
 	seedSSOForDev(backend)
+	seedRBACData(backend)
+
+	rbacStore := backend.RBACStore()
+	enforcer := rbac.NewEnforcer(rbacStore, nil)
 
 	mux := http.NewServeMux()
 	ssoService.RegisterHTTPHandlers(mux)
 
 	authInterceptor := server.NewAuthInterceptor(jwtManager, server.DefaultPublicProcedures())
+	rbacConfig := server.InterceptorConfig{
+		PublicProcedures:     server.DefaultPublicProcedures(),
+		ProcedurePermissions: defaultProcedurePermissions(),
+	}
+	rbacInterceptor := server.NewRBACInterceptor(enforcer, rbacConfig)
+	slog.Info("RBAC interceptor enabled", "mapped_procedures", len(defaultProcedurePermissions()))
+
 	server.RegisterPlatformHandlers(
 		mux,
 		server.PlatformHandlers{
@@ -57,7 +72,7 @@ func main() {
 			Company:  connectapi.NewCompanyHandler(companyService, companyStore),
 			Registry: connectapi.NewRegistryHandler(reg, companyStore),
 		},
-		connect.WithInterceptors(authInterceptor),
+		connect.WithInterceptors(authInterceptor, rbacInterceptor),
 	)
 	mux.Handle("/up", (&server.HealthChecker{}).Handler())
 
@@ -66,6 +81,81 @@ func main() {
 	if err := http.ListenAndServe(cfg.ServerAddr, handler); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func defaultProcedurePermissions() map[string]server.Permission {
+	return map[string]server.Permission{
+		platformv1connect.CompanyServiceCreateCompanyProcedure:  {Feature: "settings", Action: "admin"},
+		platformv1connect.CompanyServiceUpdateCompanyProcedure:  {Feature: "settings", Action: "edit"},
+	}
+}
+
+func seedRBACData(backend *devstore.Backend) {
+	rbacStore := backend.RBACStore()
+	ctx := context.Background()
+
+	// Seed system roles matching auth role IDs
+	systemRoles := []rbac.Role{
+		{ID: auth.OwnerRoleID, Name: "owner", Level: rbac.RoleLevelOwner, IsSystem: true},
+		{ID: auth.AdminRoleID, Name: "admin", Level: rbac.RoleLevelAdmin, IsSystem: true},
+		{ID: auth.MemberRoleID, Name: "member", Level: rbac.RoleLevelMember, IsSystem: true},
+		{ID: auth.ViewerRoleID, Name: "viewer", Level: rbac.RoleLevelViewer, IsSystem: true},
+	}
+
+	for _, role := range systemRoles {
+		backend.SeedRBACRole(role)
+	}
+
+	// Seed base permissions
+	type permDef struct {
+		feature string
+		action  string
+	}
+	basePerms := []permDef{
+		{"settings", "view"}, {"settings", "edit"}, {"settings", "admin"},
+		{"projects", "view"}, {"projects", "create"}, {"projects", "edit"}, {"projects", "delete"},
+	}
+
+	permIDs := make(map[string]uuid.UUID)
+	for _, p := range basePerms {
+		id := uuid.New()
+		permIDs[p.feature+":"+p.action] = id
+		backend.SeedRBACPermission(rbac.Permission{
+			ID:      id,
+			Feature: p.feature,
+			Action:  p.action,
+		})
+	}
+
+	// Assign permissions to roles
+	// Owner gets all
+	for _, pid := range permIDs {
+		_ = rbacStore.AddRolePermission(ctx, auth.OwnerRoleID, pid)
+	}
+	// Admin gets all except settings:admin
+	for key, pid := range permIDs {
+		if key != "settings:admin" {
+			_ = rbacStore.AddRolePermission(ctx, auth.AdminRoleID, pid)
+		}
+	}
+	// Member gets view, create, edit
+	for key, pid := range permIDs {
+		if key == "settings:admin" || key == "projects:delete" {
+			continue
+		}
+		_ = rbacStore.AddRolePermission(ctx, auth.MemberRoleID, pid)
+	}
+	// Viewer gets view only
+	for key, pid := range permIDs {
+		if strings.HasSuffix(key, ":view") {
+			_ = rbacStore.AddRolePermission(ctx, auth.ViewerRoleID, pid)
+		}
+	}
+
+	slog.Info("seeded RBAC data",
+		"roles", len(systemRoles),
+		"permissions", len(basePerms),
+	)
 }
 
 func seedSSOForDev(backend *devstore.Backend) {
