@@ -1,0 +1,179 @@
+package pgstore
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/aocybersystems/eden-platform-go/internal/db"
+	"github.com/aocybersystems/eden-platform-go/platform/webhook"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+var _ webhook.WebhookStore = (*WebhookStore)(nil)
+
+// WebhookStore implements webhook.WebhookStore and connectapi.deliveryQuerier
+// backed by PostgreSQL via pgx and sqlc.
+type WebhookStore struct {
+	pool *pgxpool.Pool
+}
+
+// NewWebhookStore creates a new PostgreSQL-backed webhook store.
+func NewWebhookStore(pool *pgxpool.Pool) *WebhookStore {
+	return &WebhookStore{pool: pool}
+}
+
+func (s *WebhookStore) queries() *db.Queries {
+	return db.New(s.pool)
+}
+
+func (s *WebhookStore) CreateWebhook(ctx context.Context, companyID uuid.UUID, url, secret string, events []string) (webhook.Webhook, error) {
+	row, err := s.queries().CreateWebhook(ctx, db.CreateWebhookParams{
+		CompanyID: companyID,
+		Url:       url,
+		Secret:    secret,
+		Events:    events,
+	})
+	if err != nil {
+		return webhook.Webhook{}, fmt.Errorf("create webhook: %w", err)
+	}
+	return dbWebhookToDomain(row), nil
+}
+
+func (s *WebhookStore) GetWebhook(ctx context.Context, id uuid.UUID) (webhook.Webhook, error) {
+	row, err := s.queries().GetWebhook(ctx, id)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return webhook.Webhook{}, fmt.Errorf("webhook not found: %s", id)
+		}
+		return webhook.Webhook{}, fmt.Errorf("get webhook: %w", err)
+	}
+	return dbWebhookToDomain(row), nil
+}
+
+func (s *WebhookStore) ListWebhooksByCompany(ctx context.Context, companyID uuid.UUID) ([]webhook.Webhook, error) {
+	rows, err := s.queries().ListWebhooksByCompany(ctx, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("list webhooks: %w", err)
+	}
+	webhooks := make([]webhook.Webhook, len(rows))
+	for i, row := range rows {
+		webhooks[i] = dbWebhookToDomain(row)
+	}
+	return webhooks, nil
+}
+
+func (s *WebhookStore) UpdateWebhookStatus(ctx context.Context, id uuid.UUID, active bool) error {
+	return s.queries().UpdateWebhookStatus(ctx, db.UpdateWebhookStatusParams{
+		ID:     id,
+		Active: active,
+	})
+}
+
+func (s *WebhookStore) DeleteWebhook(ctx context.Context, id uuid.UUID) error {
+	return s.queries().DeleteWebhook(ctx, id)
+}
+
+func (s *WebhookStore) IncrementFailureCount(ctx context.Context, id uuid.UUID) (int, error) {
+	count, err := s.queries().IncrementFailureCount(ctx, id)
+	if err != nil {
+		return 0, fmt.Errorf("increment failure count: %w", err)
+	}
+	return int(count), nil
+}
+
+func (s *WebhookStore) ResetFailureCount(ctx context.Context, id uuid.UUID) error {
+	return s.queries().ResetFailureCount(ctx, id)
+}
+
+func (s *WebhookStore) CreateDelivery(ctx context.Context, webhookID uuid.UUID, eventType, payload string) (webhook.WebhookDelivery, error) {
+	row, err := s.queries().CreateDelivery(ctx, db.CreateDeliveryParams{
+		WebhookID: webhookID,
+		EventType: eventType,
+		Payload:   payload,
+	})
+	if err != nil {
+		return webhook.WebhookDelivery{}, fmt.Errorf("create delivery: %w", err)
+	}
+	return dbDeliveryToDomain(row), nil
+}
+
+func (s *WebhookStore) UpdateDelivery(ctx context.Context, id uuid.UUID, status string, statusCode int, responseBody string, nextRetryAt *time.Time) error {
+	var nra pgtype.Timestamptz
+	if nextRetryAt != nil {
+		nra = pgtype.Timestamptz{Time: *nextRetryAt, Valid: true}
+	}
+	return s.queries().UpdateDelivery(ctx, db.UpdateDeliveryParams{
+		ID:           id,
+		Status:       status,
+		StatusCode:   int32(statusCode),
+		ResponseBody: responseBody,
+		NextRetryAt:  nra,
+	})
+}
+
+func (s *WebhookStore) GetPendingDeliveries(ctx context.Context) ([]webhook.WebhookDelivery, error) {
+	rows, err := s.queries().GetPendingDeliveries(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get pending deliveries: %w", err)
+	}
+	deliveries := make([]webhook.WebhookDelivery, len(rows))
+	for i, row := range rows {
+		deliveries[i] = dbDeliveryToDomain(row)
+	}
+	return deliveries, nil
+}
+
+// ListDeliveriesByWebhook satisfies connectapi.deliveryQuerier.
+func (s *WebhookStore) ListDeliveriesByWebhook(ctx context.Context, webhookID uuid.UUID, limit, offset int) ([]webhook.WebhookDelivery, error) {
+	rows, err := s.queries().ListDeliveriesByWebhook(ctx, db.ListDeliveriesByWebhookParams{
+		WebhookID: webhookID,
+		Limit:     int32(limit),
+		Offset:    int32(offset),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("list deliveries: %w", err)
+	}
+	deliveries := make([]webhook.WebhookDelivery, len(rows))
+	for i, row := range rows {
+		deliveries[i] = dbDeliveryToDomain(row)
+	}
+	return deliveries, nil
+}
+
+// -- Type conversion helpers --
+
+func dbWebhookToDomain(w db.Webhook) webhook.Webhook {
+	return webhook.Webhook{
+		ID:               w.ID,
+		CompanyID:        w.CompanyID,
+		URL:              w.Url,
+		Secret:           w.Secret,
+		Events:           w.Events,
+		Active:           w.Active,
+		ConsecutiveFails: int(w.ConsecutiveFails),
+		CreatedAt:        w.CreatedAt,
+	}
+}
+
+func dbDeliveryToDomain(d db.WebhookDelivery) webhook.WebhookDelivery {
+	var nextRetryAt *time.Time
+	if d.NextRetryAt.Valid {
+		nextRetryAt = &d.NextRetryAt.Time
+	}
+	return webhook.WebhookDelivery{
+		ID:           d.ID,
+		WebhookID:    d.WebhookID,
+		EventType:    d.EventType,
+		Payload:      d.Payload,
+		Status:       d.Status,
+		StatusCode:   int(d.StatusCode),
+		ResponseBody: d.ResponseBody,
+		Attempts:     int(d.Attempts),
+		NextRetryAt:  nextRetryAt,
+		CreatedAt:    d.CreatedAt,
+	}
+}
