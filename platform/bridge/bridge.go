@@ -70,6 +70,21 @@ func (r *AdapterRegistry) Register(prefix string, adapter Adapter) {
 	}
 }
 
+// ListAll returns all registered adapters keyed by prefix.
+func (r *AdapterRegistry) ListAll() map[string]Adapter {
+	return r.adapters
+}
+
+// FindAdapterForAction returns the adapter that supports the given action type.
+func (r *AdapterRegistry) FindAdapterForAction(actionType string) (Adapter, bool) {
+	for _, adapter := range r.adapters {
+		if adapter.SupportsAction(actionType) {
+			return adapter, true
+		}
+	}
+	return nil, false
+}
+
 // FindAdapter returns the adapter matching the given subject by longest prefix.
 func (r *AdapterRegistry) FindAdapter(subject string) (Adapter, bool) {
 	var best Adapter
