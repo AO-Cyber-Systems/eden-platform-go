@@ -104,6 +104,16 @@ func (b *Backend) SeedRBACPermission(perm rbac.Permission) {
 	b.state.rbacPermissions[perm.ID] = perm
 }
 
+// SetRBACMembershipOverrides sets permission overrides on an existing RBAC membership.
+func (b *Backend) SetRBACMembershipOverrides(key string, overrides json.RawMessage) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if m, ok := b.state.rbacMemberships[key]; ok {
+		m.PermissionOverrides = overrides
+		b.state.rbacMemberships[key] = m
+	}
+}
+
 // SetSSOConfig seeds an SSO configuration into the devstore.
 func (b *Backend) SetSSOConfig(companyID uuid.UUID, provider string, config auth.SSOConfig) {
 	b.mu.Lock()
