@@ -14,9 +14,11 @@ import (
 	"github.com/aocybersystems/eden-platform-go/platform/config"
 	"github.com/aocybersystems/eden-platform-go/platform/connectapi"
 	"github.com/aocybersystems/eden-platform-go/platform/devstore"
+	"github.com/aocybersystems/eden-platform-go/platform/bridge"
 	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	platformregistry "github.com/aocybersystems/eden-platform-go/platform/registry"
 	"github.com/aocybersystems/eden-platform-go/platform/server"
+	"github.com/aocybersystems/eden-platform-go/platform/webhook"
 	platformv1connect "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1/platformv1connect"
 	"github.com/google/uuid"
 )
@@ -54,6 +56,25 @@ func main() {
 	rbacStore := backend.RBACStore()
 	enforcer := rbac.NewEnforcer(rbacStore, nil)
 
+	// RBAC service
+	rbacResolver := rbac.NewHierarchyResolver(rbacStore)
+	rbacService := rbac.NewService(rbacStore, enforcer, rbacResolver)
+
+	// Audit store
+	auditStore := backend.AuditStore()
+
+	// Webhook service
+	webhookStore := backend.WebhookStore()
+	webhookService := webhook.NewService(webhookStore)
+
+	// Bridge adapter registry
+	adapterRegistry := bridge.NewAdapterRegistry()
+	seedBridgeAdapters(adapterRegistry)
+
+	// Seed additional data
+	seedWebhookData(backend)
+	seedAuditData(backend)
+
 	mux := http.NewServeMux()
 	ssoService.RegisterHTTPHandlers(mux)
 
@@ -71,6 +92,10 @@ func main() {
 			Auth:     connectapi.NewAuthHandler(authService, ssoService),
 			Company:  connectapi.NewCompanyHandler(companyService, companyStore),
 			Registry: connectapi.NewRegistryHandler(reg, companyStore),
+			RBAC:     connectapi.NewRBACHandler(rbacService, enforcer, rbacResolver),
+			Audit:    connectapi.NewAuditHandler(auditStore),
+			Webhook:  connectapi.NewWebhookHandler(webhookService, webhookStore, webhookStore),
+			Bridge:   connectapi.NewBridgeHandler(adapterRegistry),
 		},
 		connect.WithInterceptors(authInterceptor, rbacInterceptor),
 	)
@@ -87,6 +112,13 @@ func defaultProcedurePermissions() map[string]server.Permission {
 	return map[string]server.Permission{
 		platformv1connect.CompanyServiceCreateCompanyProcedure:  {Feature: "settings", Action: "admin"},
 		platformv1connect.CompanyServiceUpdateCompanyProcedure:  {Feature: "settings", Action: "edit"},
+		// RBAC management requires admin
+		platformv1connect.RBACServiceCreateRoleProcedure:              {Feature: "settings", Action: "admin"},
+		platformv1connect.RBACServiceAssignRoleProcedure:              {Feature: "settings", Action: "admin"},
+		platformv1connect.RBACServiceRemoveRoleProcedure:              {Feature: "settings", Action: "admin"},
+		// Webhook management requires admin
+		platformv1connect.WebhookServiceRegisterWebhookProcedure:      {Feature: "settings", Action: "admin"},
+		platformv1connect.WebhookServiceDeleteWebhookProcedure:        {Feature: "settings", Action: "admin"},
 	}
 }
 
@@ -176,6 +208,64 @@ func seedSSOForDev(backend *devstore.Backend) {
 	})
 
 	slog.Info("seeded SSO config for dev", "company_id", testCompanyID)
+}
+
+func seedBridgeAdapters(registry *bridge.AdapterRegistry) {
+	registry.Register("eden.platform.", &devAdapter{})
+	slog.Info("seeded bridge adapters", "count", 1)
+}
+
+// devAdapter is a simple adapter for dev/testing.
+type devAdapter struct{}
+
+func (a *devAdapter) EventTypes() []string {
+	return []string{"eden.platform.user.created", "eden.platform.company.created", "eden.platform.role.assigned"}
+}
+
+func (a *devAdapter) Transform(subject string, envelope bridge.EventEnvelope) (*bridge.TransformedEvent, error) {
+	return &bridge.TransformedEvent{
+		EventType: envelope.EventType,
+		SourceID:  envelope.EventID,
+		CompanyID: envelope.CompanyID,
+		Data:      envelope.Data,
+	}, nil
+}
+
+func (a *devAdapter) ActionTypes() []bridge.ActionSchema {
+	return []bridge.ActionSchema{
+		{Type: "eden.notify", Label: "Send Notification", RequiresInput: true, InputHint: "Notification message", Destructive: false},
+		{Type: "eden.export", Label: "Export Data", RequiresInput: false, Destructive: false},
+	}
+}
+
+func (a *devAdapter) SupportsAction(actionType string) bool {
+	return actionType == "eden.notify" || actionType == "eden.export"
+}
+
+func seedWebhookData(backend *devstore.Backend) {
+	webhookStore := backend.WebhookStore()
+	ctx := context.Background()
+	testCompanyID := uuid.MustParse("20000000-0000-0000-0000-000000000001")
+
+	_, _ = webhookStore.CreateWebhook(ctx, testCompanyID, "https://example.com/webhook", "test-secret-key", []string{"eden.platform.*"})
+	slog.Info("seeded webhook data", "company_id", testCompanyID)
+}
+
+func seedAuditData(backend *devstore.Backend) {
+	auditStore := backend.AuditStore()
+	ctx := context.Background()
+	testCompanyID := uuid.MustParse("20000000-0000-0000-0000-000000000001")
+	testUserID := uuid.MustParse("30000000-0000-0000-0000-000000000001")
+
+	actions := []struct{ action, resource, resourceID string }{
+		{"user.login", "user", testUserID.String()},
+		{"company.settings.updated", "company", testCompanyID.String()},
+		{"role.assigned", "membership", uuid.New().String()},
+	}
+	for _, a := range actions {
+		_ = auditStore.CreateAuditLog(ctx, testCompanyID, testUserID, a.action, a.resource, a.resourceID, "127.0.0.1", []byte(`{}`))
+	}
+	slog.Info("seeded audit data", "entries", len(actions))
 }
 
 func seedRegistry() *platformregistry.Registry {
