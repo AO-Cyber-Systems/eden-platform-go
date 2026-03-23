@@ -36,3 +36,9 @@ WHERE ancestor_id = $1;
 
 -- name: DeleteHierarchyEntries :exec
 DELETE FROM company_hierarchies WHERE descendant_id = $1;
+
+-- name: ListCompaniesForUser :many
+SELECT c.* FROM companies c
+JOIN company_memberships cm ON cm.company_id = c.id
+WHERE cm.user_id = $1 AND c.is_active = true
+ORDER BY c.name;

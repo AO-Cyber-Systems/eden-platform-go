@@ -38,3 +38,9 @@ SELECT * FROM webhook_deliveries
 WHERE status IN ('pending', 'failed') AND (next_retry_at IS NULL OR next_retry_at <= now())
 ORDER BY created_at ASC
 LIMIT 100;
+
+-- name: ListDeliveriesByWebhook :many
+SELECT * FROM webhook_deliveries
+WHERE webhook_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
