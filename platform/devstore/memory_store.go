@@ -1,0 +1,490 @@
+package devstore
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"github.com/aocybersystems/eden-platform-go/platform/company"
+	"github.com/google/uuid"
+)
+
+type memoryState struct {
+	usersByID       map[uuid.UUID]auth.User
+	usersByEmail    map[string]uuid.UUID
+	companies       map[uuid.UUID]company.Company
+	hierarchy       []company.CompanyHierarchy
+	memberships     map[uuid.UUID][]auth.Membership
+	roles           map[uuid.UUID]auth.Role
+	refreshTokens   map[string]auth.RefreshTokenRecord
+	ssoConfigs      map[string]auth.SSOConfig
+	defaultSettings json.RawMessage
+}
+
+type Backend struct {
+	mu    sync.RWMutex
+	state *memoryState
+}
+
+func NewMemoryBackend() *Backend {
+	defaultSettings := json.RawMessage(`{"enabled_features":["home","projects","activity","settings"]}`)
+	return &Backend{
+		state: &memoryState{
+			usersByID:       map[uuid.UUID]auth.User{},
+			usersByEmail:    map[string]uuid.UUID{},
+			companies:       map[uuid.UUID]company.Company{},
+			hierarchy:       []company.CompanyHierarchy{},
+			memberships:     map[uuid.UUID][]auth.Membership{},
+			roles:           authRoles(),
+			refreshTokens:   map[string]auth.RefreshTokenRecord{},
+			ssoConfigs:      map[string]auth.SSOConfig{},
+			defaultSettings: defaultSettings,
+		},
+	}
+}
+
+func (b *Backend) AuthStore() *AuthStore {
+	return &AuthStore{backend: b}
+}
+
+func (b *Backend) CompanyStore() *CompanyStore {
+	return &CompanyStore{backend: b}
+}
+
+type AuthStore struct {
+	backend *Backend
+	state   *memoryState
+}
+
+type CompanyStore struct {
+	backend *Backend
+}
+
+func authRoles() map[uuid.UUID]auth.Role {
+	return map[uuid.UUID]auth.Role{
+		auth.OwnerRoleID:  {ID: auth.OwnerRoleID, Name: "owner", RoleLevel: 90},
+		auth.AdminRoleID:  {ID: auth.AdminRoleID, Name: "admin", RoleLevel: 80},
+		auth.MemberRoleID: {ID: auth.MemberRoleID, Name: "member", RoleLevel: 40},
+		auth.ViewerRoleID: {ID: auth.ViewerRoleID, Name: "viewer", RoleLevel: 20},
+	}
+}
+
+func (s *AuthStore) BeginTx(ctx context.Context) (auth.TxAuthStore, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	return &AuthStore{backend: s.backend, state: s.backend.state.clone()}, nil
+}
+
+func (s *AuthStore) Commit(ctx context.Context) error {
+	if s.state == nil {
+		return nil
+	}
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	s.backend.state = s.state
+	return nil
+}
+
+func (s *AuthStore) Rollback(ctx context.Context) error {
+	return nil
+}
+
+func (s *AuthStore) stateRef() *memoryState {
+	if s.state != nil {
+		return s.state
+	}
+	return s.backend.state
+}
+
+func (s *AuthStore) GetUserByEmail(ctx context.Context, email string) (auth.User, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	id, ok := state.usersByEmail[strings.ToLower(strings.TrimSpace(email))]
+	if !ok {
+		return auth.User{}, fmt.Errorf("user not found")
+	}
+	return state.usersByID[id], nil
+}
+
+func (s *AuthStore) GetUserByID(ctx context.Context, id uuid.UUID) (auth.User, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	user, ok := state.usersByID[id]
+	if !ok {
+		return auth.User{}, fmt.Errorf("user not found")
+	}
+	return user, nil
+}
+
+func (s *AuthStore) CreateUser(ctx context.Context, email, passwordHash, displayName string) (auth.User, error) {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	state := s.stateRef()
+
+	normalized := strings.ToLower(strings.TrimSpace(email))
+	if _, exists := state.usersByEmail[normalized]; exists {
+		return auth.User{}, fmt.Errorf("duplicate key")
+	}
+
+	user := auth.User{
+		ID:           uuid.New(),
+		Email:        normalized,
+		PasswordHash: passwordHash,
+		DisplayName:  strings.TrimSpace(displayName),
+		IsActive:     true,
+		CreatedAt:    time.Now().UTC(),
+	}
+	state.usersByID[user.ID] = user
+	state.usersByEmail[normalized] = user.ID
+	return user, nil
+}
+
+func (s *AuthStore) CreateCompany(ctx context.Context, name, slug string) (uuid.UUID, error) {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	state := s.stateRef()
+
+	id := uuid.New()
+	now := time.Now().UTC()
+	state.companies[id] = company.Company{
+		ID:          id,
+		Name:        name,
+		Slug:        slug,
+		CompanyType: company.CompanyTypeStandalone,
+		Settings:    append(json.RawMessage(nil), state.defaultSettings...),
+		IsActive:    true,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+	insertHierarchy(state, company.CompanyHierarchy{AncestorID: id, DescendantID: id, Generations: 0})
+	return id, nil
+}
+
+func (s *AuthStore) CreateCompanyMembership(ctx context.Context, companyID, userID, roleID uuid.UUID) error {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	state := s.stateRef()
+
+	role, ok := state.roles[roleID]
+	if !ok {
+		return fmt.Errorf("role not found")
+	}
+	current := state.memberships[userID]
+	for _, membership := range current {
+		if membership.CompanyID == companyID {
+			return nil
+		}
+	}
+	state.memberships[userID] = append(current, auth.Membership{
+		CompanyID: companyID,
+		UserID:    userID,
+		RoleID:    roleID,
+		RoleName:  role.Name,
+	})
+	return nil
+}
+
+func (s *AuthStore) GetCompanyMembershipByUser(ctx context.Context, userID uuid.UUID) (auth.Membership, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	memberships := append([]auth.Membership(nil), state.memberships[userID]...)
+	if len(memberships) == 0 {
+		return auth.Membership{}, fmt.Errorf("membership not found")
+	}
+	sort.Slice(memberships, func(i, j int) bool {
+		return memberships[i].CompanyID.String() < memberships[j].CompanyID.String()
+	})
+	return memberships[0], nil
+}
+
+func (s *AuthStore) GetRoleByID(ctx context.Context, roleID uuid.UUID) (auth.Role, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	role, ok := state.roles[roleID]
+	if !ok {
+		return auth.Role{}, fmt.Errorf("role not found")
+	}
+	return role, nil
+}
+
+func (s *AuthStore) GetUserRole(ctx context.Context, companyID, userID uuid.UUID) (auth.Role, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	for _, membership := range state.memberships[userID] {
+		if membership.CompanyID == companyID {
+			role, ok := state.roles[membership.RoleID]
+			if !ok {
+				return auth.Role{}, fmt.Errorf("role not found")
+			}
+			return role, nil
+		}
+	}
+	return auth.Role{}, fmt.Errorf("role not found")
+}
+
+func (s *AuthStore) CreateRefreshToken(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	state := s.stateRef()
+	state.refreshTokens[tokenHash] = auth.RefreshTokenRecord{UserID: userID, TokenHash: tokenHash, ExpiresAt: expiresAt}
+	return nil
+}
+
+func (s *AuthStore) GetRefreshToken(ctx context.Context, tokenHash string) (auth.RefreshTokenRecord, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	record, ok := state.refreshTokens[tokenHash]
+	if !ok || time.Now().UTC().After(record.ExpiresAt) {
+		return auth.RefreshTokenRecord{}, fmt.Errorf("refresh token not found")
+	}
+	return record, nil
+}
+
+func (s *AuthStore) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	state := s.stateRef()
+	delete(state.refreshTokens, tokenHash)
+	return nil
+}
+
+func (s *AuthStore) GetSSOConfig(ctx context.Context, companyID uuid.UUID, provider string) (auth.SSOConfig, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	config, ok := state.ssoConfigs[companyID.String()+":"+provider]
+	if !ok {
+		return auth.SSOConfig{}, fmt.Errorf("sso config not found")
+	}
+	return config, nil
+}
+
+func (s *AuthStore) CreateAuditLog(ctx context.Context, companyID, actorID uuid.UUID, action, resource, resourceID, ipAddress string, details []byte) error {
+	return nil
+}
+
+func (s *CompanyStore) ListCompaniesForUser(ctx context.Context, userID uuid.UUID) ([]company.Company, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+
+	memberships := s.backend.state.memberships[userID]
+	companies := make([]company.Company, 0, len(memberships))
+	for _, membership := range memberships {
+		if companyRecord, ok := s.backend.state.companies[membership.CompanyID]; ok {
+			companies = append(companies, companyRecord)
+		}
+	}
+	sort.Slice(companies, func(i, j int) bool { return companies[i].Name < companies[j].Name })
+	return companies, nil
+}
+
+func (s *CompanyStore) CreateCompany(ctx context.Context, c company.Company) (company.Company, error) {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+
+	now := time.Now().UTC()
+	if c.ID == uuid.Nil {
+		c.ID = uuid.New()
+	}
+	if c.Settings == nil {
+		c.Settings = append(json.RawMessage(nil), s.backend.state.defaultSettings...)
+	}
+	if c.CompanyType == "" {
+		c.CompanyType = company.CompanyTypeStandalone
+	}
+	c.IsActive = true
+	if c.CreatedAt.IsZero() {
+		c.CreatedAt = now
+	}
+	c.UpdatedAt = now
+	s.backend.state.companies[c.ID] = c
+	insertHierarchy(s.backend.state, company.CompanyHierarchy{AncestorID: c.ID, DescendantID: c.ID, Generations: 0})
+	if c.ParentCompanyID != nil {
+		for _, ancestor := range getAncestors(s.backend.state, *c.ParentCompanyID) {
+			insertHierarchy(s.backend.state, company.CompanyHierarchy{
+				AncestorID:   ancestor.AncestorID,
+				DescendantID: c.ID,
+				Generations:  ancestor.Generations + 1,
+			})
+		}
+	}
+	return c, nil
+}
+
+func (s *CompanyStore) GetCompany(ctx context.Context, id uuid.UUID) (company.Company, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+
+	companyRecord, ok := s.backend.state.companies[id]
+	if !ok {
+		return company.Company{}, fmt.Errorf("company not found")
+	}
+	return companyRecord, nil
+}
+
+func (s *CompanyStore) UpdateCompany(ctx context.Context, c company.Company) (company.Company, error) {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+
+	current, ok := s.backend.state.companies[c.ID]
+	if !ok {
+		return company.Company{}, fmt.Errorf("company not found")
+	}
+	if c.Name != "" {
+		current.Name = c.Name
+	}
+	if c.Slug != "" {
+		current.Slug = c.Slug
+	}
+	if c.CompanyType != "" {
+		current.CompanyType = c.CompanyType
+	}
+	current.InheritedRoleCap = c.InheritedRoleCap
+	current.InheritedAccessLvl = c.InheritedAccessLvl
+	if c.Settings != nil {
+		current.Settings = c.Settings
+	}
+	current.UpdatedAt = time.Now().UTC()
+	s.backend.state.companies[c.ID] = current
+	return current, nil
+}
+
+func (s *CompanyStore) ListCompanies(ctx context.Context) ([]company.Company, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+
+	companies := make([]company.Company, 0, len(s.backend.state.companies))
+	for _, companyRecord := range s.backend.state.companies {
+		companies = append(companies, companyRecord)
+	}
+	sort.Slice(companies, func(i, j int) bool { return companies[i].Name < companies[j].Name })
+	return companies, nil
+}
+
+func (s *CompanyStore) InsertHierarchyEntries(ctx context.Context, entries []company.CompanyHierarchy) error {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	for _, entry := range entries {
+		insertHierarchy(s.backend.state, entry)
+	}
+	return nil
+}
+
+func (s *CompanyStore) GetAncestors(ctx context.Context, companyID uuid.UUID) ([]company.CompanyHierarchy, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	return getAncestors(s.backend.state, companyID), nil
+}
+
+func (s *CompanyStore) GetDescendants(ctx context.Context, companyID uuid.UUID) ([]company.CompanyHierarchy, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+
+	entries := make([]company.CompanyHierarchy, 0)
+	for _, entry := range s.backend.state.hierarchy {
+		if entry.AncestorID == companyID {
+			entries = append(entries, entry)
+		}
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Generations < entries[j].Generations })
+	return entries, nil
+}
+
+func (s *CompanyStore) GetSelfAndDescendantIDs(ctx context.Context, companyID uuid.UUID) ([]uuid.UUID, error) {
+	descendants, err := s.GetDescendants(ctx, companyID)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uuid.UUID, 0, len(descendants))
+	for _, entry := range descendants {
+		ids = append(ids, entry.DescendantID)
+	}
+	return ids, nil
+}
+
+func (s *CompanyStore) DeleteHierarchyEntries(ctx context.Context, descendantID uuid.UUID) error {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+
+	filtered := s.backend.state.hierarchy[:0]
+	for _, entry := range s.backend.state.hierarchy {
+		if entry.DescendantID != descendantID {
+			filtered = append(filtered, entry)
+		}
+	}
+	s.backend.state.hierarchy = filtered
+	return nil
+}
+
+func getAncestors(state *memoryState, companyID uuid.UUID) []company.CompanyHierarchy {
+	entries := make([]company.CompanyHierarchy, 0)
+	for _, entry := range state.hierarchy {
+		if entry.DescendantID == companyID {
+			entries = append(entries, entry)
+		}
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Generations < entries[j].Generations })
+	return entries
+}
+
+func insertHierarchy(state *memoryState, entry company.CompanyHierarchy) {
+	for _, existing := range state.hierarchy {
+		if existing.AncestorID == entry.AncestorID &&
+			existing.DescendantID == entry.DescendantID &&
+			existing.Generations == entry.Generations {
+			return
+		}
+	}
+	state.hierarchy = append(state.hierarchy, entry)
+}
+
+func (s *memoryState) clone() *memoryState {
+	cloned := &memoryState{
+		usersByID:       map[uuid.UUID]auth.User{},
+		usersByEmail:    map[string]uuid.UUID{},
+		companies:       map[uuid.UUID]company.Company{},
+		hierarchy:       append([]company.CompanyHierarchy(nil), s.hierarchy...),
+		memberships:     map[uuid.UUID][]auth.Membership{},
+		roles:           map[uuid.UUID]auth.Role{},
+		refreshTokens:   map[string]auth.RefreshTokenRecord{},
+		ssoConfigs:      map[string]auth.SSOConfig{},
+		defaultSettings: append(json.RawMessage(nil), s.defaultSettings...),
+	}
+
+	for id, user := range s.usersByID {
+		cloned.usersByID[id] = user
+	}
+	for email, id := range s.usersByEmail {
+		cloned.usersByEmail[email] = id
+	}
+	for id, companyRecord := range s.companies {
+		if companyRecord.Settings != nil {
+			companyRecord.Settings = append(json.RawMessage(nil), companyRecord.Settings...)
+		}
+		cloned.companies[id] = companyRecord
+	}
+	for userID, memberships := range s.memberships {
+		cloned.memberships[userID] = append([]auth.Membership(nil), memberships...)
+	}
+	for id, role := range s.roles {
+		cloned.roles[id] = role
+	}
+	for hash, token := range s.refreshTokens {
+		cloned.refreshTokens[hash] = token
+	}
+	for key, config := range s.ssoConfigs {
+		cloned.ssoConfigs[key] = config
+	}
+	return cloned
+}

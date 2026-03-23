@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package platform.v1;
 
-option go_package = "github.com/aocybersystems/eden-platform-go/gen/platform/v1;platformv1";
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
 
 // CompanyService manages company hierarchy.
 service CompanyService {

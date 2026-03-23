@@ -85,6 +85,17 @@ func (s *Service) GetCompany(ctx context.Context, id uuid.UUID) (Company, error)
 	return s.store.GetCompany(ctx, id)
 }
 
+// UpdateCompany updates an existing company record.
+func (s *Service) UpdateCompany(ctx context.Context, c Company) (Company, error) {
+	if strings.TrimSpace(c.Name) == "" {
+		return Company{}, fmt.Errorf("company name is required")
+	}
+	if strings.TrimSpace(c.Slug) == "" {
+		c.Slug = generateSlug(c.Name)
+	}
+	return s.store.UpdateCompany(ctx, c)
+}
+
 // GetAncestors returns ancestors ordered by generations ASC (nearest first).
 func (s *Service) GetAncestors(ctx context.Context, companyID uuid.UUID) ([]Company, error) {
 	hierarchy, err := s.store.GetAncestors(ctx, companyID)
