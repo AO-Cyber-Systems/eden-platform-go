@@ -11,6 +11,10 @@ type PlatformHandlers struct {
 	Auth     platformv1connect.AuthServiceHandler
 	Company  platformv1connect.CompanyServiceHandler
 	Registry platformv1connect.RegistryServiceHandler
+	RBAC     platformv1connect.RBACServiceHandler
+	Audit    platformv1connect.AuditServiceHandler
+	Webhook  platformv1connect.WebhookServiceHandler
+	Bridge   platformv1connect.BridgeServiceHandler
 }
 
 func DefaultPublicProcedures() map[string]bool {
@@ -33,6 +37,22 @@ func RegisterPlatformHandlers(mux *http.ServeMux, handlers PlatformHandlers, opt
 	}
 	if handlers.Registry != nil {
 		path, handler := platformv1connect.NewRegistryServiceHandler(handlers.Registry, opts...)
+		mux.Handle(path, handler)
+	}
+	if handlers.RBAC != nil {
+		path, handler := platformv1connect.NewRBACServiceHandler(handlers.RBAC, opts...)
+		mux.Handle(path, handler)
+	}
+	if handlers.Audit != nil {
+		path, handler := platformv1connect.NewAuditServiceHandler(handlers.Audit, opts...)
+		mux.Handle(path, handler)
+	}
+	if handlers.Webhook != nil {
+		path, handler := platformv1connect.NewWebhookServiceHandler(handlers.Webhook, opts...)
+		mux.Handle(path, handler)
+	}
+	if handlers.Bridge != nil {
+		path, handler := platformv1connect.NewBridgeServiceHandler(handlers.Bridge, opts...)
 		mux.Handle(path, handler)
 	}
 }
