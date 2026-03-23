@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"io/fs"
 	"log"
 	"log/slog"
 	"net/http"
@@ -9,12 +11,14 @@ import (
 	"strings"
 
 	connect "connectrpc.com/connect"
+	edenplatform "github.com/aocybersystems/eden-platform-go"
 	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"github.com/aocybersystems/eden-platform-go/platform/bridge"
 	"github.com/aocybersystems/eden-platform-go/platform/company"
 	"github.com/aocybersystems/eden-platform-go/platform/config"
 	"github.com/aocybersystems/eden-platform-go/platform/connectapi"
 	"github.com/aocybersystems/eden-platform-go/platform/devstore"
-	"github.com/aocybersystems/eden-platform-go/platform/bridge"
+	"github.com/aocybersystems/eden-platform-go/platform/pgstore"
 	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	platformregistry "github.com/aocybersystems/eden-platform-go/platform/registry"
 	"github.com/aocybersystems/eden-platform-go/platform/server"
@@ -24,17 +28,72 @@ import (
 )
 
 func main() {
+	useDB := flag.Bool("db", false, "Use PostgreSQL instead of in-memory devstore")
+	flag.Parse()
+
 	cfg := config.Load()
-	backend := devstore.NewMemoryBackend()
-	authStore := backend.AuthStore()
-	companyStore := backend.CompanyStore()
-	reg := seedRegistry()
 
 	if cfg.JWTPrivateKeyPath == "" || cfg.JWTPublicKeyPath == "" {
 		cfg.JWTPrivateKeyPath = filepath.Join("dev", "jwt", "jwt_es256_private.pem")
 		cfg.JWTPublicKeyPath = filepath.Join("dev", "jwt", "jwt_es256_public.pem")
 	}
 
+	if *useDB {
+		slog.Info("using PostgreSQL backend", "database_url", maskDatabaseURL(cfg.DatabaseURL))
+		migrationsFS, err := fs.Sub(edenplatform.MigrationsFS, "migrations/platform")
+		if err != nil {
+			log.Fatalf("sub migrations fs: %v", err)
+		}
+		pgBackend, err := pgstore.NewBackend(context.Background(), cfg.DatabaseURL, migrationsFS)
+		if err != nil {
+			log.Fatalf("pgstore backend: %v", err)
+		}
+		defer pgBackend.Close()
+
+		as := pgBackend.AuthStore()
+		cs := pgBackend.CompanyStore()
+		rs := pgBackend.RBACStore()
+		aus := pgBackend.AuditStore()
+		ws := pgBackend.WebhookStore()
+
+		runServer(cfg, as, cs, rs, ws, cs, aus, ws)
+	} else {
+		slog.Info("using in-memory devstore backend")
+		backend := devstore.NewMemoryBackend()
+		seedSSOForDev(backend)
+		seedRBACData(backend)
+		seedWebhookData(backend)
+		seedAuditData(backend)
+
+		as := backend.AuthStore()
+		cs := backend.CompanyStore()
+		rs := backend.RBACStore()
+		aus := backend.AuditStore()
+		ws := backend.WebhookStore()
+
+		runServer(cfg, as, cs, rs, ws, cs, aus, ws)
+	}
+}
+
+// runServer starts the HTTP server with the given store implementations.
+// The companyLister, auditQuerier, and deliveryQ parameters accept the
+// concrete store types that satisfy the connectapi-specific interfaces
+// (userCompanyLister, AuditLogQuerier, deliveryQuerier) beyond the base
+// store interfaces.
+func runServer(
+	cfg *config.PlatformConfig,
+	authStore auth.TxAuthStore,
+	companyStore company.CompanyStore,
+	rbacStore rbac.RBACStore,
+	webhookStore webhook.WebhookStore,
+	companyLister interface {
+		ListCompaniesForUser(context.Context, uuid.UUID) ([]company.Company, error)
+	},
+	auditQuerier connectapi.AuditLogQuerier,
+	deliveryQ interface {
+		ListDeliveriesByWebhook(context.Context, uuid.UUID, int, int) ([]webhook.WebhookDelivery, error)
+	},
+) {
 	jwtManager, err := auth.NewJWTManager(auth.JWTConfig{
 		PrivateKeyPath:     cfg.JWTPrivateKeyPath,
 		PublicKeyPath:      cfg.JWTPublicKeyPath,
@@ -50,30 +109,15 @@ func main() {
 	companyService := company.NewService(companyStore)
 	ssoService := auth.NewSSOService(authStore, jwtManager, "http://localhost"+cfg.ServerAddr)
 
-	seedSSOForDev(backend)
-	seedRBACData(backend)
-
-	rbacStore := backend.RBACStore()
 	enforcer := rbac.NewEnforcer(rbacStore, nil)
-
-	// RBAC service
 	rbacResolver := rbac.NewHierarchyResolver(rbacStore)
 	rbacService := rbac.NewService(rbacStore, enforcer, rbacResolver)
-
-	// Audit store
-	auditStore := backend.AuditStore()
-
-	// Webhook service
-	webhookStore := backend.WebhookStore()
 	webhookService := webhook.NewService(webhookStore)
 
-	// Bridge adapter registry
 	adapterRegistry := bridge.NewAdapterRegistry()
 	seedBridgeAdapters(adapterRegistry)
 
-	// Seed additional data
-	seedWebhookData(backend)
-	seedAuditData(backend)
+	reg := seedRegistry()
 
 	mux := http.NewServeMux()
 	ssoService.RegisterHTTPHandlers(mux)
@@ -90,11 +134,11 @@ func main() {
 		mux,
 		server.PlatformHandlers{
 			Auth:     connectapi.NewAuthHandler(authService, ssoService),
-			Company:  connectapi.NewCompanyHandler(companyService, companyStore),
+			Company:  connectapi.NewCompanyHandler(companyService, companyLister),
 			Registry: connectapi.NewRegistryHandler(reg, companyStore),
 			RBAC:     connectapi.NewRBACHandler(rbacService, enforcer, rbacResolver),
-			Audit:    connectapi.NewAuditHandler(auditStore),
-			Webhook:  connectapi.NewWebhookHandler(webhookService, webhookStore, webhookStore),
+			Audit:    connectapi.NewAuditHandler(auditQuerier),
+			Webhook:  connectapi.NewWebhookHandler(webhookService, webhookStore, deliveryQ),
 			Bridge:   connectapi.NewBridgeHandler(adapterRegistry),
 		},
 		connect.WithInterceptors(authInterceptor, rbacInterceptor),
@@ -108,17 +152,23 @@ func main() {
 	}
 }
 
+func maskDatabaseURL(url string) string {
+	if idx := strings.Index(url, "@"); idx > 0 {
+		prefix := url[:strings.Index(url, "://")+3]
+		return prefix + "***@" + url[idx+1:]
+	}
+	return url
+}
+
 func defaultProcedurePermissions() map[string]server.Permission {
 	return map[string]server.Permission{
-		platformv1connect.CompanyServiceCreateCompanyProcedure:  {Feature: "settings", Action: "admin"},
-		platformv1connect.CompanyServiceUpdateCompanyProcedure:  {Feature: "settings", Action: "edit"},
-		// RBAC management requires admin
-		platformv1connect.RBACServiceCreateRoleProcedure:              {Feature: "settings", Action: "admin"},
-		platformv1connect.RBACServiceAssignRoleProcedure:              {Feature: "settings", Action: "admin"},
-		platformv1connect.RBACServiceRemoveRoleProcedure:              {Feature: "settings", Action: "admin"},
-		// Webhook management requires admin
-		platformv1connect.WebhookServiceRegisterWebhookProcedure:      {Feature: "settings", Action: "admin"},
-		platformv1connect.WebhookServiceDeleteWebhookProcedure:        {Feature: "settings", Action: "admin"},
+		platformv1connect.CompanyServiceCreateCompanyProcedure:         {Feature: "settings", Action: "admin"},
+		platformv1connect.CompanyServiceUpdateCompanyProcedure:         {Feature: "settings", Action: "edit"},
+		platformv1connect.RBACServiceCreateRoleProcedure:               {Feature: "settings", Action: "admin"},
+		platformv1connect.RBACServiceAssignRoleProcedure:               {Feature: "settings", Action: "admin"},
+		platformv1connect.RBACServiceRemoveRoleProcedure:               {Feature: "settings", Action: "admin"},
+		platformv1connect.WebhookServiceRegisterWebhookProcedure:       {Feature: "settings", Action: "admin"},
+		platformv1connect.WebhookServiceDeleteWebhookProcedure:         {Feature: "settings", Action: "admin"},
 	}
 }
 
@@ -126,19 +176,16 @@ func seedRBACData(backend *devstore.Backend) {
 	rbacStore := backend.RBACStore()
 	ctx := context.Background()
 
-	// Seed system roles matching auth role IDs
 	systemRoles := []rbac.Role{
 		{ID: rbac.OwnerRoleID, Name: "owner", Level: rbac.RoleLevelOwner, IsSystem: true},
 		{ID: rbac.AdminRoleID, Name: "admin", Level: rbac.RoleLevelAdmin, IsSystem: true},
 		{ID: rbac.MemberRoleID, Name: "member", Level: rbac.RoleLevelMember, IsSystem: true},
 		{ID: rbac.ViewerRoleID, Name: "viewer", Level: rbac.RoleLevelViewer, IsSystem: true},
 	}
-
 	for _, role := range systemRoles {
 		backend.SeedRBACRole(role)
 	}
 
-	// Seed base permissions
 	type permDef struct {
 		feature string
 		action  string
@@ -152,61 +199,42 @@ func seedRBACData(backend *devstore.Backend) {
 	for _, p := range basePerms {
 		id := uuid.New()
 		permIDs[p.feature+":"+p.action] = id
-		backend.SeedRBACPermission(rbac.Permission{
-			ID:      id,
-			Feature: p.feature,
-			Action:  p.action,
-		})
+		backend.SeedRBACPermission(rbac.Permission{ID: id, Feature: p.feature, Action: p.action})
 	}
 
-	// Assign permissions to roles
-	// Owner gets all
 	for _, pid := range permIDs {
 		_ = rbacStore.AddRolePermission(ctx, rbac.OwnerRoleID, pid)
 	}
-	// Admin gets all except settings:admin
 	for key, pid := range permIDs {
 		if key != "settings:admin" {
 			_ = rbacStore.AddRolePermission(ctx, rbac.AdminRoleID, pid)
 		}
 	}
-	// Member gets view, create, edit
 	for key, pid := range permIDs {
 		if key == "settings:admin" || key == "projects:delete" {
 			continue
 		}
 		_ = rbacStore.AddRolePermission(ctx, rbac.MemberRoleID, pid)
 	}
-	// Viewer gets view only
 	for key, pid := range permIDs {
 		if strings.HasSuffix(key, ":view") {
 			_ = rbacStore.AddRolePermission(ctx, rbac.ViewerRoleID, pid)
 		}
 	}
 
-	slog.Info("seeded RBAC data",
-		"roles", len(systemRoles),
-		"permissions", len(basePerms),
-	)
+	slog.Info("seeded RBAC data", "roles", len(systemRoles), "permissions", len(basePerms))
 }
 
 func seedSSOForDev(backend *devstore.Backend) {
 	testCompanyID := uuid.MustParse("20000000-0000-0000-0000-000000000001")
-
 	backend.SetSSOConfig(testCompanyID, "oidc", auth.SSOConfig{
-		CompanyID:    testCompanyID,
-		Provider:     "oidc",
-		IssuerURL:    "https://accounts.google.com",
-		ClientID:     "dev-oidc-client-id",
-		ClientSecret: "dev-oidc-client-secret",
+		CompanyID: testCompanyID, Provider: "oidc",
+		IssuerURL: "https://accounts.google.com", ClientID: "dev-oidc-client-id", ClientSecret: "dev-oidc-client-secret",
 	})
-
 	backend.SetSSOConfig(testCompanyID, "saml", auth.SSOConfig{
-		CompanyID:   testCompanyID,
-		Provider:    "saml",
+		CompanyID: testCompanyID, Provider: "saml",
 		MetadataURL: "https://login.microsoftonline.com/dev-tenant/federationmetadata/2007-06/federationmetadata.xml",
 	})
-
 	slog.Info("seeded SSO config for dev", "company_id", testCompanyID)
 }
 
@@ -215,39 +243,28 @@ func seedBridgeAdapters(registry *bridge.AdapterRegistry) {
 	slog.Info("seeded bridge adapters", "count", 1)
 }
 
-// devAdapter is a simple adapter for dev/testing.
 type devAdapter struct{}
 
 func (a *devAdapter) EventTypes() []string {
 	return []string{"eden.platform.user.created", "eden.platform.company.created", "eden.platform.role.assigned"}
 }
-
 func (a *devAdapter) Transform(subject string, envelope bridge.EventEnvelope) (*bridge.TransformedEvent, error) {
-	return &bridge.TransformedEvent{
-		EventType: envelope.EventType,
-		SourceID:  envelope.EventID,
-		CompanyID: envelope.CompanyID,
-		Data:      envelope.Data,
-	}, nil
+	return &bridge.TransformedEvent{EventType: envelope.EventType, SourceID: envelope.EventID, CompanyID: envelope.CompanyID, Data: envelope.Data}, nil
 }
-
 func (a *devAdapter) ActionTypes() []bridge.ActionSchema {
 	return []bridge.ActionSchema{
 		{Type: "eden.notify", Label: "Send Notification", RequiresInput: true, InputHint: "Notification message", Destructive: false},
 		{Type: "eden.export", Label: "Export Data", RequiresInput: false, Destructive: false},
 	}
 }
-
 func (a *devAdapter) SupportsAction(actionType string) bool {
 	return actionType == "eden.notify" || actionType == "eden.export"
 }
 
 func seedWebhookData(backend *devstore.Backend) {
-	webhookStore := backend.WebhookStore()
 	ctx := context.Background()
 	testCompanyID := uuid.MustParse("20000000-0000-0000-0000-000000000001")
-
-	_, _ = webhookStore.CreateWebhook(ctx, testCompanyID, "https://example.com/webhook", "test-secret-key", []string{"eden.platform.*"})
+	_, _ = backend.WebhookStore().CreateWebhook(ctx, testCompanyID, "https://example.com/webhook", "test-secret-key", []string{"eden.platform.*"})
 	slog.Info("seeded webhook data", "company_id", testCompanyID)
 }
 
@@ -256,52 +273,38 @@ func seedAuditData(backend *devstore.Backend) {
 	ctx := context.Background()
 	testCompanyID := uuid.MustParse("20000000-0000-0000-0000-000000000001")
 	testUserID := uuid.MustParse("30000000-0000-0000-0000-000000000001")
-
-	actions := []struct{ action, resource, resourceID string }{
+	for _, a := range []struct{ action, resource, resourceID string }{
 		{"user.login", "user", testUserID.String()},
 		{"company.settings.updated", "company", testCompanyID.String()},
 		{"role.assigned", "membership", uuid.New().String()},
-	}
-	for _, a := range actions {
+	} {
 		_ = auditStore.CreateAuditLog(ctx, testCompanyID, testUserID, a.action, a.resource, a.resourceID, "127.0.0.1", []byte(`{}`))
 	}
-	slog.Info("seeded audit data", "entries", len(actions))
+	slog.Info("seeded audit data", "entries", 3)
 }
 
 func seedRegistry() *platformregistry.Registry {
 	reg := platformregistry.New()
 	reg.Register(&platformregistry.ModuleRegistration{
-		Name: "home",
-		NavItems: []platformregistry.NavItem{
-			{ID: "home", Label: "Home", Icon: "home", Path: "/home", Feature: "home", Priority: 0},
-		},
-		Widgets: []platformregistry.Widget{
-			{ID: "welcome", Label: "Welcome", Type: "summary", Feature: "home", Priority: 0},
-		},
+		Name:          "home",
+		NavItems:      []platformregistry.NavItem{{ID: "home", Label: "Home", Icon: "home", Path: "/home", Feature: "home", Priority: 0}},
+		Widgets:       []platformregistry.Widget{{ID: "welcome", Label: "Welcome", Type: "summary", Feature: "home", Priority: 0}},
 		BadgeProvider: func(companyID, userID string) int { return 1 },
 	})
 	reg.Register(&platformregistry.ModuleRegistration{
-		Name: "projects",
-		NavItems: []platformregistry.NavItem{
-			{ID: "projects", Label: "Projects", Icon: "folder", Path: "/projects", Feature: "projects", Priority: 10},
-		},
-		SearchScopes: []platformregistry.SearchScope{
-			{ID: "projects", Label: "Projects", Feature: "projects"},
-		},
+		Name:          "projects",
+		NavItems:      []platformregistry.NavItem{{ID: "projects", Label: "Projects", Icon: "folder", Path: "/projects", Feature: "projects", Priority: 10}},
+		SearchScopes:  []platformregistry.SearchScope{{ID: "projects", Label: "Projects", Feature: "projects"}},
 		BadgeProvider: func(companyID, userID string) int { return 4 },
 	})
 	reg.Register(&platformregistry.ModuleRegistration{
-		Name: "activity",
-		NavItems: []platformregistry.NavItem{
-			{ID: "activity", Label: "Activity", Icon: "analytics", Path: "/activity", Feature: "activity", Priority: 20},
-		},
+		Name:          "activity",
+		NavItems:      []platformregistry.NavItem{{ID: "activity", Label: "Activity", Icon: "analytics", Path: "/activity", Feature: "activity", Priority: 20}},
 		BadgeProvider: func(companyID, userID string) int { return 2 },
 	})
 	reg.Register(&platformregistry.ModuleRegistration{
-		Name: "settings",
-		NavItems: []platformregistry.NavItem{
-			{ID: "settings", Label: "Settings", Icon: "settings", Path: "/settings", Feature: "settings", Priority: 30},
-		},
+		Name:     "settings",
+		NavItems: []platformregistry.NavItem{{ID: "settings", Label: "Settings", Icon: "settings", Path: "/settings", Feature: "settings", Priority: 30}},
 	})
 	return reg
 }
