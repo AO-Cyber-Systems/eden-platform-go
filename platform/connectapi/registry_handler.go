@@ -3,6 +3,8 @@ package connectapi
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"log/slog"
 	"sort"
 
 	connect "connectrpc.com/connect"
@@ -107,7 +109,15 @@ func (h *RegistryHandler) enabledFeatures(ctx context.Context, companyID string)
 	if err := json.Unmarshal(companyRecord.Settings, &settings); err != nil {
 		return map[string]bool{}, nil
 	}
-	rawFeatures, _ := settings["enabled_features"].([]any)
+	rawFeatures, ok := settings["enabled_features"].([]any)
+	if !ok {
+		slog.Warn("enabled_features is not an array, using defaults",
+			"company_id", companyID,
+			"actual_type", fmt.Sprintf("%T", settings["enabled_features"]))
+		return map[string]bool{
+			"home": true, "projects": true, "activity": true, "settings": true,
+		}, nil
+	}
 	enabled := map[string]bool{}
 	for _, feature := range rawFeatures {
 		if value, ok := feature.(string); ok {

@@ -41,11 +41,14 @@ func (e *Enforcer) HasPermission(ctx context.Context, userID, companyID uuid.UUI
 	cacheKey := userID.String() + ":" + companyID.String()
 
 	if entry, ok := e.cache.Load(cacheKey); ok {
-		ce := entry.(*cacheEntry)
-		if time.Now().Before(ce.expiresAt) {
+		ce, ok := entry.(*cacheEntry)
+		if !ok {
+			e.cache.Delete(cacheKey)
+		} else if time.Now().Before(ce.expiresAt) {
 			return ce.permissions[permission], nil
+		} else {
+			e.cache.Delete(cacheKey)
 		}
-		e.cache.Delete(cacheKey)
 	}
 
 	role, err := e.store.GetUserRole(ctx, companyID, userID)
