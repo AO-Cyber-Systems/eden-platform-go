@@ -236,6 +236,10 @@ func (s *AuthStore) ListSSOConfigs(ctx context.Context, companyID uuid.UUID) ([]
 }
 
 func (s *AuthStore) UpsertSSOConfig(ctx context.Context, cfg auth.SSOConfig) error {
+	extraScopes := cfg.ExtraScopes
+	if extraScopes == nil {
+		extraScopes = []string{}
+	}
 	_, err := s.dbtx.Exec(ctx, `
 		INSERT INTO sso_configs (company_id, provider, issuer_url, client_id, client_secret, metadata_url,
 		            display_name, extra_scopes, enforce_sso, is_active, updated_at)
@@ -246,7 +250,7 @@ func (s *AuthStore) UpsertSSOConfig(ctx context.Context, cfg auth.SSOConfig) err
 		    display_name = EXCLUDED.display_name, extra_scopes = EXCLUDED.extra_scopes,
 		    enforce_sso = EXCLUDED.enforce_sso, is_active = EXCLUDED.is_active, updated_at = now()`,
 		cfg.CompanyID, cfg.Provider, cfg.IssuerURL, cfg.ClientID, cfg.ClientSecret,
-		cfg.MetadataURL, cfg.DisplayName, cfg.ExtraScopes, cfg.EnforceSSO, cfg.IsActive)
+		cfg.MetadataURL, cfg.DisplayName, extraScopes, cfg.EnforceSSO, cfg.IsActive)
 	return err
 }
 
