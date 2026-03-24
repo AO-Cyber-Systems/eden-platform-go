@@ -335,6 +335,55 @@ func (s *AuthStore) GetSSOConfig(ctx context.Context, companyID uuid.UUID, provi
 	return config, nil
 }
 
+func (s *AuthStore) ListSSOConfigs(ctx context.Context, companyID uuid.UUID) ([]auth.SSOConfig, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	var configs []auth.SSOConfig
+	for key, cfg := range state.ssoConfigs {
+		if len(key) > 36 && key[:36] == companyID.String() {
+			configs = append(configs, cfg)
+		}
+	}
+	return configs, nil
+}
+
+func (s *AuthStore) UpsertSSOConfig(ctx context.Context, cfg auth.SSOConfig) error {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	state := s.stateRef()
+	state.ssoConfigs[cfg.CompanyID.String()+":"+cfg.Provider] = cfg
+	return nil
+}
+
+func (s *AuthStore) DeleteSSOConfig(ctx context.Context, companyID uuid.UUID, provider string) error {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	state := s.stateRef()
+	delete(state.ssoConfigs, companyID.String()+":"+provider)
+	return nil
+}
+
+func (s *AuthStore) HasEnforcedSSO(ctx context.Context, companyID uuid.UUID) (bool, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	for key, cfg := range state.ssoConfigs {
+		if len(key) > 36 && key[:36] == companyID.String() && cfg.EnforceSSO && cfg.IsActive {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func (s *AuthStore) UpsertOAuthCredential(ctx context.Context, cred auth.OAuthCredential) error {
+	return nil // noop for dev store
+}
+
+func (s *AuthStore) GetOAuthCredential(ctx context.Context, userID uuid.UUID, provider string) (auth.OAuthCredential, error) {
+	return auth.OAuthCredential{}, fmt.Errorf("oauth credential not found")
+}
+
 func (s *AuthStore) CreateAuditLog(ctx context.Context, companyID, actorID uuid.UUID, action, resource, resourceID, ipAddress string, details []byte) error {
 	return nil
 }

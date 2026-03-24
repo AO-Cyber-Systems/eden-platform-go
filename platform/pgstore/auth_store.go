@@ -211,6 +211,84 @@ func (s *AuthStore) GetSSOConfig(ctx context.Context, companyID uuid.UUID, provi
 	}, nil
 }
 
+// -- SSO Config (extended) --
+
+func (s *AuthStore) ListSSOConfigs(ctx context.Context, companyID uuid.UUID) ([]auth.SSOConfig, error) {
+	rows, err := s.dbtx.Query(ctx, `
+		SELECT company_id, provider, issuer_url, client_id, client_secret, metadata_url,
+		       COALESCE(display_name,''), COALESCE(extra_scopes,'{}'), COALESCE(enforce_sso,false), is_active
+		FROM sso_configs WHERE company_id = $1 ORDER BY provider`, companyID)
+	if err != nil {
+		return nil, fmt.Errorf("list sso configs: %w", err)
+	}
+	defer rows.Close()
+
+	var configs []auth.SSOConfig
+	for rows.Next() {
+		var c auth.SSOConfig
+		if err := rows.Scan(&c.CompanyID, &c.Provider, &c.IssuerURL, &c.ClientID, &c.ClientSecret,
+			&c.MetadataURL, &c.DisplayName, &c.ExtraScopes, &c.EnforceSSO, &c.IsActive); err != nil {
+			return nil, err
+		}
+		configs = append(configs, c)
+	}
+	return configs, rows.Err()
+}
+
+func (s *AuthStore) UpsertSSOConfig(ctx context.Context, cfg auth.SSOConfig) error {
+	_, err := s.dbtx.Exec(ctx, `
+		INSERT INTO sso_configs (company_id, provider, issuer_url, client_id, client_secret, metadata_url,
+		            display_name, extra_scopes, enforce_sso, is_active, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+		ON CONFLICT (company_id, provider) DO UPDATE SET
+		    issuer_url = EXCLUDED.issuer_url, client_id = EXCLUDED.client_id,
+		    client_secret = EXCLUDED.client_secret, metadata_url = EXCLUDED.metadata_url,
+		    display_name = EXCLUDED.display_name, extra_scopes = EXCLUDED.extra_scopes,
+		    enforce_sso = EXCLUDED.enforce_sso, is_active = EXCLUDED.is_active, updated_at = now()`,
+		cfg.CompanyID, cfg.Provider, cfg.IssuerURL, cfg.ClientID, cfg.ClientSecret,
+		cfg.MetadataURL, cfg.DisplayName, cfg.ExtraScopes, cfg.EnforceSSO, cfg.IsActive)
+	return err
+}
+
+func (s *AuthStore) DeleteSSOConfig(ctx context.Context, companyID uuid.UUID, provider string) error {
+	_, err := s.dbtx.Exec(ctx, `DELETE FROM sso_configs WHERE company_id = $1 AND provider = $2`, companyID, provider)
+	return err
+}
+
+func (s *AuthStore) HasEnforcedSSO(ctx context.Context, companyID uuid.UUID) (bool, error) {
+	var enforced bool
+	err := s.dbtx.QueryRow(ctx, `
+		SELECT EXISTS(SELECT 1 FROM sso_configs WHERE company_id = $1 AND enforce_sso = true AND is_active = true)`,
+		companyID).Scan(&enforced)
+	return enforced, err
+}
+
+// -- OAuth Credentials --
+
+func (s *AuthStore) UpsertOAuthCredential(ctx context.Context, cred auth.OAuthCredential) error {
+	_, err := s.dbtx.Exec(ctx, `
+		INSERT INTO oauth_credentials (company_id, user_id, provider, access_token, refresh_token, token_expiry, scopes, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+		ON CONFLICT (company_id, user_id, provider) DO UPDATE SET
+		    access_token = EXCLUDED.access_token, refresh_token = EXCLUDED.refresh_token,
+		    token_expiry = EXCLUDED.token_expiry, scopes = EXCLUDED.scopes, updated_at = now()`,
+		cred.CompanyID, cred.UserID, cred.Provider, cred.AccessToken, cred.RefreshToken,
+		cred.TokenExpiry, cred.Scopes)
+	return err
+}
+
+func (s *AuthStore) GetOAuthCredential(ctx context.Context, userID uuid.UUID, provider string) (auth.OAuthCredential, error) {
+	var c auth.OAuthCredential
+	err := s.dbtx.QueryRow(ctx, `
+		SELECT company_id, user_id, provider, access_token, refresh_token, token_expiry, scopes
+		FROM oauth_credentials WHERE user_id = $1 AND provider = $2`, userID, provider,
+	).Scan(&c.CompanyID, &c.UserID, &c.Provider, &c.AccessToken, &c.RefreshToken, &c.TokenExpiry, &c.Scopes)
+	if err != nil {
+		return auth.OAuthCredential{}, fmt.Errorf("get oauth credential: %w", err)
+	}
+	return c, nil
+}
+
 // -- Audit --
 
 func (s *AuthStore) CreateAuditLog(ctx context.Context, companyID, actorID uuid.UUID, action, resource, resourceID, ipAddress string, details []byte) error {

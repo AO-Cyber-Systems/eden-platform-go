@@ -61,7 +61,10 @@ func (h *AuthHandler) InitiateOIDC(ctx context.Context, req *connect.Request[pla
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid company_id"))
 	}
 
-	authURL, state, err := h.ssoService.InitiateOIDC(ctx, companyID)
+	// TODO: add provider and redirect_uri fields to the proto message
+	provider := "oidc"
+	redirectURI := ""
+	authURL, state, err := h.ssoService.InitiateOIDC(ctx, companyID, provider, redirectURI)
 	if err != nil {
 		if strings.Contains(err.Error(), "not configured") {
 			return nil, connect.NewError(connect.CodeNotFound, err)

@@ -7,7 +7,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -65,12 +64,42 @@ func NewSSOService(store AuthStore, jwtManager *JWTManager, baseURL string) *SSO
 	return svc
 }
 
-// InitiateOIDC starts an OIDC authorization code flow for the given company.
-// Returns the authorization URL the client should redirect to, plus a state parameter.
-func (s *SSOService) InitiateOIDC(ctx context.Context, companyID uuid.UUID) (authURL string, state string, err error) {
-	ssoConfig, err := s.store.GetSSOConfig(ctx, companyID, "oidc")
+// ProviderPreset maps well-known provider names to their OIDC issuer URLs.
+var ProviderPresets = map[string]struct {
+	IssuerURL   string
+	DisplayName string
+}{
+	"microsoft": {
+		IssuerURL:   "https://login.microsoftonline.com/common/v2.0",
+		DisplayName: "Microsoft",
+	},
+	"google": {
+		IssuerURL:   "https://accounts.google.com",
+		DisplayName: "Google",
+	},
+}
+
+// InitiateOIDC starts an OIDC authorization code flow for the given company and provider.
+// Provider can be "microsoft", "google", or "oidc" (custom).
+// redirectURI is encoded into the state JWT so the callback knows where to send the user.
+// Returns the authorization URL the client should redirect to, plus the state JWT.
+func (s *SSOService) InitiateOIDC(ctx context.Context, companyID uuid.UUID, provider, redirectURI string) (authURL string, state string, err error) {
+	if provider == "" {
+		provider = "oidc"
+	}
+
+	ssoConfig, err := s.store.GetSSOConfig(ctx, companyID, provider)
 	if err != nil {
-		return "", "", fmt.Errorf("OIDC not configured for this company")
+		return "", "", fmt.Errorf("SSO provider %q not configured for this company", provider)
+	}
+
+	// Resolve issuer URL from preset if empty
+	if ssoConfig.IssuerURL == "" {
+		if preset, ok := ProviderPresets[provider]; ok {
+			ssoConfig.IssuerURL = preset.IssuerURL
+		} else {
+			return "", "", fmt.Errorf("no issuer URL configured for provider %q", provider)
+		}
 	}
 
 	cached, err := s.getOrCreateOIDCProvider(ctx, ssoConfig)
@@ -78,23 +107,68 @@ func (s *SSOService) InitiateOIDC(ctx context.Context, companyID uuid.UUID) (aut
 		return "", "", fmt.Errorf("create OIDC provider: %w", err)
 	}
 
-	// Generate state parameter
-	stateBytes := make([]byte, 16)
-	if _, err := rand.Read(stateBytes); err != nil {
-		return "", "", fmt.Errorf("generate state: %w", err)
+	// Generate state as signed JWT (stateless, works across instances)
+	state, err = s.createStateJWT(companyID, provider, redirectURI)
+	if err != nil {
+		return "", "", fmt.Errorf("create state: %w", err)
 	}
-	state = base64.URLEncoding.EncodeToString(stateBytes)
 
 	authURL = cached.config.AuthCodeURL(state)
 	return authURL, state, nil
 }
 
+// createStateJWT creates a short-lived signed JWT encoding the SSO flow context.
+func (s *SSOService) createStateJWT(companyID uuid.UUID, provider, redirectURI string) (string, error) {
+	// Reuse JWTManager to sign. Encode context as subject with a 10-minute expiry.
+	// Format: "companyID:provider:redirectURI"
+	subject := companyID.String() + "|" + provider + "|" + redirectURI
+	return s.jwtManager.CreateShortLivedToken(subject, 10*time.Minute)
+}
+
+// parseStateJWT decodes and validates the state JWT, returning companyID, provider, and redirectURI.
+func (s *SSOService) parseStateJWT(stateJWT string) (companyID uuid.UUID, provider, redirectURI string, err error) {
+	subject, err := s.jwtManager.ValidateShortLivedToken(stateJWT)
+	if err != nil {
+		return uuid.Nil, "", "", fmt.Errorf("invalid state: %w", err)
+	}
+
+	parts := strings.SplitN(subject, "|", 3)
+	if len(parts) != 3 {
+		return uuid.Nil, "", "", fmt.Errorf("malformed state")
+	}
+
+	companyID, err = uuid.Parse(parts[0])
+	if err != nil {
+		return uuid.Nil, "", "", fmt.Errorf("invalid company_id in state")
+	}
+
+	return companyID, parts[1], parts[2], nil
+}
+
+// HandleOIDCCallbackWithState handles the OIDC redirect callback using the state JWT.
+// Extracts companyID and provider from state, exchanges code, provisions user, stores OAuth tokens.
+// Returns AuthResponse and the redirectURI from state (so caller knows where to send the user).
+func (s *SSOService) HandleOIDCCallbackWithState(ctx context.Context, code, stateJWT string) (*AuthResponse, string, error) {
+	companyID, provider, redirectURI, err := s.parseStateJWT(stateJWT)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid state: %w", err)
+	}
+
+	resp, err := s.HandleOIDCCallback(ctx, code, provider, companyID)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return resp, redirectURI, nil
+}
+
 // HandleOIDCCallback handles the OIDC redirect callback with authorization code.
 // Performs JIT provisioning: creates user if not found, links to company.
-func (s *SSOService) HandleOIDCCallback(ctx context.Context, code, state string, companyID uuid.UUID) (*AuthResponse, error) {
-	ssoConfig, err := s.store.GetSSOConfig(ctx, companyID, "oidc")
+// Stores the OAuth access/refresh tokens for future API use.
+func (s *SSOService) HandleOIDCCallback(ctx context.Context, code, provider string, companyID uuid.UUID) (*AuthResponse, error) {
+	ssoConfig, err := s.store.GetSSOConfig(ctx, companyID, provider)
 	if err != nil {
-		return nil, fmt.Errorf("OIDC not configured for this company")
+		return nil, fmt.Errorf("SSO provider %q not configured for this company", provider)
 	}
 
 	cached, err := s.getOrCreateOIDCProvider(ctx, ssoConfig)
@@ -133,7 +207,25 @@ func (s *SSOService) HandleOIDCCallback(ctx context.Context, code, state string,
 		return nil, fmt.Errorf("email claim not found in ID token")
 	}
 
-	return s.jitProvision(ctx, claims.Email, claims.Name, companyID)
+	authResp, err := s.jitProvision(ctx, claims.Email, claims.Name, companyID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store the provider's OAuth tokens for future API use (email sync, calendar, etc.)
+	if oauth2Token.AccessToken != "" {
+		_ = s.store.UpsertOAuthCredential(ctx, OAuthCredential{
+			CompanyID:    companyID,
+			UserID:       authResp.User.ID,
+			Provider:     provider,
+			AccessToken:  oauth2Token.AccessToken,
+			RefreshToken: oauth2Token.RefreshToken,
+			TokenExpiry:  oauth2Token.Expiry,
+			Scopes:       ssoConfig.ExtraScopes,
+		})
+	}
+
+	return authResp, nil
 }
 
 // InitiateSAML starts a SAML authentication flow for the given company.
@@ -205,33 +297,33 @@ func (s *SSOService) RegisterHTTPHandlers(mux *http.ServeMux) {
 
 func (s *SSOService) handleOIDCCallbackHTTP(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
-	state := r.URL.Query().Get("state")
-	companyIDStr := r.URL.Query().Get("company_id")
+	stateJWT := r.URL.Query().Get("state")
 
-	if code == "" || state == "" {
+	if code == "" || stateJWT == "" {
 		http.Error(w, "missing code or state parameter", http.StatusBadRequest)
 		return
 	}
-	if companyIDStr == "" {
-		http.Error(w, "missing company_id parameter", http.StatusBadRequest)
-		return
-	}
 
-	companyID, err := uuid.Parse(companyIDStr)
-	if err != nil {
-		http.Error(w, "invalid company_id", http.StatusBadRequest)
-		return
-	}
-
-	resp, err := s.HandleOIDCCallback(r.Context(), code, state, companyID)
+	resp, redirectURI, err := s.HandleOIDCCallbackWithState(r.Context(), code, stateJWT)
 	if err != nil {
 		slog.Error("OIDC callback failed", "error", err)
 		http.Error(w, "authentication failed", http.StatusInternalServerError)
 		return
 	}
 
-	// In production, redirect to the Flutter app with tokens.
-	// For now, return JSON.
+	// Redirect based on the redirectURI encoded in the state JWT.
+	if redirectURI != "" && redirectURI != "json" {
+		// Append tokens as query params for desktop Flutter or portal redirect.
+		sep := "?"
+		if strings.Contains(redirectURI, "?") {
+			sep = "&"
+		}
+		target := fmt.Sprintf("%s%saccess_token=%s&refresh_token=%s", redirectURI, sep, resp.AccessToken, resp.RefreshToken)
+		http.Redirect(w, r, target, http.StatusFound)
+		return
+	}
+
+	// Default: return JSON (for API clients or testing).
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Fprintf(w, `{"access_token":"%s","refresh_token":"%s"}`, resp.AccessToken, resp.RefreshToken)
 }
@@ -334,7 +426,7 @@ func (s *SSOService) jitProvision(ctx context.Context, email, name string, compa
 }
 
 func (s *SSOService) getOrCreateOIDCProvider(ctx context.Context, cfg SSOConfig) (*oidcCachedProvider, error) {
-	key := cfg.CompanyID.String()
+	key := cfg.CompanyID.String() + ":" + cfg.Provider
 
 	s.oidcMu.RLock()
 	if cached, ok := s.oidcProviders[key]; ok {
@@ -351,17 +443,29 @@ func (s *SSOService) getOrCreateOIDCProvider(ctx context.Context, cfg SSOConfig)
 		return cached, nil
 	}
 
-	provider, err := gooidc.NewProvider(ctx, cfg.IssuerURL)
-	if err != nil {
-		return nil, fmt.Errorf("discover OIDC provider at %s: %w", cfg.IssuerURL, err)
+	// Resolve issuer URL from preset if needed
+	issuerURL := cfg.IssuerURL
+	if issuerURL == "" {
+		if preset, ok := ProviderPresets[cfg.Provider]; ok {
+			issuerURL = preset.IssuerURL
+		}
 	}
+
+	provider, err := gooidc.NewProvider(ctx, issuerURL)
+	if err != nil {
+		return nil, fmt.Errorf("discover OIDC provider at %s: %w", issuerURL, err)
+	}
+
+	// Base scopes + any extra scopes configured
+	scopes := []string{gooidc.ScopeOpenID, "profile", "email"}
+	scopes = append(scopes, cfg.ExtraScopes...)
 
 	oauthConfig := oauth2.Config{
 		ClientID:     cfg.ClientID,
 		ClientSecret: cfg.ClientSecret,
 		Endpoint:     provider.Endpoint(),
-		RedirectURL:  s.baseURL + "/auth/oidc/callback?company_id=" + key,
-		Scopes:       []string{gooidc.ScopeOpenID, "profile", "email"},
+		RedirectURL:  s.baseURL + "/auth/oidc/callback",
+		Scopes:       scopes,
 	}
 
 	cached := &oidcCachedProvider{provider: provider, config: oauthConfig}

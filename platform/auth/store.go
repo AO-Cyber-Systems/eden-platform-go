@@ -36,11 +36,26 @@ type Role struct {
 // SSOConfig holds SSO provider configuration.
 type SSOConfig struct {
 	CompanyID    uuid.UUID
-	Provider     string // "oidc" or "saml"
+	Provider     string // "oidc", "saml", "microsoft", "google"
 	IssuerURL    string
 	ClientID     string
 	ClientSecret string
 	MetadataURL  string
+	DisplayName  string
+	ExtraScopes  []string
+	EnforceSSO   bool
+	IsActive     bool
+}
+
+// OAuthCredential stores a provider's access/refresh tokens for API use.
+type OAuthCredential struct {
+	CompanyID    uuid.UUID
+	UserID       uuid.UUID
+	Provider     string
+	AccessToken  string
+	RefreshToken string
+	TokenExpiry  time.Time
+	Scopes       []string
 }
 
 // RefreshTokenRecord represents a stored refresh token.
@@ -74,6 +89,14 @@ type AuthStore interface {
 
 	// SSO operations
 	GetSSOConfig(ctx context.Context, companyID uuid.UUID, provider string) (SSOConfig, error)
+	ListSSOConfigs(ctx context.Context, companyID uuid.UUID) ([]SSOConfig, error)
+	UpsertSSOConfig(ctx context.Context, cfg SSOConfig) error
+	DeleteSSOConfig(ctx context.Context, companyID uuid.UUID, provider string) error
+	HasEnforcedSSO(ctx context.Context, companyID uuid.UUID) (bool, error)
+
+	// OAuth credential operations (provider access/refresh tokens for API use)
+	UpsertOAuthCredential(ctx context.Context, cred OAuthCredential) error
+	GetOAuthCredential(ctx context.Context, userID uuid.UUID, provider string) (OAuthCredential, error)
 
 	// Audit (optional -- noop if nil)
 	CreateAuditLog(ctx context.Context, companyID, actorID uuid.UUID, action, resource, resourceID, ipAddress string, details []byte) error

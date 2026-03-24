@@ -148,6 +148,39 @@ func (m *JWTManager) ValidateRefreshToken(tokenStr string) (*jwt.RegisteredClaim
 	return claims, nil
 }
 
+// CreateShortLivedToken creates a signed JWT with the given subject and expiry.
+// Used for SSO state parameters, email verification, etc.
+func (m *JWTManager) CreateShortLivedToken(subject string, expiry time.Duration) (string, error) {
+	now := time.Now()
+	claims := &jwt.RegisteredClaims{
+		Subject:   subject,
+		Issuer:    m.config.Issuer,
+		ExpiresAt: jwt.NewNumericDate(now.Add(expiry)),
+		IssuedAt:  jwt.NewNumericDate(now),
+		ID:        generateJTI(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	return token.SignedString(m.privateKey)
+}
+
+// ValidateShortLivedToken parses and validates a short-lived token, returning the subject.
+func (m *JWTManager) ValidateShortLivedToken(tokenStr string) (string, error) {
+	claims := &jwt.RegisteredClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodECDSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return m.publicKey, nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("parse short-lived token: %w", err)
+	}
+	if !token.Valid {
+		return "", fmt.Errorf("invalid token")
+	}
+	return claims.Subject, nil
+}
+
 // GenerateKeyPair generates a new ECDSA P-256 key pair.
 func GenerateKeyPair() (*ecdsa.PrivateKey, error) {
 	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
