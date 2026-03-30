@@ -13,6 +13,7 @@ type User struct {
 	Email        string
 	PasswordHash string
 	DisplayName  string
+	AvatarURL    string
 	IsActive     bool
 	CreatedAt    time.Time
 }
@@ -72,9 +73,10 @@ type AuthStore interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	CreateUser(ctx context.Context, email, passwordHash, displayName string) (User, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, displayName, avatarURL string) (User, error)
 
 	// Company operations (replaces eden-circle's Org)
-	CreateCompany(ctx context.Context, name, slug string) (uuid.UUID, error)
+	CreateCompany(ctx context.Context, name, slug, companyType string) (uuid.UUID, error)
 	CreateCompanyMembership(ctx context.Context, companyID, userID, roleID uuid.UUID) error
 
 	// Membership & role operations

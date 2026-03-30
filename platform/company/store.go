@@ -16,6 +16,7 @@ const (
 	CompanyTypeSubsidiary CompanyType = "subsidiary"
 	CompanyTypeBrand      CompanyType = "brand"
 	CompanyTypeStandalone CompanyType = "standalone"
+	CompanyTypePersonal   CompanyType = "personal"
 )
 
 // Company represents a company in the hierarchy.

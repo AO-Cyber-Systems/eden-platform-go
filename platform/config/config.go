@@ -21,12 +21,18 @@ type PlatformConfig struct {
 	MinIOUseSSL       bool
 	RedisURL          string
 	RedisPassword     string
+	PlatformMode      string // "b2b" (default) or "b2c"
+}
+
+// IsB2C returns true when the platform is configured for individual users (no company concept).
+func (c *PlatformConfig) IsB2C() bool {
+	return c.PlatformMode == "b2c"
 }
 
 // Load reads platform configuration from environment variables.
 func Load() *PlatformConfig {
 	return &PlatformConfig{
-		DatabaseURL:       GetEnv("DATABASE_URL", "postgres://eden:eden_dev@localhost:5433/eden_platform?sslmode=disable"),
+		DatabaseURL:       GetEnv("DATABASE_URL", "postgres://localhost:5432/eden_dev?sslmode=disable"),
 		JWTPrivateKeyPath: GetEnv("JWT_PRIVATE_KEY_PATH", ""),
 		JWTPublicKeyPath:  GetEnv("JWT_PUBLIC_KEY_PATH", ""),
 		ServerAddr:        GetEnv("SERVER_ADDR", ":8080"),
@@ -39,6 +45,7 @@ func Load() *PlatformConfig {
 		MinIOUseSSL:       GetEnv("MINIO_USE_SSL", "false") == "true",
 		RedisURL:          GetEnv("REDIS_URL", "localhost:6379"),
 		RedisPassword:     GetSecret("REDIS_PASSWORD", ""),
+		PlatformMode:      GetEnv("PLATFORM_MODE", "b2b"),
 	}
 }
 

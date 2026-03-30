@@ -26,5 +26,3 @@ go.work.sum
 Thumbs.db
 
 # Generated
-gen/
-internal/db/

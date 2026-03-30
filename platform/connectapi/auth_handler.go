@@ -8,6 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
 	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"github.com/aocybersystems/eden-platform-go/platform/server"
 	"github.com/google/uuid"
 )
 
@@ -94,5 +95,22 @@ func (h *AuthHandler) InitiateSAML(ctx context.Context, req *connect.Request[pla
 
 	return connect.NewResponse(&platformv1.InitiateSAMLResponse{
 		RedirectUrl: redirectURL,
+	}), nil
+}
+
+func (h *AuthHandler) UpdateProfile(ctx context.Context, req *connect.Request[platformv1.UpdateProfileRequest]) (*connect.Response[platformv1.UpdateProfileResponse], error) {
+	userIDStr, _, _ := server.ExtractClaims(ctx)
+	userID, err := uuid.Parse(userIDStr)
+	if err != nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("invalid user identity"))
+	}
+
+	user, err := h.service.UpdateProfile(ctx, userID, req.Msg.GetDisplayName(), req.Msg.GetAvatarUrl())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+
+	return connect.NewResponse(&platformv1.UpdateProfileResponse{
+		User: userToProto(user),
 	}), nil
 }

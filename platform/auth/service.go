@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/aocybersystems/eden-platform-go/platform/rbac"
+	"github.com/google/uuid"
 )
 
 // AuthResponse contains the tokens and user info returned after successful authentication.
@@ -25,14 +26,21 @@ type Service struct {
 	store          TxAuthStore
 	jwtManager     *JWTManager
 	passwordHasher *PasswordHasher
+	b2cMode        bool
 }
 
 // NewService creates a new auth Service.
-func NewService(store TxAuthStore, jwtManager *JWTManager, passwordHasher *PasswordHasher) *Service {
+// When b2cMode is true, signup creates a personal workspace instead of a named company.
+func NewService(store TxAuthStore, jwtManager *JWTManager, passwordHasher *PasswordHasher, b2cMode ...bool) *Service {
+	mode := false
+	if len(b2cMode) > 0 {
+		mode = b2cMode[0]
+	}
 	return &Service{
 		store:          store,
 		jwtManager:     jwtManager,
 		passwordHasher: passwordHasher,
+		b2cMode:        mode,
 	}
 }
 
@@ -68,9 +76,17 @@ func (s *Service) SignUp(ctx context.Context, email, password, displayName strin
 		return nil, fmt.Errorf("create user: %w", err)
 	}
 
-	companySlug := generateSlug(displayName)
-	companyName := fmt.Sprintf("%s's Company", strings.TrimSpace(displayName))
-	companyID, err := tx.CreateCompany(ctx, companyName, companySlug)
+	var companyName, companySlug, companyType string
+	if s.b2cMode {
+		companyName = strings.TrimSpace(displayName)
+		companySlug = fmt.Sprintf("personal-%s", user.ID.String()[:8])
+		companyType = "personal"
+	} else {
+		companyName = fmt.Sprintf("%s's Company", strings.TrimSpace(displayName))
+		companySlug = generateSlug(displayName)
+		companyType = "standalone"
+	}
+	companyID, err := tx.CreateCompany(ctx, companyName, companySlug, companyType)
 	if err != nil {
 		return nil, fmt.Errorf("create company: %w", err)
 	}
@@ -202,6 +218,14 @@ func (s *Service) RefreshToken(ctx context.Context, refreshTokenStr string) (*Au
 	}
 
 	return &AuthResponse{AccessToken: newAccessToken, RefreshToken: newRefreshToken, User: user}, nil
+}
+
+// UpdateProfile updates the user's display name and avatar URL.
+func (s *Service) UpdateProfile(ctx context.Context, userID uuid.UUID, displayName, avatarURL string) (User, error) {
+	if strings.TrimSpace(displayName) == "" {
+		return User{}, fmt.Errorf("display name is required")
+	}
+	return s.store.UpdateUser(ctx, userID, strings.TrimSpace(displayName), strings.TrimSpace(avatarURL))
 }
 
 // Logout revokes the provided refresh token.
