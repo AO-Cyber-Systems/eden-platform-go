@@ -27,6 +27,7 @@ message NavItem {
   string path = 4;
   string feature = 5;
   int32 priority = 6;
+  string section = 7;
 }
 
 message GetWidgetsRequest {

@@ -9,7 +9,12 @@ import (
 
 // NewPool creates a pgx connection pool from a database URL.
 func NewPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, databaseURL)
+	// pgxpool requires postgres:// or postgresql:// scheme; convert pgx5:// if present.
+	poolURL := databaseURL
+	if len(poolURL) > 6 && poolURL[:6] == "pgx5:/" {
+		poolURL = "postgres" + poolURL[4:]
+	}
+	pool, err := pgxpool.New(ctx, poolURL)
 	if err != nil {
 		return nil, fmt.Errorf("create connection pool: %w", err)
 	}

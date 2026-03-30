@@ -13,13 +13,18 @@ func authResponseFromDomain(response *auth.AuthResponse) *platformv1.AuthRespons
 	return &platformv1.AuthResponse{
 		AccessToken:  response.AccessToken,
 		RefreshToken: response.RefreshToken,
-		User: &platformv1.User{
-			Id:          response.User.ID.String(),
-			Email:       response.User.Email,
-			DisplayName: response.User.DisplayName,
-			IsActive:    response.User.IsActive,
-			CreatedAt:   response.User.CreatedAt.Format(time.RFC3339),
-		},
+		User:         userToProto(response.User),
+	}
+}
+
+func userToProto(u auth.User) *platformv1.User {
+	return &platformv1.User{
+		Id:          u.ID.String(),
+		Email:       u.Email,
+		DisplayName: u.DisplayName,
+		AvatarUrl:   u.AvatarURL,
+		IsActive:    u.IsActive,
+		CreatedAt:   u.CreatedAt.Format(time.RFC3339),
 	}
 }
 

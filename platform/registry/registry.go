@@ -12,6 +12,7 @@ type NavItem struct {
 	Path     string `json:"path"`
 	Feature  string `json:"feature"`
 	Priority int    `json:"priority"`
+	Section  string `json:"section"`
 }
 
 // Widget represents a dashboard widget registration.

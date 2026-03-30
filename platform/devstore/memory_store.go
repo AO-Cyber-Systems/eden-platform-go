@@ -211,18 +211,37 @@ func (s *AuthStore) CreateUser(ctx context.Context, email, passwordHash, display
 	return user, nil
 }
 
-func (s *AuthStore) CreateCompany(ctx context.Context, name, slug string) (uuid.UUID, error) {
+func (s *AuthStore) UpdateUser(ctx context.Context, id uuid.UUID, displayName, avatarURL string) (auth.User, error) {
 	s.backend.mu.Lock()
 	defer s.backend.mu.Unlock()
 	state := s.stateRef()
 
+	user, exists := state.usersByID[id]
+	if !exists {
+		return auth.User{}, fmt.Errorf("user not found")
+	}
+	user.DisplayName = displayName
+	user.AvatarURL = avatarURL
+	state.usersByID[id] = user
+	return user, nil
+}
+
+func (s *AuthStore) CreateCompany(ctx context.Context, name, slug, companyType string) (uuid.UUID, error) {
+	s.backend.mu.Lock()
+	defer s.backend.mu.Unlock()
+	state := s.stateRef()
+
+	ct := company.CompanyType(companyType)
+	if ct == "" {
+		ct = company.CompanyTypeStandalone
+	}
 	id := uuid.New()
 	now := time.Now().UTC()
 	state.companies[id] = company.Company{
 		ID:          id,
 		Name:        name,
 		Slug:        slug,
-		CompanyType: company.CompanyTypeStandalone,
+		CompanyType: ct,
 		Settings:    append(json.RawMessage(nil), state.defaultSettings...),
 		IsActive:    true,
 		CreatedAt:   now,

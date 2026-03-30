@@ -41,6 +41,7 @@ func (h *RegistryHandler) GetNavItems(ctx context.Context, req *connect.Request[
 			Path:     item.Path,
 			Feature:  item.Feature,
 			Priority: int32(item.Priority),
+			Section:  item.Section,
 		})
 	}
 	return connect.NewResponse(response), nil

@@ -68,15 +68,30 @@ func (s *AuthStore) CreateUser(ctx context.Context, email, passwordHash, display
 	return dbUserToAuth(row), nil
 }
 
+func (s *AuthStore) UpdateUser(ctx context.Context, id uuid.UUID, displayName, avatarURL string) (auth.User, error) {
+	row, err := s.queries().UpdateUser(ctx, db.UpdateUserParams{
+		ID:          id,
+		DisplayName: displayName,
+		AvatarUrl:   avatarURL,
+	})
+	if err != nil {
+		return auth.User{}, fmt.Errorf("update user: %w", err)
+	}
+	return dbUserToAuth(row), nil
+}
+
 // -- Company operations --
 
-func (s *AuthStore) CreateCompany(ctx context.Context, name, slug string) (uuid.UUID, error) {
+func (s *AuthStore) CreateCompany(ctx context.Context, name, slug, companyType string) (uuid.UUID, error) {
+	if companyType == "" {
+		companyType = "standalone"
+	}
 	id := uuid.New()
 	row, err := s.queries().CreateCompany(ctx, db.CreateCompanyParams{
 		ID:          id,
 		Name:        name,
 		Slug:        slug,
-		CompanyType: "standalone",
+		CompanyType: companyType,
 		Settings:    json.RawMessage(`{"enabled_features":[]}`),
 	})
 	if err != nil {
@@ -342,6 +357,7 @@ func dbUserToAuth(u db.User) auth.User {
 		Email:        u.Email,
 		PasswordHash: u.PasswordHash,
 		DisplayName:  u.DisplayName,
+		AvatarURL:    u.AvatarUrl,
 		IsActive:     u.IsActive,
 		CreatedAt:    u.CreatedAt,
 	}

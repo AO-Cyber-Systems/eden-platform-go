@@ -12,6 +12,7 @@ service AuthService {
   rpc Logout(LogoutRequest) returns (LogoutResponse);
   rpc InitiateOIDC(InitiateOIDCRequest) returns (InitiateOIDCResponse);
   rpc InitiateSAML(InitiateSAMLRequest) returns (InitiateSAMLResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
 }
 
 message SignUpRequest {
@@ -47,6 +48,7 @@ message User {
   string display_name = 3;
   bool is_active = 4;
   string created_at = 5;
+  string avatar_url = 6;
 }
 
 message InitiateOIDCRequest {
@@ -64,4 +66,13 @@ message InitiateSAMLRequest {
 
 message InitiateSAMLResponse {
   string redirect_url = 1;
+}
+
+message UpdateProfileRequest {
+  string display_name = 1;
+  string avatar_url = 2;
+}
+
+message UpdateProfileResponse {
+  User user = 1;
 }
