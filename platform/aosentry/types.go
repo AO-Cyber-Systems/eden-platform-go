@@ -79,6 +79,27 @@ type Usage struct {
 	TotalTokens      int `json:"total_tokens"`
 }
 
+// EmbeddingsRequest is the request payload for vector embeddings.
+type EmbeddingsRequest struct {
+	Input []string `json:"input"`
+	Model string   `json:"model"`
+}
+
+// EmbeddingsResponse is the response from the embeddings endpoint.
+type EmbeddingsResponse struct {
+	Object string          `json:"object"`
+	Data   []EmbeddingData `json:"data"`
+	Model  string          `json:"model"`
+	Usage  *Usage          `json:"usage,omitempty"`
+}
+
+// EmbeddingData contains a single embedding vector.
+type EmbeddingData struct {
+	Object    string    `json:"object"`
+	Index     int       `json:"index"`
+	Embedding []float32 `json:"embedding"`
+}
+
 // FirstContent returns the text content of the first choice, or empty string.
 func (r *ChatResponse) FirstContent() string {
 	if r == nil || len(r.Choices) == 0 {

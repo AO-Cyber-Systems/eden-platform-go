@@ -79,6 +79,36 @@ func (c *Client) Chat(ctx context.Context, req ChatRequest) (*ChatResponse, erro
 	return &chatResp, nil
 }
 
+// Embeddings generates vector embeddings for the given texts.
+func (c *Client) Embeddings(ctx context.Context, req EmbeddingsRequest) (*EmbeddingsResponse, error) {
+	if req.Model == "" {
+		req.Model = "text-embedding-3-small"
+	}
+
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("aosentry: marshal embeddings request: %w", err)
+	}
+
+	resp, err := c.do(ctx, http.MethodPost, "/v1/embeddings", body)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		return nil, MapHTTPError(resp.StatusCode, respBody)
+	}
+
+	var embResp EmbeddingsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&embResp); err != nil {
+		return nil, fmt.Errorf("aosentry: decode embeddings response: %w", err)
+	}
+
+	return &embResp, nil
+}
+
 // ListSkills fetches the skill catalog from AOSentry.
 func (c *Client) ListSkills(ctx context.Context) ([]json.RawMessage, error) {
 	resp, err := c.do(ctx, http.MethodGet, "/v1/skills", nil)
