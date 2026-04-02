@@ -8,9 +8,8 @@ import (
 
 // PlatformConfig holds platform-level configuration.
 type PlatformConfig struct {
-	DatabaseURL       string
-	JWTPrivateKeyPath string
-	JWTPublicKeyPath  string
+	DatabaseURL    string
+	JWTKeySeedPath string
 	ServerAddr        string
 	NatsURL           string
 	MinIOEndpoint     string
@@ -32,9 +31,8 @@ func (c *PlatformConfig) IsB2C() bool {
 // Load reads platform configuration from environment variables.
 func Load() *PlatformConfig {
 	return &PlatformConfig{
-		DatabaseURL:       GetEnv("DATABASE_URL", "postgres://localhost:5432/eden_dev?sslmode=disable"),
-		JWTPrivateKeyPath: GetEnv("JWT_PRIVATE_KEY_PATH", ""),
-		JWTPublicKeyPath:  GetEnv("JWT_PUBLIC_KEY_PATH", ""),
+		DatabaseURL:    GetEnv("DATABASE_URL", "postgres://localhost:5432/eden_dev?sslmode=disable"),
+		JWTKeySeedPath: GetEnv("JWT_KEY_SEED_PATH", ""),
 		ServerAddr:        GetEnv("SERVER_ADDR", ":8080"),
 		NatsURL:           GetEnv("NATS_URL", "nats://localhost:4222"),
 		MinIOEndpoint:     GetEnv("MINIO_ENDPOINT", "localhost:9000"),

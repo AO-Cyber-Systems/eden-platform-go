@@ -36,9 +36,8 @@ func main() {
 
 	cfg := config.Load()
 
-	if cfg.JWTPrivateKeyPath == "" || cfg.JWTPublicKeyPath == "" {
-		cfg.JWTPrivateKeyPath = filepath.Join("dev", "jwt", "jwt_es256_private.pem")
-		cfg.JWTPublicKeyPath = filepath.Join("dev", "jwt", "jwt_es256_public.pem")
+	if cfg.JWTKeySeedPath == "" {
+		cfg.JWTKeySeedPath = filepath.Join("dev", "jwt", "jwt_mldsa65.seed")
 	}
 
 	if *useDB {
@@ -98,8 +97,7 @@ func runServer(
 	},
 ) {
 	jwtManager, err := auth.NewJWTManager(auth.JWTConfig{
-		PrivateKeyPath:     cfg.JWTPrivateKeyPath,
-		PublicKeyPath:      cfg.JWTPublicKeyPath,
+		KeySeedPath:        cfg.JWTKeySeedPath,
 		Issuer:             "eden-platform-dev",
 		AccessTokenExpiry:  auth.DefaultJWTConfig().AccessTokenExpiry,
 		RefreshTokenExpiry: auth.DefaultJWTConfig().RefreshTokenExpiry,

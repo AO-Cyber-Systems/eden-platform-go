@@ -1,16 +1,13 @@
 package auth
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"log/slog"
 	"os"
 	"time"
 
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -26,8 +23,10 @@ type Claims struct {
 
 // JWTConfig holds configuration for the JWT manager.
 type JWTConfig struct {
-	PrivateKeyPath     string
-	PublicKeyPath      string
+	// KeySeedPath is the path to a 32-byte raw seed file. ML-DSA-65 derives
+	// both the private and public key deterministically from this seed.
+	// If empty, an ephemeral key pair is generated (dev only).
+	KeySeedPath        string
 	Issuer             string
 	AccessTokenExpiry  time.Duration
 	RefreshTokenExpiry time.Duration
@@ -42,14 +41,14 @@ func DefaultJWTConfig() JWTConfig {
 	}
 }
 
-// JWTManager handles creation and validation of ES256 JWT tokens.
+// JWTManager handles creation and validation of ML-DSA-65 (post-quantum) JWT tokens.
 type JWTManager struct {
-	privateKey *ecdsa.PrivateKey
-	publicKey  *ecdsa.PublicKey
+	privateKey *mldsa65.PrivateKey
+	publicKey  *mldsa65.PublicKey
 	config     JWTConfig
 }
 
-// NewJWTManager creates a JWTManager from PEM key file paths or auto-generates for dev.
+// NewJWTManager creates a JWTManager from a key seed file or auto-generates for dev.
 func NewJWTManager(cfg JWTConfig) (*JWTManager, error) {
 	if cfg.Issuer == "" {
 		cfg.Issuer = "eden-platform"
@@ -61,23 +60,24 @@ func NewJWTManager(cfg JWTConfig) (*JWTManager, error) {
 		cfg.RefreshTokenExpiry = 7 * 24 * time.Hour
 	}
 
-	if cfg.PrivateKeyPath != "" && cfg.PublicKeyPath != "" {
-		privKey, pubKey, err := loadKeyPair(cfg.PrivateKeyPath, cfg.PublicKeyPath)
+	if cfg.KeySeedPath != "" {
+		pk, sk, err := loadKeySeed(cfg.KeySeedPath)
 		if err == nil {
-			return &JWTManager{privateKey: privKey, publicKey: pubKey, config: cfg}, nil
+			slog.Info("loaded ML-DSA-65 key pair from seed file")
+			return &JWTManager{privateKey: sk, publicKey: pk, config: cfg}, nil
 		}
-		slog.Warn("failed to load JWT key pair, generating ephemeral keys", "error", err)
+		slog.Warn("failed to load JWT key seed, generating ephemeral keys", "error", err)
 	}
 
-	slog.Warn("using auto-generated ES256 key pair (dev only)")
-	privKey, err := GenerateKeyPair()
+	slog.Warn("using auto-generated ML-DSA-65 key pair (dev only)")
+	pk, sk, err := GenerateKeyPair()
 	if err != nil {
 		return nil, fmt.Errorf("generate key pair: %w", err)
 	}
-	return &JWTManager{privateKey: privKey, publicKey: &privKey.PublicKey, config: cfg}, nil
+	return &JWTManager{privateKey: sk, publicKey: pk, config: cfg}, nil
 }
 
-// CreateAccessToken creates a signed ES256 access token.
+// CreateAccessToken creates a signed ML-DSA-65 access token.
 func (m *JWTManager) CreateAccessToken(userID, companyID, role string, roleLevel int, companyIDs []string) (string, error) {
 	now := time.Now()
 	claims := &Claims{
@@ -94,11 +94,11 @@ func (m *JWTManager) CreateAccessToken(userID, companyID, role string, roleLevel
 		Role:       role,
 		RoleLevel:  roleLevel,
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token := jwt.NewWithClaims(signingMethodMLDSA65, claims)
 	return token.SignedString(m.privateKey)
 }
 
-// CreateRefreshToken creates a signed ES256 refresh token with minimal claims.
+// CreateRefreshToken creates a signed ML-DSA-65 refresh token with minimal claims.
 func (m *JWTManager) CreateRefreshToken(userID string) (string, error) {
 	now := time.Now()
 	claims := &jwt.RegisteredClaims{
@@ -108,7 +108,7 @@ func (m *JWTManager) CreateRefreshToken(userID string) (string, error) {
 		IssuedAt:  jwt.NewNumericDate(now),
 		ID:        generateJTI(),
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token := jwt.NewWithClaims(signingMethodMLDSA65, claims)
 	return token.SignedString(m.privateKey)
 }
 
@@ -116,7 +116,7 @@ func (m *JWTManager) CreateRefreshToken(userID string) (string, error) {
 func (m *JWTManager) ValidateAccessToken(tokenStr string) (*Claims, error) {
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodECDSA); !ok {
+		if t.Method.Alg() != "ML-DSA-65" {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return m.publicKey, nil
@@ -134,7 +134,7 @@ func (m *JWTManager) ValidateAccessToken(tokenStr string) (*Claims, error) {
 func (m *JWTManager) ValidateRefreshToken(tokenStr string) (*jwt.RegisteredClaims, error) {
 	claims := &jwt.RegisteredClaims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodECDSA); !ok {
+		if t.Method.Alg() != "ML-DSA-65" {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return m.publicKey, nil
@@ -159,7 +159,7 @@ func (m *JWTManager) CreateShortLivedToken(subject string, expiry time.Duration)
 		IssuedAt:  jwt.NewNumericDate(now),
 		ID:        generateJTI(),
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, claims)
+	token := jwt.NewWithClaims(signingMethodMLDSA65, claims)
 	return token.SignedString(m.privateKey)
 }
 
@@ -167,7 +167,7 @@ func (m *JWTManager) CreateShortLivedToken(subject string, expiry time.Duration)
 func (m *JWTManager) ValidateShortLivedToken(tokenStr string) (string, error) {
 	claims := &jwt.RegisteredClaims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodECDSA); !ok {
+		if t.Method.Alg() != "ML-DSA-65" {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
 		return m.publicKey, nil
@@ -181,9 +181,19 @@ func (m *JWTManager) ValidateShortLivedToken(tokenStr string) (string, error) {
 	return claims.Subject, nil
 }
 
-// GenerateKeyPair generates a new ECDSA P-256 key pair.
-func GenerateKeyPair() (*ecdsa.PrivateKey, error) {
-	return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+// GenerateKeyPair generates a new ML-DSA-65 key pair.
+func GenerateKeyPair() (*mldsa65.PublicKey, *mldsa65.PrivateKey, error) {
+	return mldsa65.GenerateKey(rand.Reader)
+}
+
+// GenerateKeySeed generates a 32-byte random seed suitable for ML-DSA-65 key
+// derivation. Store this seed securely — it is equivalent to the private key.
+func GenerateKeySeed() ([mldsa65.SeedSize]byte, error) {
+	var seed [mldsa65.SeedSize]byte
+	if _, err := rand.Read(seed[:]); err != nil {
+		return seed, fmt.Errorf("generate seed: %w", err)
+	}
+	return seed, nil
 }
 
 func generateJTI() string {
@@ -192,35 +202,17 @@ func generateJTI() string {
 	return fmt.Sprintf("%x", b)
 }
 
-func loadKeyPair(privatePath, publicPath string) (*ecdsa.PrivateKey, *ecdsa.PublicKey, error) {
-	privBytes, err := os.ReadFile(privatePath)
+// loadKeySeed reads a 32-byte seed file and derives the ML-DSA-65 key pair.
+func loadKeySeed(path string) (*mldsa65.PublicKey, *mldsa65.PrivateKey, error) {
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, nil, fmt.Errorf("read private key: %w", err)
+		return nil, nil, fmt.Errorf("read key seed: %w", err)
 	}
-	privBlock, _ := pem.Decode(privBytes)
-	if privBlock == nil {
-		return nil, nil, fmt.Errorf("no PEM block found in private key file")
+	if len(data) != mldsa65.SeedSize {
+		return nil, nil, fmt.Errorf("key seed must be exactly %d bytes, got %d", mldsa65.SeedSize, len(data))
 	}
-	privKey, err := x509.ParseECPrivateKey(privBlock.Bytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parse EC private key: %w", err)
-	}
-
-	pubBytes, err := os.ReadFile(publicPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("read public key: %w", err)
-	}
-	pubBlock, _ := pem.Decode(pubBytes)
-	if pubBlock == nil {
-		return nil, nil, fmt.Errorf("no PEM block found in public key file")
-	}
-	pubIface, err := x509.ParsePKIXPublicKey(pubBlock.Bytes)
-	if err != nil {
-		return nil, nil, fmt.Errorf("parse public key: %w", err)
-	}
-	pubKey, ok := pubIface.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, nil, fmt.Errorf("public key is not ECDSA")
-	}
-	return privKey, pubKey, nil
+	var seed [mldsa65.SeedSize]byte
+	copy(seed[:], data)
+	pk, sk := mldsa65.NewKeyFromSeed(&seed)
+	return pk, sk, nil
 }

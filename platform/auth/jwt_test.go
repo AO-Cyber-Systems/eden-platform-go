@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"testing"
 	"time"
+
+	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 )
 
 func newTestJWTManager(t *testing.T) *JWTManager {
@@ -116,7 +118,6 @@ func TestJWTManager_WrongSigningKey(t *testing.T) {
 }
 
 func TestJWTManager_EphemeralKeyGeneration(t *testing.T) {
-	// NewJWTManager with empty paths should auto-generate ephemeral keys
 	manager, err := NewJWTManager(JWTConfig{
 		Issuer:             "test-ephemeral",
 		AccessTokenExpiry:  time.Minute,
@@ -126,7 +127,6 @@ func TestJWTManager_EphemeralKeyGeneration(t *testing.T) {
 		t.Fatalf("NewJWTManager() with empty paths error = %v", err)
 	}
 
-	// Verify keys work by creating and validating a token
 	token, err := manager.CreateAccessToken("user-1", "company-1", "member", 40, nil)
 	if err != nil {
 		t.Fatalf("CreateAccessToken() error = %v", err)
@@ -141,6 +141,60 @@ func TestJWTManager_EphemeralKeyGeneration(t *testing.T) {
 	}
 }
 
+func TestJWTManager_MLDSA65SignatureSize(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	token, err := manager.CreateAccessToken("user-1", "company-1", "admin", 80, nil)
+	if err != nil {
+		t.Fatalf("CreateAccessToken() error = %v", err)
+	}
+
+	// ML-DSA-65 tokens are significantly larger than ES256 due to ~3309 byte signatures.
+	// Base64-encoded, the token should be roughly 4-5KB.
+	if len(token) < 3000 {
+		t.Errorf("Token unexpectedly small (%d bytes) — expected ML-DSA-65 signature overhead", len(token))
+	}
+	// But still well under HTTP header limits.
+	if len(token) > 8000 {
+		t.Errorf("Token unexpectedly large (%d bytes) — may hit HTTP header limits", len(token))
+	}
+	t.Logf("ML-DSA-65 access token size: %d bytes", len(token))
+}
+
+func TestJWTManager_SeedDeterminism(t *testing.T) {
+	seed, err := GenerateKeySeed()
+	if err != nil {
+		t.Fatalf("GenerateKeySeed() error = %v", err)
+	}
+
+	pk1, sk1 := mldsa65.NewKeyFromSeed(&seed)
+	pk2, sk2 := mldsa65.NewKeyFromSeed(&seed)
+
+	// Same seed must produce identical keys.
+	if pk1.Bytes() == nil || string(pk1.Bytes()) != string(pk2.Bytes()) {
+		t.Errorf("NewKeyFromSeed() produced different public keys for same seed")
+	}
+	_ = sk1
+	_ = sk2
+}
+
+func TestJWTManager_ShortLivedToken(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	token, err := manager.CreateShortLivedToken("test-subject", 5*time.Minute)
+	if err != nil {
+		t.Fatalf("CreateShortLivedToken() error = %v", err)
+	}
+
+	subject, err := manager.ValidateShortLivedToken(token)
+	if err != nil {
+		t.Fatalf("ValidateShortLivedToken() error = %v", err)
+	}
+	if subject != "test-subject" {
+		t.Errorf("Subject = %q, want %q", subject, "test-subject")
+	}
+}
+
 func TestHashToken(t *testing.T) {
 	token := "test-token-value"
 	hash1 := HashToken(token)
@@ -150,14 +204,12 @@ func TestHashToken(t *testing.T) {
 		t.Errorf("HashToken() not deterministic: %q != %q", hash1, hash2)
 	}
 
-	// Verify it's a valid hex-encoded SHA-256
 	expected := sha256.Sum256([]byte(token))
 	expectedHex := hex.EncodeToString(expected[:])
 	if hash1 != expectedHex {
 		t.Errorf("HashToken() = %q, want SHA-256 hex %q", hash1, expectedHex)
 	}
 
-	// Different input should produce different hash
 	hash3 := HashToken("different-token")
 	if hash1 == hash3 {
 		t.Errorf("HashToken() same for different inputs")
