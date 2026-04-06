@@ -21,12 +21,28 @@ type Claims struct {
 	RoleLevel  int      `json:"rlvl"`
 }
 
+// KeyEntry holds an ML-DSA-65 key pair identified by a kid (Key ID).
+type KeyEntry struct {
+	PrivateKey *mldsa65.PrivateKey
+	PublicKey  *mldsa65.PublicKey
+}
+
 // JWTConfig holds configuration for the JWT manager.
 type JWTConfig struct {
 	// KeySeedPath is the path to a 32-byte raw seed file. ML-DSA-65 derives
 	// both the private and public key deterministically from this seed.
 	// If empty, an ephemeral key pair is generated (dev only).
-	KeySeedPath        string
+	// Single-key backward-compat mode — used when KeySeedPaths is empty.
+	KeySeedPath string
+
+	// KeySeedPaths is an optional map of kid -> seed file path for multi-key
+	// rotation support. When non-empty, KeySeedPath is ignored.
+	KeySeedPaths map[string]string
+
+	// ActiveKID specifies which kid from KeySeedPaths to use when signing new
+	// tokens. Required when KeySeedPaths is non-empty.
+	ActiveKID string
+
 	Issuer             string
 	AccessTokenExpiry  time.Duration
 	RefreshTokenExpiry time.Duration
@@ -42,13 +58,20 @@ func DefaultJWTConfig() JWTConfig {
 }
 
 // JWTManager handles creation and validation of ML-DSA-65 (post-quantum) JWT tokens.
+// It supports multiple signing keys identified by kid (Key ID) headers for zero-downtime
+// key rotation.
 type JWTManager struct {
-	privateKey *mldsa65.PrivateKey
-	publicKey  *mldsa65.PublicKey
-	config     JWTConfig
+	keys      map[string]*KeyEntry // kid -> key pair
+	activeKID string               // kid used for signing new tokens
+	config    JWTConfig
 }
 
-// NewJWTManager creates a JWTManager from a key seed file or auto-generates for dev.
+// NewJWTManager creates a JWTManager from key seed files or auto-generates for dev.
+//
+// Priority:
+//  1. KeySeedPaths (multi-key mode) — loads each (kid, path) pair, uses ActiveKID for signing.
+//  2. KeySeedPath (single-key backward-compat) — loads one key with kid "default".
+//  3. No paths — generates an ephemeral key pair with kid "ephemeral" (dev only).
 func NewJWTManager(cfg JWTConfig) (*JWTManager, error) {
 	if cfg.Issuer == "" {
 		cfg.Issuer = "eden-platform"
@@ -60,24 +83,73 @@ func NewJWTManager(cfg JWTConfig) (*JWTManager, error) {
 		cfg.RefreshTokenExpiry = 7 * 24 * time.Hour
 	}
 
+	m := &JWTManager{
+		keys:   make(map[string]*KeyEntry),
+		config: cfg,
+	}
+
+	// Multi-key mode: KeySeedPaths takes priority.
+	if len(cfg.KeySeedPaths) > 0 {
+		for kid, path := range cfg.KeySeedPaths {
+			pk, sk, err := loadKeySeed(path)
+			if err != nil {
+				return nil, fmt.Errorf("load key seed for kid %q: %w", kid, err)
+			}
+			m.keys[kid] = &KeyEntry{PrivateKey: sk, PublicKey: pk}
+		}
+		if cfg.ActiveKID == "" {
+			return nil, fmt.Errorf("ActiveKID must be set when KeySeedPaths is non-empty")
+		}
+		if _, ok := m.keys[cfg.ActiveKID]; !ok {
+			return nil, fmt.Errorf("ActiveKID %q not found in KeySeedPaths", cfg.ActiveKID)
+		}
+		m.activeKID = cfg.ActiveKID
+		slog.Info("loaded ML-DSA-65 key pairs from seed files", "count", len(m.keys), "active_kid", m.activeKID)
+		return m, nil
+	}
+
+	// Single-key backward-compat mode.
 	if cfg.KeySeedPath != "" {
 		pk, sk, err := loadKeySeed(cfg.KeySeedPath)
 		if err == nil {
 			slog.Info("loaded ML-DSA-65 key pair from seed file")
-			return &JWTManager{privateKey: sk, publicKey: pk, config: cfg}, nil
+			m.keys["default"] = &KeyEntry{PrivateKey: sk, PublicKey: pk}
+			m.activeKID = "default"
+			return m, nil
 		}
 		slog.Warn("failed to load JWT key seed, generating ephemeral keys", "error", err)
 	}
 
+	// Ephemeral fallback (dev only).
 	slog.Warn("using auto-generated ML-DSA-65 key pair (dev only)")
 	pk, sk, err := GenerateKeyPair()
 	if err != nil {
 		return nil, fmt.Errorf("generate key pair: %w", err)
 	}
-	return &JWTManager{privateKey: sk, publicKey: pk, config: cfg}, nil
+	m.keys["ephemeral"] = &KeyEntry{PrivateKey: sk, PublicKey: pk}
+	m.activeKID = "ephemeral"
+	return m, nil
 }
 
-// CreateAccessToken creates a signed ML-DSA-65 access token.
+// keyfunc returns a jwt.Keyfunc that selects the correct public key by kid.
+// Tokens without a kid header fall back to the active key for backward compatibility.
+func (m *JWTManager) keyfunc(t *jwt.Token) (interface{}, error) {
+	if t.Method.Alg() != "ML-DSA-65" {
+		return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+	}
+	kid, ok := t.Header["kid"].(string)
+	if !ok || kid == "" {
+		// Backward compat: tokens issued before kid support fall back to active key.
+		return m.keys[m.activeKID].PublicKey, nil
+	}
+	entry, ok := m.keys[kid]
+	if !ok {
+		return nil, fmt.Errorf("unknown kid: %s", kid)
+	}
+	return entry.PublicKey, nil
+}
+
+// CreateAccessToken creates a signed ML-DSA-65 access token with a kid header.
 func (m *JWTManager) CreateAccessToken(userID, companyID, role string, roleLevel int, companyIDs []string) (string, error) {
 	now := time.Now()
 	claims := &Claims{
@@ -95,10 +167,11 @@ func (m *JWTManager) CreateAccessToken(userID, companyID, role string, roleLevel
 		RoleLevel:  roleLevel,
 	}
 	token := jwt.NewWithClaims(signingMethodMLDSA65, claims)
-	return token.SignedString(m.privateKey)
+	token.Header["kid"] = m.activeKID
+	return token.SignedString(m.keys[m.activeKID].PrivateKey)
 }
 
-// CreateRefreshToken creates a signed ML-DSA-65 refresh token with minimal claims.
+// CreateRefreshToken creates a signed ML-DSA-65 refresh token with a kid header.
 func (m *JWTManager) CreateRefreshToken(userID string) (string, error) {
 	now := time.Now()
 	claims := &jwt.RegisteredClaims{
@@ -109,18 +182,14 @@ func (m *JWTManager) CreateRefreshToken(userID string) (string, error) {
 		ID:        generateJTI(),
 	}
 	token := jwt.NewWithClaims(signingMethodMLDSA65, claims)
-	return token.SignedString(m.privateKey)
+	token.Header["kid"] = m.activeKID
+	return token.SignedString(m.keys[m.activeKID].PrivateKey)
 }
 
 // ValidateAccessToken parses and validates an access token, returning the claims.
 func (m *JWTManager) ValidateAccessToken(tokenStr string) (*Claims, error) {
 	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-		if t.Method.Alg() != "ML-DSA-65" {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return m.publicKey, nil
-	})
+	token, err := jwt.ParseWithClaims(tokenStr, claims, m.keyfunc)
 	if err != nil {
 		return nil, fmt.Errorf("parse access token: %w", err)
 	}
@@ -133,12 +202,7 @@ func (m *JWTManager) ValidateAccessToken(tokenStr string) (*Claims, error) {
 // ValidateRefreshToken parses and validates a refresh token.
 func (m *JWTManager) ValidateRefreshToken(tokenStr string) (*jwt.RegisteredClaims, error) {
 	claims := &jwt.RegisteredClaims{}
-	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-		if t.Method.Alg() != "ML-DSA-65" {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return m.publicKey, nil
-	})
+	token, err := jwt.ParseWithClaims(tokenStr, claims, m.keyfunc)
 	if err != nil {
 		return nil, fmt.Errorf("parse refresh token: %w", err)
 	}
@@ -160,18 +224,14 @@ func (m *JWTManager) CreateShortLivedToken(subject string, expiry time.Duration)
 		ID:        generateJTI(),
 	}
 	token := jwt.NewWithClaims(signingMethodMLDSA65, claims)
-	return token.SignedString(m.privateKey)
+	token.Header["kid"] = m.activeKID
+	return token.SignedString(m.keys[m.activeKID].PrivateKey)
 }
 
 // ValidateShortLivedToken parses and validates a short-lived token, returning the subject.
 func (m *JWTManager) ValidateShortLivedToken(tokenStr string) (string, error) {
 	claims := &jwt.RegisteredClaims{}
-	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-		if t.Method.Alg() != "ML-DSA-65" {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return m.publicKey, nil
-	})
+	token, err := jwt.ParseWithClaims(tokenStr, claims, m.keyfunc)
 	if err != nil {
 		return "", fmt.Errorf("parse short-lived token: %w", err)
 	}
