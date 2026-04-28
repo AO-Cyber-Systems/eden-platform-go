@@ -13,9 +13,13 @@ import (
 	"github.com/google/uuid"
 )
 
-type contextKey string
-
-const claimsKey contextKey = "auth_claims"
+// The claims context key moved to platform/auth so that the canonical
+// helpers (auth.WithClaims / auth.ClaimsFromContext / auth.RequireCompany)
+// share a single key across HTTP middleware and ConnectRPC interceptors.
+// The thin re-exports at the bottom of this file preserve the historical
+// platform/server.WithClaims / platform/server.ClaimsFromContext API for
+// existing callers — both write to and read from auth.claimsKey via the
+// canonical helpers.
 
 // Permission represents a required permission for a procedure.
 type Permission struct {
@@ -145,14 +149,20 @@ func NewAuditInterceptor(logger *audit.Logger, publicProcedures map[string]bool)
 }
 
 // WithClaims stores auth claims in the context.
+//
+// Backward-compat shim — the canonical home is platform/auth.WithClaims.
+// Existing callers (ConnectRPC interceptor wiring, downstream services)
+// keep working unchanged because both this and the canonical version
+// write to the same context key.
 func WithClaims(ctx context.Context, claims *auth.Claims) context.Context {
-	return context.WithValue(ctx, claimsKey, claims)
+	return auth.WithClaims(ctx, claims)
 }
 
 // ClaimsFromContext retrieves auth claims from the context.
+//
+// Backward-compat shim — the canonical home is platform/auth.ClaimsFromContext.
 func ClaimsFromContext(ctx context.Context) *auth.Claims {
-	claims, _ := ctx.Value(claimsKey).(*auth.Claims)
-	return claims
+	return auth.ClaimsFromContext(ctx)
 }
 
 // ExtractClaims returns userID, companyID, role from context.
