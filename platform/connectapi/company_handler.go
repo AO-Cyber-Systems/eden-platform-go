@@ -24,7 +24,7 @@ func NewCompanyHandler(service *company.Service, lister userCompanyLister) *Comp
 	return &CompanyHandler{service: service, lister: lister}
 }
 
-func (h *CompanyHandler) CreateCompany(ctx context.Context, req *connect.Request[platformv1.CreateCompanyRequest]) (*connect.Response[platformv1.CompanyResponse], error) {
+func (h *CompanyHandler) CreateCompany(ctx context.Context, req *connect.Request[platformv1.CreateCompanyRequest]) (*connect.Response[platformv1.CreateCompanyResponse], error) {
 	var parentID *uuid.UUID
 	if req.Msg.ParentCompanyId != nil && req.Msg.GetParentCompanyId() != "" {
 		parsed, err := uuid.Parse(req.Msg.GetParentCompanyId())
@@ -44,10 +44,10 @@ func (h *CompanyHandler) CreateCompany(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return connect.NewResponse(companyResponseFromDomain(created)), nil
+	return connect.NewResponse(&platformv1.CreateCompanyResponse{Company: companyDataFromDomain(created)}), nil
 }
 
-func (h *CompanyHandler) GetCompany(ctx context.Context, req *connect.Request[platformv1.GetCompanyRequest]) (*connect.Response[platformv1.CompanyResponse], error) {
+func (h *CompanyHandler) GetCompany(ctx context.Context, req *connect.Request[platformv1.GetCompanyRequest]) (*connect.Response[platformv1.GetCompanyResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -56,10 +56,10 @@ func (h *CompanyHandler) GetCompany(ctx context.Context, req *connect.Request[pl
 	if err != nil {
 		return nil, connect.NewError(connect.CodeNotFound, err)
 	}
-	return connect.NewResponse(companyResponseFromDomain(companyRecord)), nil
+	return connect.NewResponse(&platformv1.GetCompanyResponse{Company: companyDataFromDomain(companyRecord)}), nil
 }
 
-func (h *CompanyHandler) UpdateCompany(ctx context.Context, req *connect.Request[platformv1.UpdateCompanyRequest]) (*connect.Response[platformv1.CompanyResponse], error) {
+func (h *CompanyHandler) UpdateCompany(ctx context.Context, req *connect.Request[platformv1.UpdateCompanyRequest]) (*connect.Response[platformv1.UpdateCompanyResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -89,7 +89,7 @@ func (h *CompanyHandler) UpdateCompany(ctx context.Context, req *connect.Request
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return connect.NewResponse(companyResponseFromDomain(result)), nil
+	return connect.NewResponse(&platformv1.UpdateCompanyResponse{Company: companyDataFromDomain(result)}), nil
 }
 
 func (h *CompanyHandler) ListCompanies(ctx context.Context, req *connect.Request[platformv1.ListCompaniesRequest]) (*connect.Response[platformv1.ListCompaniesResponse], error) {
@@ -103,13 +103,13 @@ func (h *CompanyHandler) ListCompanies(ctx context.Context, req *connect.Request
 		if err != nil {
 			return nil, connect.NewError(connect.CodeInternal, err)
 		}
-		return connect.NewResponse(listCompaniesResponse(companies)), nil
+		return connect.NewResponse(&platformv1.ListCompaniesResponse{Companies: companyDataList(companies)}), nil
 	}
 
 	return nil, connect.NewError(connect.CodeInternal, fmt.Errorf("company listing is not configured"))
 }
 
-func (h *CompanyHandler) GetAncestors(ctx context.Context, req *connect.Request[platformv1.GetAncestorsRequest]) (*connect.Response[platformv1.ListCompaniesResponse], error) {
+func (h *CompanyHandler) GetAncestors(ctx context.Context, req *connect.Request[platformv1.GetAncestorsRequest]) (*connect.Response[platformv1.GetAncestorsResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetCompanyId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -118,10 +118,10 @@ func (h *CompanyHandler) GetAncestors(ctx context.Context, req *connect.Request[
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
-	return connect.NewResponse(listCompaniesResponse(companies)), nil
+	return connect.NewResponse(&platformv1.GetAncestorsResponse{Companies: companyDataList(companies)}), nil
 }
 
-func (h *CompanyHandler) GetDescendants(ctx context.Context, req *connect.Request[platformv1.GetDescendantsRequest]) (*connect.Response[platformv1.ListCompaniesResponse], error) {
+func (h *CompanyHandler) GetDescendants(ctx context.Context, req *connect.Request[platformv1.GetDescendantsRequest]) (*connect.Response[platformv1.GetDescendantsResponse], error) {
 	id, err := uuid.Parse(req.Msg.GetCompanyId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -137,7 +137,7 @@ func (h *CompanyHandler) GetDescendants(ctx context.Context, req *connect.Reques
 			companies = append(companies, companyRecord)
 		}
 	}
-	return connect.NewResponse(listCompaniesResponse(companies)), nil
+	return connect.NewResponse(&platformv1.GetDescendantsResponse{Companies: companyDataList(companies)}), nil
 }
 
 func (h *CompanyHandler) GetEffectiveSettings(ctx context.Context, req *connect.Request[platformv1.GetEffectiveSettingsRequest]) (*connect.Response[platformv1.GetEffectiveSettingsResponse], error) {

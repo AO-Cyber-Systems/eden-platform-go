@@ -9,8 +9,8 @@ import (
 	"github.com/aocybersystems/eden-platform-go/platform/company"
 )
 
-func authResponseFromDomain(response *auth.AuthResponse) *platformv1.AuthResponse {
-	return &platformv1.AuthResponse{
+func authDataFromDomain(response *auth.AuthResponse) *platformv1.AuthData {
+	return &platformv1.AuthData{
 		AccessToken:  response.AccessToken,
 		RefreshToken: response.RefreshToken,
 		User:         userToProto(response.User),
@@ -28,8 +28,8 @@ func userToProto(u auth.User) *platformv1.User {
 	}
 }
 
-func companyResponseFromDomain(c company.Company) *platformv1.CompanyResponse {
-	response := &platformv1.CompanyResponse{
+func companyDataFromDomain(c company.Company) *platformv1.CompanyData {
+	response := &platformv1.CompanyData{
 		Id:           c.ID.String(),
 		Name:         c.Name,
 		Slug:         c.Slug,
@@ -54,12 +54,12 @@ func companyResponseFromDomain(c company.Company) *platformv1.CompanyResponse {
 	return response
 }
 
-func listCompaniesResponse(companies []company.Company) *platformv1.ListCompaniesResponse {
-	items := make([]*platformv1.CompanyResponse, 0, len(companies))
+func companyDataList(companies []company.Company) []*platformv1.CompanyData {
+	items := make([]*platformv1.CompanyData, 0, len(companies))
 	for _, companyRecord := range companies {
-		items = append(items, companyResponseFromDomain(companyRecord))
+		items = append(items, companyDataFromDomain(companyRecord))
 	}
-	return &platformv1.ListCompaniesResponse{Companies: items}
+	return items
 }
 
 func parseSettingsJSON(raw string) json.RawMessage {

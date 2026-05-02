@@ -67,7 +67,7 @@ func (x *ListRolesRequest) GetCompanyId() string {
 
 type ListRolesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Roles         []*RoleResponse        `protobuf:"bytes,1,rep,name=roles,proto3" json:"roles,omitempty"`
+	Roles         []*RoleData            `protobuf:"bytes,1,rep,name=roles,proto3" json:"roles,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -102,14 +102,17 @@ func (*ListRolesResponse) Descriptor() ([]byte, []int) {
 	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *ListRolesResponse) GetRoles() []*RoleResponse {
+func (x *ListRolesResponse) GetRoles() []*RoleData {
 	if x != nil {
 		return x.Roles
 	}
 	return nil
 }
 
-type RoleResponse struct {
+// RoleData is the shared role payload contained in ListRolesResponse and
+// GetUserPermissionsResponse, and wrapped by CreateRoleResponse. Per buf
+// STANDARD lint convention (RPC_RESPONSE_STANDARD_NAME).
+type RoleData struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
@@ -120,20 +123,20 @@ type RoleResponse struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *RoleResponse) Reset() {
-	*x = RoleResponse{}
+func (x *RoleData) Reset() {
+	*x = RoleData{}
 	mi := &file_platform_v1_rbac_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *RoleResponse) String() string {
+func (x *RoleData) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*RoleResponse) ProtoMessage() {}
+func (*RoleData) ProtoMessage() {}
 
-func (x *RoleResponse) ProtoReflect() protoreflect.Message {
+func (x *RoleData) ProtoReflect() protoreflect.Message {
 	mi := &file_platform_v1_rbac_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -145,44 +148,88 @@ func (x *RoleResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use RoleResponse.ProtoReflect.Descriptor instead.
-func (*RoleResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use RoleData.ProtoReflect.Descriptor instead.
+func (*RoleData) Descriptor() ([]byte, []int) {
 	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *RoleResponse) GetId() string {
+func (x *RoleData) GetId() string {
 	if x != nil {
 		return x.Id
 	}
 	return ""
 }
 
-func (x *RoleResponse) GetName() string {
+func (x *RoleData) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *RoleResponse) GetDescription() string {
+func (x *RoleData) GetDescription() string {
 	if x != nil {
 		return x.Description
 	}
 	return ""
 }
 
-func (x *RoleResponse) GetLevel() int32 {
+func (x *RoleData) GetLevel() int32 {
 	if x != nil {
 		return x.Level
 	}
 	return 0
 }
 
-func (x *RoleResponse) GetIsSystem() bool {
+func (x *RoleData) GetIsSystem() bool {
 	if x != nil {
 		return x.IsSystem
 	}
 	return false
+}
+
+type CreateRoleResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          *RoleData              `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateRoleResponse) Reset() {
+	*x = CreateRoleResponse{}
+	mi := &file_platform_v1_rbac_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateRoleResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateRoleResponse) ProtoMessage() {}
+
+func (x *CreateRoleResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_rbac_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateRoleResponse.ProtoReflect.Descriptor instead.
+func (*CreateRoleResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CreateRoleResponse) GetRole() *RoleData {
+	if x != nil {
+		return x.Role
+	}
+	return nil
 }
 
 type CreateRoleRequest struct {
@@ -198,7 +245,7 @@ type CreateRoleRequest struct {
 
 func (x *CreateRoleRequest) Reset() {
 	*x = CreateRoleRequest{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[3]
+	mi := &file_platform_v1_rbac_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -210,7 +257,7 @@ func (x *CreateRoleRequest) String() string {
 func (*CreateRoleRequest) ProtoMessage() {}
 
 func (x *CreateRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[3]
+	mi := &file_platform_v1_rbac_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -223,7 +270,7 @@ func (x *CreateRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateRoleRequest.ProtoReflect.Descriptor instead.
 func (*CreateRoleRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{3}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CreateRoleRequest) GetCompanyId() string {
@@ -272,7 +319,7 @@ type AssignRoleRequest struct {
 
 func (x *AssignRoleRequest) Reset() {
 	*x = AssignRoleRequest{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[4]
+	mi := &file_platform_v1_rbac_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -284,7 +331,7 @@ func (x *AssignRoleRequest) String() string {
 func (*AssignRoleRequest) ProtoMessage() {}
 
 func (x *AssignRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[4]
+	mi := &file_platform_v1_rbac_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -297,7 +344,7 @@ func (x *AssignRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignRoleRequest.ProtoReflect.Descriptor instead.
 func (*AssignRoleRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{4}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *AssignRoleRequest) GetCompanyId() string {
@@ -329,7 +376,7 @@ type AssignRoleResponse struct {
 
 func (x *AssignRoleResponse) Reset() {
 	*x = AssignRoleResponse{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[5]
+	mi := &file_platform_v1_rbac_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -341,7 +388,7 @@ func (x *AssignRoleResponse) String() string {
 func (*AssignRoleResponse) ProtoMessage() {}
 
 func (x *AssignRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[5]
+	mi := &file_platform_v1_rbac_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -354,7 +401,7 @@ func (x *AssignRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AssignRoleResponse.ProtoReflect.Descriptor instead.
 func (*AssignRoleResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{5}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{6}
 }
 
 type RemoveRoleRequest struct {
@@ -368,7 +415,7 @@ type RemoveRoleRequest struct {
 
 func (x *RemoveRoleRequest) Reset() {
 	*x = RemoveRoleRequest{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[6]
+	mi := &file_platform_v1_rbac_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -380,7 +427,7 @@ func (x *RemoveRoleRequest) String() string {
 func (*RemoveRoleRequest) ProtoMessage() {}
 
 func (x *RemoveRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[6]
+	mi := &file_platform_v1_rbac_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -393,7 +440,7 @@ func (x *RemoveRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveRoleRequest.ProtoReflect.Descriptor instead.
 func (*RemoveRoleRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{6}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *RemoveRoleRequest) GetCompanyId() string {
@@ -425,7 +472,7 @@ type RemoveRoleResponse struct {
 
 func (x *RemoveRoleResponse) Reset() {
 	*x = RemoveRoleResponse{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[7]
+	mi := &file_platform_v1_rbac_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -437,7 +484,7 @@ func (x *RemoveRoleResponse) String() string {
 func (*RemoveRoleResponse) ProtoMessage() {}
 
 func (x *RemoveRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[7]
+	mi := &file_platform_v1_rbac_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -450,7 +497,7 @@ func (x *RemoveRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveRoleResponse.ProtoReflect.Descriptor instead.
 func (*RemoveRoleResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{7}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{8}
 }
 
 type ListPermissionsRequest struct {
@@ -461,7 +508,7 @@ type ListPermissionsRequest struct {
 
 func (x *ListPermissionsRequest) Reset() {
 	*x = ListPermissionsRequest{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[8]
+	mi := &file_platform_v1_rbac_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -473,7 +520,7 @@ func (x *ListPermissionsRequest) String() string {
 func (*ListPermissionsRequest) ProtoMessage() {}
 
 func (x *ListPermissionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[8]
+	mi := &file_platform_v1_rbac_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -486,7 +533,7 @@ func (x *ListPermissionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPermissionsRequest.ProtoReflect.Descriptor instead.
 func (*ListPermissionsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{8}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{9}
 }
 
 type ListPermissionsResponse struct {
@@ -498,7 +545,7 @@ type ListPermissionsResponse struct {
 
 func (x *ListPermissionsResponse) Reset() {
 	*x = ListPermissionsResponse{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[9]
+	mi := &file_platform_v1_rbac_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -510,7 +557,7 @@ func (x *ListPermissionsResponse) String() string {
 func (*ListPermissionsResponse) ProtoMessage() {}
 
 func (x *ListPermissionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[9]
+	mi := &file_platform_v1_rbac_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -523,7 +570,7 @@ func (x *ListPermissionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPermissionsResponse.ProtoReflect.Descriptor instead.
 func (*ListPermissionsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{9}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListPermissionsResponse) GetPermissions() []*PermissionResponse {
@@ -545,7 +592,7 @@ type PermissionResponse struct {
 
 func (x *PermissionResponse) Reset() {
 	*x = PermissionResponse{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[10]
+	mi := &file_platform_v1_rbac_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -557,7 +604,7 @@ func (x *PermissionResponse) String() string {
 func (*PermissionResponse) ProtoMessage() {}
 
 func (x *PermissionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[10]
+	mi := &file_platform_v1_rbac_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -570,7 +617,7 @@ func (x *PermissionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PermissionResponse.ProtoReflect.Descriptor instead.
 func (*PermissionResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{10}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *PermissionResponse) GetId() string {
@@ -611,7 +658,7 @@ type GetUserPermissionsRequest struct {
 
 func (x *GetUserPermissionsRequest) Reset() {
 	*x = GetUserPermissionsRequest{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[11]
+	mi := &file_platform_v1_rbac_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -623,7 +670,7 @@ func (x *GetUserPermissionsRequest) String() string {
 func (*GetUserPermissionsRequest) ProtoMessage() {}
 
 func (x *GetUserPermissionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[11]
+	mi := &file_platform_v1_rbac_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -636,7 +683,7 @@ func (x *GetUserPermissionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserPermissionsRequest.ProtoReflect.Descriptor instead.
 func (*GetUserPermissionsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{11}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetUserPermissionsRequest) GetCompanyId() string {
@@ -656,14 +703,14 @@ func (x *GetUserPermissionsRequest) GetUserId() string {
 type GetUserPermissionsResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Permissions   []*PermissionResponse  `protobuf:"bytes,1,rep,name=permissions,proto3" json:"permissions,omitempty"`
-	Role          *RoleResponse          `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	Role          *RoleData              `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetUserPermissionsResponse) Reset() {
 	*x = GetUserPermissionsResponse{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[12]
+	mi := &file_platform_v1_rbac_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +722,7 @@ func (x *GetUserPermissionsResponse) String() string {
 func (*GetUserPermissionsResponse) ProtoMessage() {}
 
 func (x *GetUserPermissionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[12]
+	mi := &file_platform_v1_rbac_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +735,7 @@ func (x *GetUserPermissionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetUserPermissionsResponse.ProtoReflect.Descriptor instead.
 func (*GetUserPermissionsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{12}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetUserPermissionsResponse) GetPermissions() []*PermissionResponse {
@@ -698,7 +745,7 @@ func (x *GetUserPermissionsResponse) GetPermissions() []*PermissionResponse {
 	return nil
 }
 
-func (x *GetUserPermissionsResponse) GetRole() *RoleResponse {
+func (x *GetUserPermissionsResponse) GetRole() *RoleData {
 	if x != nil {
 		return x.Role
 	}
@@ -717,7 +764,7 @@ type CheckPermissionRequest struct {
 
 func (x *CheckPermissionRequest) Reset() {
 	*x = CheckPermissionRequest{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[13]
+	mi := &file_platform_v1_rbac_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -729,7 +776,7 @@ func (x *CheckPermissionRequest) String() string {
 func (*CheckPermissionRequest) ProtoMessage() {}
 
 func (x *CheckPermissionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[13]
+	mi := &file_platform_v1_rbac_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -742,7 +789,7 @@ func (x *CheckPermissionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckPermissionRequest.ProtoReflect.Descriptor instead.
 func (*CheckPermissionRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{13}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *CheckPermissionRequest) GetCompanyId() string {
@@ -782,7 +829,7 @@ type CheckPermissionResponse struct {
 
 func (x *CheckPermissionResponse) Reset() {
 	*x = CheckPermissionResponse{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[14]
+	mi := &file_platform_v1_rbac_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -794,7 +841,7 @@ func (x *CheckPermissionResponse) String() string {
 func (*CheckPermissionResponse) ProtoMessage() {}
 
 func (x *CheckPermissionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[14]
+	mi := &file_platform_v1_rbac_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -807,7 +854,7 @@ func (x *CheckPermissionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CheckPermissionResponse.ProtoReflect.Descriptor instead.
 func (*CheckPermissionResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{14}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *CheckPermissionResponse) GetAllowed() bool {
@@ -827,7 +874,7 @@ type ResolveMembershipRequest struct {
 
 func (x *ResolveMembershipRequest) Reset() {
 	*x = ResolveMembershipRequest{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[15]
+	mi := &file_platform_v1_rbac_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -839,7 +886,7 @@ func (x *ResolveMembershipRequest) String() string {
 func (*ResolveMembershipRequest) ProtoMessage() {}
 
 func (x *ResolveMembershipRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[15]
+	mi := &file_platform_v1_rbac_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -852,7 +899,7 @@ func (x *ResolveMembershipRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveMembershipRequest.ProtoReflect.Descriptor instead.
 func (*ResolveMembershipRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{15}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ResolveMembershipRequest) GetCompanyId() string {
@@ -885,7 +932,7 @@ type ResolveMembershipResponse struct {
 
 func (x *ResolveMembershipResponse) Reset() {
 	*x = ResolveMembershipResponse{}
-	mi := &file_platform_v1_rbac_proto_msgTypes[16]
+	mi := &file_platform_v1_rbac_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -897,7 +944,7 @@ func (x *ResolveMembershipResponse) String() string {
 func (*ResolveMembershipResponse) ProtoMessage() {}
 
 func (x *ResolveMembershipResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_rbac_proto_msgTypes[16]
+	mi := &file_platform_v1_rbac_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -910,7 +957,7 @@ func (x *ResolveMembershipResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveMembershipResponse.ProtoReflect.Descriptor instead.
 func (*ResolveMembershipResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{16}
+	return file_platform_v1_rbac_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ResolveMembershipResponse) GetCompanyId() string {
@@ -976,15 +1023,17 @@ const file_platform_v1_rbac_proto_rawDesc = "" +
 	"\x16platform/v1/rbac.proto\x12\vplatform.v1\"1\n" +
 	"\x10ListRolesRequest\x12\x1d\n" +
 	"\n" +
-	"company_id\x18\x01 \x01(\tR\tcompanyId\"D\n" +
-	"\x11ListRolesResponse\x12/\n" +
-	"\x05roles\x18\x01 \x03(\v2\x19.platform.v1.RoleResponseR\x05roles\"\x87\x01\n" +
-	"\fRoleResponse\x12\x0e\n" +
+	"company_id\x18\x01 \x01(\tR\tcompanyId\"@\n" +
+	"\x11ListRolesResponse\x12+\n" +
+	"\x05roles\x18\x01 \x03(\v2\x15.platform.v1.RoleDataR\x05roles\"\x83\x01\n" +
+	"\bRoleData\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x14\n" +
 	"\x05level\x18\x04 \x01(\x05R\x05level\x12\x1b\n" +
-	"\tis_system\x18\x05 \x01(\bR\bisSystem\"\xa5\x01\n" +
+	"\tis_system\x18\x05 \x01(\bR\bisSystem\"?\n" +
+	"\x12CreateRoleResponse\x12)\n" +
+	"\x04role\x18\x01 \x01(\v2\x15.platform.v1.RoleDataR\x04role\"\xa5\x01\n" +
 	"\x11CreateRoleRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x12\n" +
@@ -1015,10 +1064,10 @@ const file_platform_v1_rbac_proto_rawDesc = "" +
 	"\x19GetUserPermissionsRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x8e\x01\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\"\x8a\x01\n" +
 	"\x1aGetUserPermissionsResponse\x12A\n" +
-	"\vpermissions\x18\x01 \x03(\v2\x1f.platform.v1.PermissionResponseR\vpermissions\x12-\n" +
-	"\x04role\x18\x02 \x01(\v2\x19.platform.v1.RoleResponseR\x04role\"\x82\x01\n" +
+	"\vpermissions\x18\x01 \x03(\v2\x1f.platform.v1.PermissionResponseR\vpermissions\x12)\n" +
+	"\x04role\x18\x02 \x01(\v2\x15.platform.v1.RoleDataR\x04role\"\x82\x01\n" +
 	"\x16CheckPermissionRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x17\n" +
@@ -1041,11 +1090,11 @@ const file_platform_v1_rbac_proto_rawDesc = "" +
 	"\x11source_company_id\x18\x05 \x01(\tR\x0fsourceCompanyId\x12\x1b\n" +
 	"\tis_direct\x18\x06 \x01(\bR\bisDirect\x12!\n" +
 	"\fcapped_level\x18\a \x01(\x05R\vcappedLevel\x12!\n" +
-	"\faccess_level\x18\b \x01(\tR\vaccessLevel2\xc7\x05\n" +
+	"\faccess_level\x18\b \x01(\tR\vaccessLevel2\xcd\x05\n" +
 	"\vRBACService\x12J\n" +
-	"\tListRoles\x12\x1d.platform.v1.ListRolesRequest\x1a\x1e.platform.v1.ListRolesResponse\x12G\n" +
+	"\tListRoles\x12\x1d.platform.v1.ListRolesRequest\x1a\x1e.platform.v1.ListRolesResponse\x12M\n" +
 	"\n" +
-	"CreateRole\x12\x1e.platform.v1.CreateRoleRequest\x1a\x19.platform.v1.RoleResponse\x12M\n" +
+	"CreateRole\x12\x1e.platform.v1.CreateRoleRequest\x1a\x1f.platform.v1.CreateRoleResponse\x12M\n" +
 	"\n" +
 	"AssignRole\x12\x1e.platform.v1.AssignRoleRequest\x1a\x1f.platform.v1.AssignRoleResponse\x12M\n" +
 	"\n" +
@@ -1067,52 +1116,54 @@ func file_platform_v1_rbac_proto_rawDescGZIP() []byte {
 	return file_platform_v1_rbac_proto_rawDescData
 }
 
-var file_platform_v1_rbac_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_platform_v1_rbac_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_platform_v1_rbac_proto_goTypes = []any{
 	(*ListRolesRequest)(nil),           // 0: platform.v1.ListRolesRequest
 	(*ListRolesResponse)(nil),          // 1: platform.v1.ListRolesResponse
-	(*RoleResponse)(nil),               // 2: platform.v1.RoleResponse
-	(*CreateRoleRequest)(nil),          // 3: platform.v1.CreateRoleRequest
-	(*AssignRoleRequest)(nil),          // 4: platform.v1.AssignRoleRequest
-	(*AssignRoleResponse)(nil),         // 5: platform.v1.AssignRoleResponse
-	(*RemoveRoleRequest)(nil),          // 6: platform.v1.RemoveRoleRequest
-	(*RemoveRoleResponse)(nil),         // 7: platform.v1.RemoveRoleResponse
-	(*ListPermissionsRequest)(nil),     // 8: platform.v1.ListPermissionsRequest
-	(*ListPermissionsResponse)(nil),    // 9: platform.v1.ListPermissionsResponse
-	(*PermissionResponse)(nil),         // 10: platform.v1.PermissionResponse
-	(*GetUserPermissionsRequest)(nil),  // 11: platform.v1.GetUserPermissionsRequest
-	(*GetUserPermissionsResponse)(nil), // 12: platform.v1.GetUserPermissionsResponse
-	(*CheckPermissionRequest)(nil),     // 13: platform.v1.CheckPermissionRequest
-	(*CheckPermissionResponse)(nil),    // 14: platform.v1.CheckPermissionResponse
-	(*ResolveMembershipRequest)(nil),   // 15: platform.v1.ResolveMembershipRequest
-	(*ResolveMembershipResponse)(nil),  // 16: platform.v1.ResolveMembershipResponse
+	(*RoleData)(nil),                   // 2: platform.v1.RoleData
+	(*CreateRoleResponse)(nil),         // 3: platform.v1.CreateRoleResponse
+	(*CreateRoleRequest)(nil),          // 4: platform.v1.CreateRoleRequest
+	(*AssignRoleRequest)(nil),          // 5: platform.v1.AssignRoleRequest
+	(*AssignRoleResponse)(nil),         // 6: platform.v1.AssignRoleResponse
+	(*RemoveRoleRequest)(nil),          // 7: platform.v1.RemoveRoleRequest
+	(*RemoveRoleResponse)(nil),         // 8: platform.v1.RemoveRoleResponse
+	(*ListPermissionsRequest)(nil),     // 9: platform.v1.ListPermissionsRequest
+	(*ListPermissionsResponse)(nil),    // 10: platform.v1.ListPermissionsResponse
+	(*PermissionResponse)(nil),         // 11: platform.v1.PermissionResponse
+	(*GetUserPermissionsRequest)(nil),  // 12: platform.v1.GetUserPermissionsRequest
+	(*GetUserPermissionsResponse)(nil), // 13: platform.v1.GetUserPermissionsResponse
+	(*CheckPermissionRequest)(nil),     // 14: platform.v1.CheckPermissionRequest
+	(*CheckPermissionResponse)(nil),    // 15: platform.v1.CheckPermissionResponse
+	(*ResolveMembershipRequest)(nil),   // 16: platform.v1.ResolveMembershipRequest
+	(*ResolveMembershipResponse)(nil),  // 17: platform.v1.ResolveMembershipResponse
 }
 var file_platform_v1_rbac_proto_depIdxs = []int32{
-	2,  // 0: platform.v1.ListRolesResponse.roles:type_name -> platform.v1.RoleResponse
-	10, // 1: platform.v1.ListPermissionsResponse.permissions:type_name -> platform.v1.PermissionResponse
-	10, // 2: platform.v1.GetUserPermissionsResponse.permissions:type_name -> platform.v1.PermissionResponse
-	2,  // 3: platform.v1.GetUserPermissionsResponse.role:type_name -> platform.v1.RoleResponse
-	0,  // 4: platform.v1.RBACService.ListRoles:input_type -> platform.v1.ListRolesRequest
-	3,  // 5: platform.v1.RBACService.CreateRole:input_type -> platform.v1.CreateRoleRequest
-	4,  // 6: platform.v1.RBACService.AssignRole:input_type -> platform.v1.AssignRoleRequest
-	6,  // 7: platform.v1.RBACService.RemoveRole:input_type -> platform.v1.RemoveRoleRequest
-	8,  // 8: platform.v1.RBACService.ListPermissions:input_type -> platform.v1.ListPermissionsRequest
-	11, // 9: platform.v1.RBACService.GetUserPermissions:input_type -> platform.v1.GetUserPermissionsRequest
-	13, // 10: platform.v1.RBACService.CheckPermission:input_type -> platform.v1.CheckPermissionRequest
-	15, // 11: platform.v1.RBACService.ResolveMembership:input_type -> platform.v1.ResolveMembershipRequest
-	1,  // 12: platform.v1.RBACService.ListRoles:output_type -> platform.v1.ListRolesResponse
-	2,  // 13: platform.v1.RBACService.CreateRole:output_type -> platform.v1.RoleResponse
-	5,  // 14: platform.v1.RBACService.AssignRole:output_type -> platform.v1.AssignRoleResponse
-	7,  // 15: platform.v1.RBACService.RemoveRole:output_type -> platform.v1.RemoveRoleResponse
-	9,  // 16: platform.v1.RBACService.ListPermissions:output_type -> platform.v1.ListPermissionsResponse
-	12, // 17: platform.v1.RBACService.GetUserPermissions:output_type -> platform.v1.GetUserPermissionsResponse
-	14, // 18: platform.v1.RBACService.CheckPermission:output_type -> platform.v1.CheckPermissionResponse
-	16, // 19: platform.v1.RBACService.ResolveMembership:output_type -> platform.v1.ResolveMembershipResponse
-	12, // [12:20] is the sub-list for method output_type
-	4,  // [4:12] is the sub-list for method input_type
-	4,  // [4:4] is the sub-list for extension type_name
-	4,  // [4:4] is the sub-list for extension extendee
-	0,  // [0:4] is the sub-list for field type_name
+	2,  // 0: platform.v1.ListRolesResponse.roles:type_name -> platform.v1.RoleData
+	2,  // 1: platform.v1.CreateRoleResponse.role:type_name -> platform.v1.RoleData
+	11, // 2: platform.v1.ListPermissionsResponse.permissions:type_name -> platform.v1.PermissionResponse
+	11, // 3: platform.v1.GetUserPermissionsResponse.permissions:type_name -> platform.v1.PermissionResponse
+	2,  // 4: platform.v1.GetUserPermissionsResponse.role:type_name -> platform.v1.RoleData
+	0,  // 5: platform.v1.RBACService.ListRoles:input_type -> platform.v1.ListRolesRequest
+	4,  // 6: platform.v1.RBACService.CreateRole:input_type -> platform.v1.CreateRoleRequest
+	5,  // 7: platform.v1.RBACService.AssignRole:input_type -> platform.v1.AssignRoleRequest
+	7,  // 8: platform.v1.RBACService.RemoveRole:input_type -> platform.v1.RemoveRoleRequest
+	9,  // 9: platform.v1.RBACService.ListPermissions:input_type -> platform.v1.ListPermissionsRequest
+	12, // 10: platform.v1.RBACService.GetUserPermissions:input_type -> platform.v1.GetUserPermissionsRequest
+	14, // 11: platform.v1.RBACService.CheckPermission:input_type -> platform.v1.CheckPermissionRequest
+	16, // 12: platform.v1.RBACService.ResolveMembership:input_type -> platform.v1.ResolveMembershipRequest
+	1,  // 13: platform.v1.RBACService.ListRoles:output_type -> platform.v1.ListRolesResponse
+	3,  // 14: platform.v1.RBACService.CreateRole:output_type -> platform.v1.CreateRoleResponse
+	6,  // 15: platform.v1.RBACService.AssignRole:output_type -> platform.v1.AssignRoleResponse
+	8,  // 16: platform.v1.RBACService.RemoveRole:output_type -> platform.v1.RemoveRoleResponse
+	10, // 17: platform.v1.RBACService.ListPermissions:output_type -> platform.v1.ListPermissionsResponse
+	13, // 18: platform.v1.RBACService.GetUserPermissions:output_type -> platform.v1.GetUserPermissionsResponse
+	15, // 19: platform.v1.RBACService.CheckPermission:output_type -> platform.v1.CheckPermissionResponse
+	17, // 20: platform.v1.RBACService.ResolveMembership:output_type -> platform.v1.ResolveMembershipResponse
+	13, // [13:21] is the sub-list for method output_type
+	5,  // [5:13] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_rbac_proto_init() }
@@ -1126,7 +1177,7 @@ func file_platform_v1_rbac_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_rbac_proto_rawDesc), len(file_platform_v1_rbac_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   17,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

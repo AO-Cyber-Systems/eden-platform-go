@@ -21,15 +21,15 @@ func NewAuthHandler(service *auth.Service, ssoService *auth.SSOService) *AuthHan
 	return &AuthHandler{service: service, ssoService: ssoService}
 }
 
-func (h *AuthHandler) SignUp(ctx context.Context, req *connect.Request[platformv1.SignUpRequest]) (*connect.Response[platformv1.AuthResponse], error) {
+func (h *AuthHandler) SignUp(ctx context.Context, req *connect.Request[platformv1.SignUpRequest]) (*connect.Response[platformv1.SignUpResponse], error) {
 	response, err := h.service.SignUp(ctx, req.Msg.GetEmail(), req.Msg.GetPassword(), req.Msg.GetDisplayName())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
-	return connect.NewResponse(authResponseFromDomain(response)), nil
+	return connect.NewResponse(&platformv1.SignUpResponse{Auth: authDataFromDomain(response)}), nil
 }
 
-func (h *AuthHandler) Login(ctx context.Context, req *connect.Request[platformv1.LoginRequest]) (*connect.Response[platformv1.AuthResponse], error) {
+func (h *AuthHandler) Login(ctx context.Context, req *connect.Request[platformv1.LoginRequest]) (*connect.Response[platformv1.LoginResponse], error) {
 	response, err := h.service.Login(ctx, req.Msg.GetEmail(), req.Msg.GetPassword())
 	if err != nil {
 		code := connect.CodeInvalidArgument
@@ -38,15 +38,15 @@ func (h *AuthHandler) Login(ctx context.Context, req *connect.Request[platformv1
 		}
 		return nil, connect.NewError(code, err)
 	}
-	return connect.NewResponse(authResponseFromDomain(response)), nil
+	return connect.NewResponse(&platformv1.LoginResponse{Auth: authDataFromDomain(response)}), nil
 }
 
-func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[platformv1.RefreshTokenRequest]) (*connect.Response[platformv1.AuthResponse], error) {
+func (h *AuthHandler) RefreshToken(ctx context.Context, req *connect.Request[platformv1.RefreshTokenRequest]) (*connect.Response[platformv1.RefreshTokenResponse], error) {
 	response, err := h.service.RefreshToken(ctx, req.Msg.GetRefreshToken())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeUnauthenticated, err)
 	}
-	return connect.NewResponse(authResponseFromDomain(response)), nil
+	return connect.NewResponse(&platformv1.RefreshTokenResponse{Auth: authDataFromDomain(response)}), nil
 }
 
 func (h *AuthHandler) Logout(ctx context.Context, req *connect.Request[platformv1.LogoutRequest]) (*connect.Response[platformv1.LogoutResponse], error) {

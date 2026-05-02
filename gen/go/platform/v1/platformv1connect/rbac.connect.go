@@ -58,7 +58,7 @@ const (
 // RBACServiceClient is a client for the platform.v1.RBACService service.
 type RBACServiceClient interface {
 	ListRoles(context.Context, *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error)
-	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.RoleResponse], error)
+	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error)
 	AssignRole(context.Context, *connect.Request[v1.AssignRoleRequest]) (*connect.Response[v1.AssignRoleResponse], error)
 	RemoveRole(context.Context, *connect.Request[v1.RemoveRoleRequest]) (*connect.Response[v1.RemoveRoleResponse], error)
 	ListPermissions(context.Context, *connect.Request[v1.ListPermissionsRequest]) (*connect.Response[v1.ListPermissionsResponse], error)
@@ -84,7 +84,7 @@ func NewRBACServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(rBACServiceMethods.ByName("ListRoles")),
 			connect.WithClientOptions(opts...),
 		),
-		createRole: connect.NewClient[v1.CreateRoleRequest, v1.RoleResponse](
+		createRole: connect.NewClient[v1.CreateRoleRequest, v1.CreateRoleResponse](
 			httpClient,
 			baseURL+RBACServiceCreateRoleProcedure,
 			connect.WithSchema(rBACServiceMethods.ByName("CreateRole")),
@@ -132,7 +132,7 @@ func NewRBACServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 // rBACServiceClient implements RBACServiceClient.
 type rBACServiceClient struct {
 	listRoles          *connect.Client[v1.ListRolesRequest, v1.ListRolesResponse]
-	createRole         *connect.Client[v1.CreateRoleRequest, v1.RoleResponse]
+	createRole         *connect.Client[v1.CreateRoleRequest, v1.CreateRoleResponse]
 	assignRole         *connect.Client[v1.AssignRoleRequest, v1.AssignRoleResponse]
 	removeRole         *connect.Client[v1.RemoveRoleRequest, v1.RemoveRoleResponse]
 	listPermissions    *connect.Client[v1.ListPermissionsRequest, v1.ListPermissionsResponse]
@@ -147,7 +147,7 @@ func (c *rBACServiceClient) ListRoles(ctx context.Context, req *connect.Request[
 }
 
 // CreateRole calls platform.v1.RBACService.CreateRole.
-func (c *rBACServiceClient) CreateRole(ctx context.Context, req *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.RoleResponse], error) {
+func (c *rBACServiceClient) CreateRole(ctx context.Context, req *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
 	return c.createRole.CallUnary(ctx, req)
 }
 
@@ -184,7 +184,7 @@ func (c *rBACServiceClient) ResolveMembership(ctx context.Context, req *connect.
 // RBACServiceHandler is an implementation of the platform.v1.RBACService service.
 type RBACServiceHandler interface {
 	ListRoles(context.Context, *connect.Request[v1.ListRolesRequest]) (*connect.Response[v1.ListRolesResponse], error)
-	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.RoleResponse], error)
+	CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error)
 	AssignRole(context.Context, *connect.Request[v1.AssignRoleRequest]) (*connect.Response[v1.AssignRoleResponse], error)
 	RemoveRole(context.Context, *connect.Request[v1.RemoveRoleRequest]) (*connect.Response[v1.RemoveRoleResponse], error)
 	ListPermissions(context.Context, *connect.Request[v1.ListPermissionsRequest]) (*connect.Response[v1.ListPermissionsResponse], error)
@@ -279,7 +279,7 @@ func (UnimplementedRBACServiceHandler) ListRoles(context.Context, *connect.Reque
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.RBACService.ListRoles is not implemented"))
 }
 
-func (UnimplementedRBACServiceHandler) CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.RoleResponse], error) {
+func (UnimplementedRBACServiceHandler) CreateRole(context.Context, *connect.Request[v1.CreateRoleRequest]) (*connect.Response[v1.CreateRoleResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.RBACService.CreateRole is not implemented"))
 }
 

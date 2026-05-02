@@ -58,12 +58,12 @@ const (
 
 // CompanyServiceClient is a client for the platform.v1.CompanyService service.
 type CompanyServiceClient interface {
-	CreateCompany(context.Context, *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.CompanyResponse], error)
-	GetCompany(context.Context, *connect.Request[v1.GetCompanyRequest]) (*connect.Response[v1.CompanyResponse], error)
-	UpdateCompany(context.Context, *connect.Request[v1.UpdateCompanyRequest]) (*connect.Response[v1.CompanyResponse], error)
+	CreateCompany(context.Context, *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.CreateCompanyResponse], error)
+	GetCompany(context.Context, *connect.Request[v1.GetCompanyRequest]) (*connect.Response[v1.GetCompanyResponse], error)
+	UpdateCompany(context.Context, *connect.Request[v1.UpdateCompanyRequest]) (*connect.Response[v1.UpdateCompanyResponse], error)
 	ListCompanies(context.Context, *connect.Request[v1.ListCompaniesRequest]) (*connect.Response[v1.ListCompaniesResponse], error)
-	GetAncestors(context.Context, *connect.Request[v1.GetAncestorsRequest]) (*connect.Response[v1.ListCompaniesResponse], error)
-	GetDescendants(context.Context, *connect.Request[v1.GetDescendantsRequest]) (*connect.Response[v1.ListCompaniesResponse], error)
+	GetAncestors(context.Context, *connect.Request[v1.GetAncestorsRequest]) (*connect.Response[v1.GetAncestorsResponse], error)
+	GetDescendants(context.Context, *connect.Request[v1.GetDescendantsRequest]) (*connect.Response[v1.GetDescendantsResponse], error)
 	GetEffectiveSettings(context.Context, *connect.Request[v1.GetEffectiveSettingsRequest]) (*connect.Response[v1.GetEffectiveSettingsResponse], error)
 }
 
@@ -78,19 +78,19 @@ func NewCompanyServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	companyServiceMethods := v1.File_platform_v1_company_proto.Services().ByName("CompanyService").Methods()
 	return &companyServiceClient{
-		createCompany: connect.NewClient[v1.CreateCompanyRequest, v1.CompanyResponse](
+		createCompany: connect.NewClient[v1.CreateCompanyRequest, v1.CreateCompanyResponse](
 			httpClient,
 			baseURL+CompanyServiceCreateCompanyProcedure,
 			connect.WithSchema(companyServiceMethods.ByName("CreateCompany")),
 			connect.WithClientOptions(opts...),
 		),
-		getCompany: connect.NewClient[v1.GetCompanyRequest, v1.CompanyResponse](
+		getCompany: connect.NewClient[v1.GetCompanyRequest, v1.GetCompanyResponse](
 			httpClient,
 			baseURL+CompanyServiceGetCompanyProcedure,
 			connect.WithSchema(companyServiceMethods.ByName("GetCompany")),
 			connect.WithClientOptions(opts...),
 		),
-		updateCompany: connect.NewClient[v1.UpdateCompanyRequest, v1.CompanyResponse](
+		updateCompany: connect.NewClient[v1.UpdateCompanyRequest, v1.UpdateCompanyResponse](
 			httpClient,
 			baseURL+CompanyServiceUpdateCompanyProcedure,
 			connect.WithSchema(companyServiceMethods.ByName("UpdateCompany")),
@@ -102,13 +102,13 @@ func NewCompanyServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(companyServiceMethods.ByName("ListCompanies")),
 			connect.WithClientOptions(opts...),
 		),
-		getAncestors: connect.NewClient[v1.GetAncestorsRequest, v1.ListCompaniesResponse](
+		getAncestors: connect.NewClient[v1.GetAncestorsRequest, v1.GetAncestorsResponse](
 			httpClient,
 			baseURL+CompanyServiceGetAncestorsProcedure,
 			connect.WithSchema(companyServiceMethods.ByName("GetAncestors")),
 			connect.WithClientOptions(opts...),
 		),
-		getDescendants: connect.NewClient[v1.GetDescendantsRequest, v1.ListCompaniesResponse](
+		getDescendants: connect.NewClient[v1.GetDescendantsRequest, v1.GetDescendantsResponse](
 			httpClient,
 			baseURL+CompanyServiceGetDescendantsProcedure,
 			connect.WithSchema(companyServiceMethods.ByName("GetDescendants")),
@@ -125,27 +125,27 @@ func NewCompanyServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // companyServiceClient implements CompanyServiceClient.
 type companyServiceClient struct {
-	createCompany        *connect.Client[v1.CreateCompanyRequest, v1.CompanyResponse]
-	getCompany           *connect.Client[v1.GetCompanyRequest, v1.CompanyResponse]
-	updateCompany        *connect.Client[v1.UpdateCompanyRequest, v1.CompanyResponse]
+	createCompany        *connect.Client[v1.CreateCompanyRequest, v1.CreateCompanyResponse]
+	getCompany           *connect.Client[v1.GetCompanyRequest, v1.GetCompanyResponse]
+	updateCompany        *connect.Client[v1.UpdateCompanyRequest, v1.UpdateCompanyResponse]
 	listCompanies        *connect.Client[v1.ListCompaniesRequest, v1.ListCompaniesResponse]
-	getAncestors         *connect.Client[v1.GetAncestorsRequest, v1.ListCompaniesResponse]
-	getDescendants       *connect.Client[v1.GetDescendantsRequest, v1.ListCompaniesResponse]
+	getAncestors         *connect.Client[v1.GetAncestorsRequest, v1.GetAncestorsResponse]
+	getDescendants       *connect.Client[v1.GetDescendantsRequest, v1.GetDescendantsResponse]
 	getEffectiveSettings *connect.Client[v1.GetEffectiveSettingsRequest, v1.GetEffectiveSettingsResponse]
 }
 
 // CreateCompany calls platform.v1.CompanyService.CreateCompany.
-func (c *companyServiceClient) CreateCompany(ctx context.Context, req *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.CompanyResponse], error) {
+func (c *companyServiceClient) CreateCompany(ctx context.Context, req *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.CreateCompanyResponse], error) {
 	return c.createCompany.CallUnary(ctx, req)
 }
 
 // GetCompany calls platform.v1.CompanyService.GetCompany.
-func (c *companyServiceClient) GetCompany(ctx context.Context, req *connect.Request[v1.GetCompanyRequest]) (*connect.Response[v1.CompanyResponse], error) {
+func (c *companyServiceClient) GetCompany(ctx context.Context, req *connect.Request[v1.GetCompanyRequest]) (*connect.Response[v1.GetCompanyResponse], error) {
 	return c.getCompany.CallUnary(ctx, req)
 }
 
 // UpdateCompany calls platform.v1.CompanyService.UpdateCompany.
-func (c *companyServiceClient) UpdateCompany(ctx context.Context, req *connect.Request[v1.UpdateCompanyRequest]) (*connect.Response[v1.CompanyResponse], error) {
+func (c *companyServiceClient) UpdateCompany(ctx context.Context, req *connect.Request[v1.UpdateCompanyRequest]) (*connect.Response[v1.UpdateCompanyResponse], error) {
 	return c.updateCompany.CallUnary(ctx, req)
 }
 
@@ -155,12 +155,12 @@ func (c *companyServiceClient) ListCompanies(ctx context.Context, req *connect.R
 }
 
 // GetAncestors calls platform.v1.CompanyService.GetAncestors.
-func (c *companyServiceClient) GetAncestors(ctx context.Context, req *connect.Request[v1.GetAncestorsRequest]) (*connect.Response[v1.ListCompaniesResponse], error) {
+func (c *companyServiceClient) GetAncestors(ctx context.Context, req *connect.Request[v1.GetAncestorsRequest]) (*connect.Response[v1.GetAncestorsResponse], error) {
 	return c.getAncestors.CallUnary(ctx, req)
 }
 
 // GetDescendants calls platform.v1.CompanyService.GetDescendants.
-func (c *companyServiceClient) GetDescendants(ctx context.Context, req *connect.Request[v1.GetDescendantsRequest]) (*connect.Response[v1.ListCompaniesResponse], error) {
+func (c *companyServiceClient) GetDescendants(ctx context.Context, req *connect.Request[v1.GetDescendantsRequest]) (*connect.Response[v1.GetDescendantsResponse], error) {
 	return c.getDescendants.CallUnary(ctx, req)
 }
 
@@ -171,12 +171,12 @@ func (c *companyServiceClient) GetEffectiveSettings(ctx context.Context, req *co
 
 // CompanyServiceHandler is an implementation of the platform.v1.CompanyService service.
 type CompanyServiceHandler interface {
-	CreateCompany(context.Context, *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.CompanyResponse], error)
-	GetCompany(context.Context, *connect.Request[v1.GetCompanyRequest]) (*connect.Response[v1.CompanyResponse], error)
-	UpdateCompany(context.Context, *connect.Request[v1.UpdateCompanyRequest]) (*connect.Response[v1.CompanyResponse], error)
+	CreateCompany(context.Context, *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.CreateCompanyResponse], error)
+	GetCompany(context.Context, *connect.Request[v1.GetCompanyRequest]) (*connect.Response[v1.GetCompanyResponse], error)
+	UpdateCompany(context.Context, *connect.Request[v1.UpdateCompanyRequest]) (*connect.Response[v1.UpdateCompanyResponse], error)
 	ListCompanies(context.Context, *connect.Request[v1.ListCompaniesRequest]) (*connect.Response[v1.ListCompaniesResponse], error)
-	GetAncestors(context.Context, *connect.Request[v1.GetAncestorsRequest]) (*connect.Response[v1.ListCompaniesResponse], error)
-	GetDescendants(context.Context, *connect.Request[v1.GetDescendantsRequest]) (*connect.Response[v1.ListCompaniesResponse], error)
+	GetAncestors(context.Context, *connect.Request[v1.GetAncestorsRequest]) (*connect.Response[v1.GetAncestorsResponse], error)
+	GetDescendants(context.Context, *connect.Request[v1.GetDescendantsRequest]) (*connect.Response[v1.GetDescendantsResponse], error)
 	GetEffectiveSettings(context.Context, *connect.Request[v1.GetEffectiveSettingsRequest]) (*connect.Response[v1.GetEffectiveSettingsResponse], error)
 }
 
@@ -254,15 +254,15 @@ func NewCompanyServiceHandler(svc CompanyServiceHandler, opts ...connect.Handler
 // UnimplementedCompanyServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedCompanyServiceHandler struct{}
 
-func (UnimplementedCompanyServiceHandler) CreateCompany(context.Context, *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.CompanyResponse], error) {
+func (UnimplementedCompanyServiceHandler) CreateCompany(context.Context, *connect.Request[v1.CreateCompanyRequest]) (*connect.Response[v1.CreateCompanyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CompanyService.CreateCompany is not implemented"))
 }
 
-func (UnimplementedCompanyServiceHandler) GetCompany(context.Context, *connect.Request[v1.GetCompanyRequest]) (*connect.Response[v1.CompanyResponse], error) {
+func (UnimplementedCompanyServiceHandler) GetCompany(context.Context, *connect.Request[v1.GetCompanyRequest]) (*connect.Response[v1.GetCompanyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CompanyService.GetCompany is not implemented"))
 }
 
-func (UnimplementedCompanyServiceHandler) UpdateCompany(context.Context, *connect.Request[v1.UpdateCompanyRequest]) (*connect.Response[v1.CompanyResponse], error) {
+func (UnimplementedCompanyServiceHandler) UpdateCompany(context.Context, *connect.Request[v1.UpdateCompanyRequest]) (*connect.Response[v1.UpdateCompanyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CompanyService.UpdateCompany is not implemented"))
 }
 
@@ -270,11 +270,11 @@ func (UnimplementedCompanyServiceHandler) ListCompanies(context.Context, *connec
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CompanyService.ListCompanies is not implemented"))
 }
 
-func (UnimplementedCompanyServiceHandler) GetAncestors(context.Context, *connect.Request[v1.GetAncestorsRequest]) (*connect.Response[v1.ListCompaniesResponse], error) {
+func (UnimplementedCompanyServiceHandler) GetAncestors(context.Context, *connect.Request[v1.GetAncestorsRequest]) (*connect.Response[v1.GetAncestorsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CompanyService.GetAncestors is not implemented"))
 }
 
-func (UnimplementedCompanyServiceHandler) GetDescendants(context.Context, *connect.Request[v1.GetDescendantsRequest]) (*connect.Response[v1.ListCompaniesResponse], error) {
+func (UnimplementedCompanyServiceHandler) GetDescendants(context.Context, *connect.Request[v1.GetDescendantsRequest]) (*connect.Response[v1.GetDescendantsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CompanyService.GetDescendants is not implemented"))
 }
 

@@ -7,6 +7,8 @@ require (
 	github.com/cloudflare/circl v1.6.3
 	github.com/coreos/go-oidc/v3 v3.17.0
 	github.com/crewjam/saml v0.5.1
+	github.com/getsentry/sentry-go v0.46.0
+	github.com/getsentry/sentry-go/slog v0.46.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/google/uuid v1.6.0

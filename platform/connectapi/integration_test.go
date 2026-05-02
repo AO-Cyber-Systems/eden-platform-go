@@ -86,7 +86,7 @@ func setupTestEnv(t *testing.T) *testEnv {
 	}
 }
 
-func signUp(t *testing.T, env *testEnv, email, password, displayName string) *platformv1.AuthResponse {
+func signUp(t *testing.T, env *testEnv, email, password, displayName string) *platformv1.AuthData {
 	t.Helper()
 	resp, err := env.authClient.SignUp(
 		t.Context(),
@@ -99,7 +99,7 @@ func signUp(t *testing.T, env *testEnv, email, password, displayName string) *pl
 	if err != nil {
 		t.Fatalf("SignUp(%s) error = %v", email, err)
 	}
-	return resp.Msg
+	return resp.Msg.GetAuth()
 }
 
 func authedRequest[T any](t *testing.T, token string, msg *T) *connect.Request[T] {
@@ -164,27 +164,27 @@ func TestAuthLifecycle(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Login() error = %v", err)
 		}
-		if resp.Msg.GetAccessToken() == "" {
+		if resp.Msg.GetAuth().GetAccessToken() == "" {
 			t.Errorf("Login: AccessToken is empty")
 		}
 
 		t.Run("RefreshToken", func(t *testing.T) {
 			refreshResp, err := env.authClient.RefreshToken(t.Context(), connect.NewRequest(&platformv1.RefreshTokenRequest{
-				RefreshToken: resp.Msg.GetRefreshToken(),
+				RefreshToken: resp.Msg.GetAuth().GetRefreshToken(),
 			}))
 			if err != nil {
 				t.Fatalf("RefreshToken() error = %v", err)
 			}
-			if refreshResp.Msg.GetAccessToken() == "" {
+			if refreshResp.Msg.GetAuth().GetAccessToken() == "" {
 				t.Errorf("RefreshToken: AccessToken is empty")
 			}
-			if refreshResp.Msg.GetRefreshToken() == resp.Msg.GetRefreshToken() {
+			if refreshResp.Msg.GetAuth().GetRefreshToken() == resp.Msg.GetAuth().GetRefreshToken() {
 				t.Errorf("RefreshToken: tokens should rotate")
 			}
 
 			t.Run("Logout", func(t *testing.T) {
 				_, err := env.authClient.Logout(t.Context(), connect.NewRequest(&platformv1.LogoutRequest{
-					RefreshToken: refreshResp.Msg.GetRefreshToken(),
+					RefreshToken: refreshResp.Msg.GetAuth().GetRefreshToken(),
 				}))
 				if err != nil {
 					t.Fatalf("Logout() error = %v", err)
@@ -192,7 +192,7 @@ func TestAuthLifecycle(t *testing.T) {
 
 				// Refreshing again should fail
 				_, err = env.authClient.RefreshToken(t.Context(), connect.NewRequest(&platformv1.RefreshTokenRequest{
-					RefreshToken: refreshResp.Msg.GetRefreshToken(),
+					RefreshToken: refreshResp.Msg.GetAuth().GetRefreshToken(),
 				}))
 				if err == nil {
 					t.Errorf("RefreshToken after logout should fail")
@@ -239,8 +239,8 @@ func TestCompanyOperations(t *testing.T) {
 			if err != nil {
 				t.Fatalf("GetCompany() error = %v", err)
 			}
-			if getResp.Msg.GetId() != companyID {
-				t.Errorf("GetCompany ID = %q, want %q", getResp.Msg.GetId(), companyID)
+			if getResp.Msg.GetCompany().GetId() != companyID {
+				t.Errorf("GetCompany ID = %q, want %q", getResp.Msg.GetCompany().GetId(), companyID)
 			}
 		})
 
@@ -256,8 +256,8 @@ func TestCompanyOperations(t *testing.T) {
 			if err != nil {
 				t.Fatalf("UpdateCompany() error = %v", err)
 			}
-			if updateResp.Msg.GetName() != "Updated Company" {
-				t.Errorf("UpdateCompany Name = %q, want %q", updateResp.Msg.GetName(), "Updated Company")
+			if updateResp.Msg.GetCompany().GetName() != "Updated Company" {
+				t.Errorf("UpdateCompany Name = %q, want %q", updateResp.Msg.GetCompany().GetName(), "Updated Company")
 			}
 		})
 	})
@@ -330,7 +330,7 @@ func TestUnauthenticatedAccess(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SignUp (public) should succeed without token, got error = %v", err)
 		}
-		if resp.Msg.GetAccessToken() == "" {
+		if resp.Msg.GetAuth().GetAccessToken() == "" {
 			t.Errorf("SignUp (public) AccessToken is empty")
 		}
 	})

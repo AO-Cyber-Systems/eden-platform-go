@@ -7,7 +7,7 @@ option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/
 // RBACService manages roles and permissions.
 service RBACService {
   rpc ListRoles(ListRolesRequest) returns (ListRolesResponse);
-  rpc CreateRole(CreateRoleRequest) returns (RoleResponse);
+  rpc CreateRole(CreateRoleRequest) returns (CreateRoleResponse);
   rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
   rpc RemoveRole(RemoveRoleRequest) returns (RemoveRoleResponse);
   rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse);
@@ -21,15 +21,22 @@ message ListRolesRequest {
 }
 
 message ListRolesResponse {
-  repeated RoleResponse roles = 1;
+  repeated RoleData roles = 1;
 }
 
-message RoleResponse {
+// RoleData is the shared role payload contained in ListRolesResponse and
+// GetUserPermissionsResponse, and wrapped by CreateRoleResponse. Per buf
+// STANDARD lint convention (RPC_RESPONSE_STANDARD_NAME).
+message RoleData {
   string id = 1;
   string name = 2;
   string description = 3;
   int32 level = 4;
   bool is_system = 5;
+}
+
+message CreateRoleResponse {
+  RoleData role = 1;
 }
 
 message CreateRoleRequest {
@@ -76,7 +83,7 @@ message GetUserPermissionsRequest {
 
 message GetUserPermissionsResponse {
   repeated PermissionResponse permissions = 1;
-  RoleResponse role = 2;
+  RoleData role = 2;
 }
 
 message CheckPermissionRequest {
