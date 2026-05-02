@@ -6,9 +6,9 @@ option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/
 
 // AuthService handles authentication operations.
 service AuthService {
-  rpc SignUp(SignUpRequest) returns (AuthResponse);
-  rpc Login(LoginRequest) returns (AuthResponse);
-  rpc RefreshToken(RefreshTokenRequest) returns (AuthResponse);
+  rpc SignUp(SignUpRequest) returns (SignUpResponse);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
   rpc Logout(LogoutRequest) returns (LogoutResponse);
   rpc InitiateOIDC(InitiateOIDCRequest) returns (InitiateOIDCResponse);
   rpc InitiateSAML(InitiateSAMLRequest) returns (InitiateSAMLResponse);
@@ -36,10 +36,25 @@ message LogoutRequest {
 
 message LogoutResponse {}
 
-message AuthResponse {
+// AuthData is the shared authentication payload returned by SignUp,
+// Login, and RefreshToken. Wrapped in per-RPC response types per
+// buf STANDARD lint convention (RPC_REQUEST_RESPONSE_UNIQUE).
+message AuthData {
   string access_token = 1;
   string refresh_token = 2;
   User user = 3;
+}
+
+message SignUpResponse {
+  AuthData auth = 1;
+}
+
+message LoginResponse {
+  AuthData auth = 1;
+}
+
+message RefreshTokenResponse {
+  AuthData auth = 1;
 }
 
 message User {

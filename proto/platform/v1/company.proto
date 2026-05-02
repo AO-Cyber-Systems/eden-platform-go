@@ -6,12 +6,12 @@ option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/
 
 // CompanyService manages company hierarchy.
 service CompanyService {
-  rpc CreateCompany(CreateCompanyRequest) returns (CompanyResponse);
-  rpc GetCompany(GetCompanyRequest) returns (CompanyResponse);
-  rpc UpdateCompany(UpdateCompanyRequest) returns (CompanyResponse);
+  rpc CreateCompany(CreateCompanyRequest) returns (CreateCompanyResponse);
+  rpc GetCompany(GetCompanyRequest) returns (GetCompanyResponse);
+  rpc UpdateCompany(UpdateCompanyRequest) returns (UpdateCompanyResponse);
   rpc ListCompanies(ListCompaniesRequest) returns (ListCompaniesResponse);
-  rpc GetAncestors(GetAncestorsRequest) returns (ListCompaniesResponse);
-  rpc GetDescendants(GetDescendantsRequest) returns (ListCompaniesResponse);
+  rpc GetAncestors(GetAncestorsRequest) returns (GetAncestorsResponse);
+  rpc GetDescendants(GetDescendantsRequest) returns (GetDescendantsResponse);
   rpc GetEffectiveSettings(GetEffectiveSettingsRequest) returns (GetEffectiveSettingsResponse);
 }
 
@@ -55,7 +55,11 @@ message GetEffectiveSettingsResponse {
   string settings_json = 1;
 }
 
-message CompanyResponse {
+// CompanyData is the shared company payload returned by Create/Get/Update
+// (wrapped in per-RPC responses) and contained in List/GetAncestors/
+// GetDescendants list responses. Per buf STANDARD lint convention
+// (RPC_REQUEST_RESPONSE_UNIQUE).
+message CompanyData {
   string id = 1;
   string name = 2;
   string slug = 3;
@@ -69,6 +73,26 @@ message CompanyResponse {
   string updated_at = 11;
 }
 
+message CreateCompanyResponse {
+  CompanyData company = 1;
+}
+
+message GetCompanyResponse {
+  CompanyData company = 1;
+}
+
+message UpdateCompanyResponse {
+  CompanyData company = 1;
+}
+
 message ListCompaniesResponse {
-  repeated CompanyResponse companies = 1;
+  repeated CompanyData companies = 1;
+}
+
+message GetAncestorsResponse {
+  repeated CompanyData companies = 1;
+}
+
+message GetDescendantsResponse {
+  repeated CompanyData companies = 1;
 }

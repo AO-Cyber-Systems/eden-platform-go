@@ -55,9 +55,9 @@ const (
 
 // AuthServiceClient is a client for the platform.v1.AuthService service.
 type AuthServiceClient interface {
-	SignUp(context.Context, *connect.Request[v1.SignUpRequest]) (*connect.Response[v1.AuthResponse], error)
-	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.AuthResponse], error)
-	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.AuthResponse], error)
+	SignUp(context.Context, *connect.Request[v1.SignUpRequest]) (*connect.Response[v1.SignUpResponse], error)
+	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	InitiateOIDC(context.Context, *connect.Request[v1.InitiateOIDCRequest]) (*connect.Response[v1.InitiateOIDCResponse], error)
 	InitiateSAML(context.Context, *connect.Request[v1.InitiateSAMLRequest]) (*connect.Response[v1.InitiateSAMLResponse], error)
@@ -75,19 +75,19 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 	baseURL = strings.TrimRight(baseURL, "/")
 	authServiceMethods := v1.File_platform_v1_auth_proto.Services().ByName("AuthService").Methods()
 	return &authServiceClient{
-		signUp: connect.NewClient[v1.SignUpRequest, v1.AuthResponse](
+		signUp: connect.NewClient[v1.SignUpRequest, v1.SignUpResponse](
 			httpClient,
 			baseURL+AuthServiceSignUpProcedure,
 			connect.WithSchema(authServiceMethods.ByName("SignUp")),
 			connect.WithClientOptions(opts...),
 		),
-		login: connect.NewClient[v1.LoginRequest, v1.AuthResponse](
+		login: connect.NewClient[v1.LoginRequest, v1.LoginResponse](
 			httpClient,
 			baseURL+AuthServiceLoginProcedure,
 			connect.WithSchema(authServiceMethods.ByName("Login")),
 			connect.WithClientOptions(opts...),
 		),
-		refreshToken: connect.NewClient[v1.RefreshTokenRequest, v1.AuthResponse](
+		refreshToken: connect.NewClient[v1.RefreshTokenRequest, v1.RefreshTokenResponse](
 			httpClient,
 			baseURL+AuthServiceRefreshTokenProcedure,
 			connect.WithSchema(authServiceMethods.ByName("RefreshToken")),
@@ -122,9 +122,9 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	signUp        *connect.Client[v1.SignUpRequest, v1.AuthResponse]
-	login         *connect.Client[v1.LoginRequest, v1.AuthResponse]
-	refreshToken  *connect.Client[v1.RefreshTokenRequest, v1.AuthResponse]
+	signUp        *connect.Client[v1.SignUpRequest, v1.SignUpResponse]
+	login         *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	refreshToken  *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
 	logout        *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
 	initiateOIDC  *connect.Client[v1.InitiateOIDCRequest, v1.InitiateOIDCResponse]
 	initiateSAML  *connect.Client[v1.InitiateSAMLRequest, v1.InitiateSAMLResponse]
@@ -132,17 +132,17 @@ type authServiceClient struct {
 }
 
 // SignUp calls platform.v1.AuthService.SignUp.
-func (c *authServiceClient) SignUp(ctx context.Context, req *connect.Request[v1.SignUpRequest]) (*connect.Response[v1.AuthResponse], error) {
+func (c *authServiceClient) SignUp(ctx context.Context, req *connect.Request[v1.SignUpRequest]) (*connect.Response[v1.SignUpResponse], error) {
 	return c.signUp.CallUnary(ctx, req)
 }
 
 // Login calls platform.v1.AuthService.Login.
-func (c *authServiceClient) Login(ctx context.Context, req *connect.Request[v1.LoginRequest]) (*connect.Response[v1.AuthResponse], error) {
+func (c *authServiceClient) Login(ctx context.Context, req *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return c.login.CallUnary(ctx, req)
 }
 
 // RefreshToken calls platform.v1.AuthService.RefreshToken.
-func (c *authServiceClient) RefreshToken(ctx context.Context, req *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.AuthResponse], error) {
+func (c *authServiceClient) RefreshToken(ctx context.Context, req *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error) {
 	return c.refreshToken.CallUnary(ctx, req)
 }
 
@@ -168,9 +168,9 @@ func (c *authServiceClient) UpdateProfile(ctx context.Context, req *connect.Requ
 
 // AuthServiceHandler is an implementation of the platform.v1.AuthService service.
 type AuthServiceHandler interface {
-	SignUp(context.Context, *connect.Request[v1.SignUpRequest]) (*connect.Response[v1.AuthResponse], error)
-	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.AuthResponse], error)
-	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.AuthResponse], error)
+	SignUp(context.Context, *connect.Request[v1.SignUpRequest]) (*connect.Response[v1.SignUpResponse], error)
+	Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error)
+	RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error)
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	InitiateOIDC(context.Context, *connect.Request[v1.InitiateOIDCRequest]) (*connect.Response[v1.InitiateOIDCResponse], error)
 	InitiateSAML(context.Context, *connect.Request[v1.InitiateSAMLRequest]) (*connect.Response[v1.InitiateSAMLResponse], error)
@@ -251,15 +251,15 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 // UnimplementedAuthServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAuthServiceHandler struct{}
 
-func (UnimplementedAuthServiceHandler) SignUp(context.Context, *connect.Request[v1.SignUpRequest]) (*connect.Response[v1.AuthResponse], error) {
+func (UnimplementedAuthServiceHandler) SignUp(context.Context, *connect.Request[v1.SignUpRequest]) (*connect.Response[v1.SignUpResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AuthService.SignUp is not implemented"))
 }
 
-func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.AuthResponse], error) {
+func (UnimplementedAuthServiceHandler) Login(context.Context, *connect.Request[v1.LoginRequest]) (*connect.Response[v1.LoginResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AuthService.Login is not implemented"))
 }
 
-func (UnimplementedAuthServiceHandler) RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.AuthResponse], error) {
+func (UnimplementedAuthServiceHandler) RefreshToken(context.Context, *connect.Request[v1.RefreshTokenRequest]) (*connect.Response[v1.RefreshTokenResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AuthService.RefreshToken is not implemented"))
 }
 

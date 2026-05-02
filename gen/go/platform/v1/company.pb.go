@@ -445,7 +445,11 @@ func (x *GetEffectiveSettingsResponse) GetSettingsJson() string {
 	return ""
 }
 
-type CompanyResponse struct {
+// CompanyData is the shared company payload returned by Create/Get/Update
+// (wrapped in per-RPC responses) and contained in List/GetAncestors/
+// GetDescendants list responses. Per buf STANDARD lint convention
+// (RPC_REQUEST_RESPONSE_UNIQUE).
+type CompanyData struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
 	Id                   string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Name                 string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
@@ -462,20 +466,20 @@ type CompanyResponse struct {
 	sizeCache            protoimpl.SizeCache
 }
 
-func (x *CompanyResponse) Reset() {
-	*x = CompanyResponse{}
+func (x *CompanyData) Reset() {
+	*x = CompanyData{}
 	mi := &file_platform_v1_company_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CompanyResponse) String() string {
+func (x *CompanyData) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CompanyResponse) ProtoMessage() {}
+func (*CompanyData) ProtoMessage() {}
 
-func (x *CompanyResponse) ProtoReflect() protoreflect.Message {
+func (x *CompanyData) ProtoReflect() protoreflect.Message {
 	mi := &file_platform_v1_company_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -487,98 +491,230 @@ func (x *CompanyResponse) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CompanyResponse.ProtoReflect.Descriptor instead.
-func (*CompanyResponse) Descriptor() ([]byte, []int) {
+// Deprecated: Use CompanyData.ProtoReflect.Descriptor instead.
+func (*CompanyData) Descriptor() ([]byte, []int) {
 	return file_platform_v1_company_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *CompanyResponse) GetId() string {
+func (x *CompanyData) GetId() string {
 	if x != nil {
 		return x.Id
 	}
 	return ""
 }
 
-func (x *CompanyResponse) GetName() string {
+func (x *CompanyData) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *CompanyResponse) GetSlug() string {
+func (x *CompanyData) GetSlug() string {
 	if x != nil {
 		return x.Slug
 	}
 	return ""
 }
 
-func (x *CompanyResponse) GetCompanyType() string {
+func (x *CompanyData) GetCompanyType() string {
 	if x != nil {
 		return x.CompanyType
 	}
 	return ""
 }
 
-func (x *CompanyResponse) GetParentCompanyId() string {
+func (x *CompanyData) GetParentCompanyId() string {
 	if x != nil && x.ParentCompanyId != nil {
 		return *x.ParentCompanyId
 	}
 	return ""
 }
 
-func (x *CompanyResponse) GetInheritedRoleCap() int32 {
+func (x *CompanyData) GetInheritedRoleCap() int32 {
 	if x != nil && x.InheritedRoleCap != nil {
 		return *x.InheritedRoleCap
 	}
 	return 0
 }
 
-func (x *CompanyResponse) GetInheritedAccessLevel() string {
+func (x *CompanyData) GetInheritedAccessLevel() string {
 	if x != nil && x.InheritedAccessLevel != nil {
 		return *x.InheritedAccessLevel
 	}
 	return ""
 }
 
-func (x *CompanyResponse) GetSettingsJson() string {
+func (x *CompanyData) GetSettingsJson() string {
 	if x != nil {
 		return x.SettingsJson
 	}
 	return ""
 }
 
-func (x *CompanyResponse) GetIsActive() bool {
+func (x *CompanyData) GetIsActive() bool {
 	if x != nil {
 		return x.IsActive
 	}
 	return false
 }
 
-func (x *CompanyResponse) GetCreatedAt() string {
+func (x *CompanyData) GetCreatedAt() string {
 	if x != nil {
 		return x.CreatedAt
 	}
 	return ""
 }
 
-func (x *CompanyResponse) GetUpdatedAt() string {
+func (x *CompanyData) GetUpdatedAt() string {
 	if x != nil {
 		return x.UpdatedAt
 	}
 	return ""
 }
 
+type CreateCompanyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Company       *CompanyData           `protobuf:"bytes,1,opt,name=company,proto3" json:"company,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateCompanyResponse) Reset() {
+	*x = CreateCompanyResponse{}
+	mi := &file_platform_v1_company_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateCompanyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateCompanyResponse) ProtoMessage() {}
+
+func (x *CreateCompanyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_company_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateCompanyResponse.ProtoReflect.Descriptor instead.
+func (*CreateCompanyResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_company_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CreateCompanyResponse) GetCompany() *CompanyData {
+	if x != nil {
+		return x.Company
+	}
+	return nil
+}
+
+type GetCompanyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Company       *CompanyData           `protobuf:"bytes,1,opt,name=company,proto3" json:"company,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCompanyResponse) Reset() {
+	*x = GetCompanyResponse{}
+	mi := &file_platform_v1_company_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCompanyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCompanyResponse) ProtoMessage() {}
+
+func (x *GetCompanyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_company_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCompanyResponse.ProtoReflect.Descriptor instead.
+func (*GetCompanyResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_company_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetCompanyResponse) GetCompany() *CompanyData {
+	if x != nil {
+		return x.Company
+	}
+	return nil
+}
+
+type UpdateCompanyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Company       *CompanyData           `protobuf:"bytes,1,opt,name=company,proto3" json:"company,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateCompanyResponse) Reset() {
+	*x = UpdateCompanyResponse{}
+	mi := &file_platform_v1_company_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateCompanyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateCompanyResponse) ProtoMessage() {}
+
+func (x *UpdateCompanyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_company_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateCompanyResponse.ProtoReflect.Descriptor instead.
+func (*UpdateCompanyResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_company_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UpdateCompanyResponse) GetCompany() *CompanyData {
+	if x != nil {
+		return x.Company
+	}
+	return nil
+}
+
 type ListCompaniesResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Companies     []*CompanyResponse     `protobuf:"bytes,1,rep,name=companies,proto3" json:"companies,omitempty"`
+	Companies     []*CompanyData         `protobuf:"bytes,1,rep,name=companies,proto3" json:"companies,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListCompaniesResponse) Reset() {
 	*x = ListCompaniesResponse{}
-	mi := &file_platform_v1_company_proto_msgTypes[9]
+	mi := &file_platform_v1_company_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -590,7 +726,7 @@ func (x *ListCompaniesResponse) String() string {
 func (*ListCompaniesResponse) ProtoMessage() {}
 
 func (x *ListCompaniesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_company_proto_msgTypes[9]
+	mi := &file_platform_v1_company_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -603,10 +739,98 @@ func (x *ListCompaniesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCompaniesResponse.ProtoReflect.Descriptor instead.
 func (*ListCompaniesResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_company_proto_rawDescGZIP(), []int{9}
+	return file_platform_v1_company_proto_rawDescGZIP(), []int{12}
 }
 
-func (x *ListCompaniesResponse) GetCompanies() []*CompanyResponse {
+func (x *ListCompaniesResponse) GetCompanies() []*CompanyData {
+	if x != nil {
+		return x.Companies
+	}
+	return nil
+}
+
+type GetAncestorsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Companies     []*CompanyData         `protobuf:"bytes,1,rep,name=companies,proto3" json:"companies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAncestorsResponse) Reset() {
+	*x = GetAncestorsResponse{}
+	mi := &file_platform_v1_company_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAncestorsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAncestorsResponse) ProtoMessage() {}
+
+func (x *GetAncestorsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_company_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAncestorsResponse.ProtoReflect.Descriptor instead.
+func (*GetAncestorsResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_company_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetAncestorsResponse) GetCompanies() []*CompanyData {
+	if x != nil {
+		return x.Companies
+	}
+	return nil
+}
+
+type GetDescendantsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Companies     []*CompanyData         `protobuf:"bytes,1,rep,name=companies,proto3" json:"companies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetDescendantsResponse) Reset() {
+	*x = GetDescendantsResponse{}
+	mi := &file_platform_v1_company_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetDescendantsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetDescendantsResponse) ProtoMessage() {}
+
+func (x *GetDescendantsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_company_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetDescendantsResponse.ProtoReflect.Descriptor instead.
+func (*GetDescendantsResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_company_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetDescendantsResponse) GetCompanies() []*CompanyData {
 	if x != nil {
 		return x.Companies
 	}
@@ -650,8 +874,8 @@ const file_platform_v1_company_proto_rawDesc = "" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\"C\n" +
 	"\x1cGetEffectiveSettingsResponse\x12#\n" +
-	"\rsettings_json\x18\x01 \x01(\tR\fsettingsJson\"\xd3\x03\n" +
-	"\x0fCompanyResponse\x12\x0e\n" +
+	"\rsettings_json\x18\x01 \x01(\tR\fsettingsJson\"\xcf\x03\n" +
+	"\vCompanyData\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04slug\x18\x03 \x01(\tR\x04slug\x12!\n" +
@@ -668,17 +892,27 @@ const file_platform_v1_company_proto_rawDesc = "" +
 	"updated_at\x18\v \x01(\tR\tupdatedAtB\x14\n" +
 	"\x12_parent_company_idB\x15\n" +
 	"\x13_inherited_role_capB\x19\n" +
-	"\x17_inherited_access_level\"S\n" +
-	"\x15ListCompaniesResponse\x12:\n" +
-	"\tcompanies\x18\x01 \x03(\v2\x1c.platform.v1.CompanyResponseR\tcompanies2\xf5\x04\n" +
-	"\x0eCompanyService\x12P\n" +
-	"\rCreateCompany\x12!.platform.v1.CreateCompanyRequest\x1a\x1c.platform.v1.CompanyResponse\x12J\n" +
+	"\x17_inherited_access_level\"K\n" +
+	"\x15CreateCompanyResponse\x122\n" +
+	"\acompany\x18\x01 \x01(\v2\x18.platform.v1.CompanyDataR\acompany\"H\n" +
+	"\x12GetCompanyResponse\x122\n" +
+	"\acompany\x18\x01 \x01(\v2\x18.platform.v1.CompanyDataR\acompany\"K\n" +
+	"\x15UpdateCompanyResponse\x122\n" +
+	"\acompany\x18\x01 \x01(\v2\x18.platform.v1.CompanyDataR\acompany\"O\n" +
+	"\x15ListCompaniesResponse\x126\n" +
+	"\tcompanies\x18\x01 \x03(\v2\x18.platform.v1.CompanyDataR\tcompanies\"N\n" +
+	"\x14GetAncestorsResponse\x126\n" +
+	"\tcompanies\x18\x01 \x03(\v2\x18.platform.v1.CompanyDataR\tcompanies\"P\n" +
+	"\x16GetDescendantsResponse\x126\n" +
+	"\tcompanies\x18\x01 \x03(\v2\x18.platform.v1.CompanyDataR\tcompanies2\x84\x05\n" +
+	"\x0eCompanyService\x12V\n" +
+	"\rCreateCompany\x12!.platform.v1.CreateCompanyRequest\x1a\".platform.v1.CreateCompanyResponse\x12M\n" +
 	"\n" +
-	"GetCompany\x12\x1e.platform.v1.GetCompanyRequest\x1a\x1c.platform.v1.CompanyResponse\x12P\n" +
-	"\rUpdateCompany\x12!.platform.v1.UpdateCompanyRequest\x1a\x1c.platform.v1.CompanyResponse\x12V\n" +
-	"\rListCompanies\x12!.platform.v1.ListCompaniesRequest\x1a\".platform.v1.ListCompaniesResponse\x12T\n" +
-	"\fGetAncestors\x12 .platform.v1.GetAncestorsRequest\x1a\".platform.v1.ListCompaniesResponse\x12X\n" +
-	"\x0eGetDescendants\x12\".platform.v1.GetDescendantsRequest\x1a\".platform.v1.ListCompaniesResponse\x12k\n" +
+	"GetCompany\x12\x1e.platform.v1.GetCompanyRequest\x1a\x1f.platform.v1.GetCompanyResponse\x12V\n" +
+	"\rUpdateCompany\x12!.platform.v1.UpdateCompanyRequest\x1a\".platform.v1.UpdateCompanyResponse\x12V\n" +
+	"\rListCompanies\x12!.platform.v1.ListCompaniesRequest\x1a\".platform.v1.ListCompaniesResponse\x12S\n" +
+	"\fGetAncestors\x12 .platform.v1.GetAncestorsRequest\x1a!.platform.v1.GetAncestorsResponse\x12Y\n" +
+	"\x0eGetDescendants\x12\".platform.v1.GetDescendantsRequest\x1a#.platform.v1.GetDescendantsResponse\x12k\n" +
 	"\x14GetEffectiveSettings\x12(.platform.v1.GetEffectiveSettingsRequest\x1a).platform.v1.GetEffectiveSettingsResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
@@ -693,7 +927,7 @@ func file_platform_v1_company_proto_rawDescGZIP() []byte {
 	return file_platform_v1_company_proto_rawDescData
 }
 
-var file_platform_v1_company_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_platform_v1_company_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_platform_v1_company_proto_goTypes = []any{
 	(*CreateCompanyRequest)(nil),         // 0: platform.v1.CreateCompanyRequest
 	(*GetCompanyRequest)(nil),            // 1: platform.v1.GetCompanyRequest
@@ -703,30 +937,40 @@ var file_platform_v1_company_proto_goTypes = []any{
 	(*GetDescendantsRequest)(nil),        // 5: platform.v1.GetDescendantsRequest
 	(*GetEffectiveSettingsRequest)(nil),  // 6: platform.v1.GetEffectiveSettingsRequest
 	(*GetEffectiveSettingsResponse)(nil), // 7: platform.v1.GetEffectiveSettingsResponse
-	(*CompanyResponse)(nil),              // 8: platform.v1.CompanyResponse
-	(*ListCompaniesResponse)(nil),        // 9: platform.v1.ListCompaniesResponse
+	(*CompanyData)(nil),                  // 8: platform.v1.CompanyData
+	(*CreateCompanyResponse)(nil),        // 9: platform.v1.CreateCompanyResponse
+	(*GetCompanyResponse)(nil),           // 10: platform.v1.GetCompanyResponse
+	(*UpdateCompanyResponse)(nil),        // 11: platform.v1.UpdateCompanyResponse
+	(*ListCompaniesResponse)(nil),        // 12: platform.v1.ListCompaniesResponse
+	(*GetAncestorsResponse)(nil),         // 13: platform.v1.GetAncestorsResponse
+	(*GetDescendantsResponse)(nil),       // 14: platform.v1.GetDescendantsResponse
 }
 var file_platform_v1_company_proto_depIdxs = []int32{
-	8, // 0: platform.v1.ListCompaniesResponse.companies:type_name -> platform.v1.CompanyResponse
-	0, // 1: platform.v1.CompanyService.CreateCompany:input_type -> platform.v1.CreateCompanyRequest
-	1, // 2: platform.v1.CompanyService.GetCompany:input_type -> platform.v1.GetCompanyRequest
-	2, // 3: platform.v1.CompanyService.UpdateCompany:input_type -> platform.v1.UpdateCompanyRequest
-	3, // 4: platform.v1.CompanyService.ListCompanies:input_type -> platform.v1.ListCompaniesRequest
-	4, // 5: platform.v1.CompanyService.GetAncestors:input_type -> platform.v1.GetAncestorsRequest
-	5, // 6: platform.v1.CompanyService.GetDescendants:input_type -> platform.v1.GetDescendantsRequest
-	6, // 7: platform.v1.CompanyService.GetEffectiveSettings:input_type -> platform.v1.GetEffectiveSettingsRequest
-	8, // 8: platform.v1.CompanyService.CreateCompany:output_type -> platform.v1.CompanyResponse
-	8, // 9: platform.v1.CompanyService.GetCompany:output_type -> platform.v1.CompanyResponse
-	8, // 10: platform.v1.CompanyService.UpdateCompany:output_type -> platform.v1.CompanyResponse
-	9, // 11: platform.v1.CompanyService.ListCompanies:output_type -> platform.v1.ListCompaniesResponse
-	9, // 12: platform.v1.CompanyService.GetAncestors:output_type -> platform.v1.ListCompaniesResponse
-	9, // 13: platform.v1.CompanyService.GetDescendants:output_type -> platform.v1.ListCompaniesResponse
-	7, // 14: platform.v1.CompanyService.GetEffectiveSettings:output_type -> platform.v1.GetEffectiveSettingsResponse
-	8, // [8:15] is the sub-list for method output_type
-	1, // [1:8] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	8,  // 0: platform.v1.CreateCompanyResponse.company:type_name -> platform.v1.CompanyData
+	8,  // 1: platform.v1.GetCompanyResponse.company:type_name -> platform.v1.CompanyData
+	8,  // 2: platform.v1.UpdateCompanyResponse.company:type_name -> platform.v1.CompanyData
+	8,  // 3: platform.v1.ListCompaniesResponse.companies:type_name -> platform.v1.CompanyData
+	8,  // 4: platform.v1.GetAncestorsResponse.companies:type_name -> platform.v1.CompanyData
+	8,  // 5: platform.v1.GetDescendantsResponse.companies:type_name -> platform.v1.CompanyData
+	0,  // 6: platform.v1.CompanyService.CreateCompany:input_type -> platform.v1.CreateCompanyRequest
+	1,  // 7: platform.v1.CompanyService.GetCompany:input_type -> platform.v1.GetCompanyRequest
+	2,  // 8: platform.v1.CompanyService.UpdateCompany:input_type -> platform.v1.UpdateCompanyRequest
+	3,  // 9: platform.v1.CompanyService.ListCompanies:input_type -> platform.v1.ListCompaniesRequest
+	4,  // 10: platform.v1.CompanyService.GetAncestors:input_type -> platform.v1.GetAncestorsRequest
+	5,  // 11: platform.v1.CompanyService.GetDescendants:input_type -> platform.v1.GetDescendantsRequest
+	6,  // 12: platform.v1.CompanyService.GetEffectiveSettings:input_type -> platform.v1.GetEffectiveSettingsRequest
+	9,  // 13: platform.v1.CompanyService.CreateCompany:output_type -> platform.v1.CreateCompanyResponse
+	10, // 14: platform.v1.CompanyService.GetCompany:output_type -> platform.v1.GetCompanyResponse
+	11, // 15: platform.v1.CompanyService.UpdateCompany:output_type -> platform.v1.UpdateCompanyResponse
+	12, // 16: platform.v1.CompanyService.ListCompanies:output_type -> platform.v1.ListCompaniesResponse
+	13, // 17: platform.v1.CompanyService.GetAncestors:output_type -> platform.v1.GetAncestorsResponse
+	14, // 18: platform.v1.CompanyService.GetDescendants:output_type -> platform.v1.GetDescendantsResponse
+	7,  // 19: platform.v1.CompanyService.GetEffectiveSettings:output_type -> platform.v1.GetEffectiveSettingsResponse
+	13, // [13:20] is the sub-list for method output_type
+	6,  // [6:13] is the sub-list for method input_type
+	6,  // [6:6] is the sub-list for extension type_name
+	6,  // [6:6] is the sub-list for extension extendee
+	0,  // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_company_proto_init() }
@@ -743,7 +987,7 @@ func file_platform_v1_company_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_company_proto_rawDesc), len(file_platform_v1_company_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

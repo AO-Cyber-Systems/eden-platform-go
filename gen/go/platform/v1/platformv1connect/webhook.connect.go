@@ -49,7 +49,7 @@ const (
 
 // WebhookServiceClient is a client for the platform.v1.WebhookService service.
 type WebhookServiceClient interface {
-	RegisterWebhook(context.Context, *connect.Request[v1.RegisterWebhookRequest]) (*connect.Response[v1.WebhookResponse], error)
+	RegisterWebhook(context.Context, *connect.Request[v1.RegisterWebhookRequest]) (*connect.Response[v1.RegisterWebhookResponse], error)
 	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
 	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
 	ListDeliveries(context.Context, *connect.Request[v1.ListDeliveriesRequest]) (*connect.Response[v1.ListDeliveriesResponse], error)
@@ -66,7 +66,7 @@ func NewWebhookServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 	baseURL = strings.TrimRight(baseURL, "/")
 	webhookServiceMethods := v1.File_platform_v1_webhook_proto.Services().ByName("WebhookService").Methods()
 	return &webhookServiceClient{
-		registerWebhook: connect.NewClient[v1.RegisterWebhookRequest, v1.WebhookResponse](
+		registerWebhook: connect.NewClient[v1.RegisterWebhookRequest, v1.RegisterWebhookResponse](
 			httpClient,
 			baseURL+WebhookServiceRegisterWebhookProcedure,
 			connect.WithSchema(webhookServiceMethods.ByName("RegisterWebhook")),
@@ -95,14 +95,14 @@ func NewWebhookServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // webhookServiceClient implements WebhookServiceClient.
 type webhookServiceClient struct {
-	registerWebhook *connect.Client[v1.RegisterWebhookRequest, v1.WebhookResponse]
+	registerWebhook *connect.Client[v1.RegisterWebhookRequest, v1.RegisterWebhookResponse]
 	listWebhooks    *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
 	deleteWebhook   *connect.Client[v1.DeleteWebhookRequest, v1.DeleteWebhookResponse]
 	listDeliveries  *connect.Client[v1.ListDeliveriesRequest, v1.ListDeliveriesResponse]
 }
 
 // RegisterWebhook calls platform.v1.WebhookService.RegisterWebhook.
-func (c *webhookServiceClient) RegisterWebhook(ctx context.Context, req *connect.Request[v1.RegisterWebhookRequest]) (*connect.Response[v1.WebhookResponse], error) {
+func (c *webhookServiceClient) RegisterWebhook(ctx context.Context, req *connect.Request[v1.RegisterWebhookRequest]) (*connect.Response[v1.RegisterWebhookResponse], error) {
 	return c.registerWebhook.CallUnary(ctx, req)
 }
 
@@ -123,7 +123,7 @@ func (c *webhookServiceClient) ListDeliveries(ctx context.Context, req *connect.
 
 // WebhookServiceHandler is an implementation of the platform.v1.WebhookService service.
 type WebhookServiceHandler interface {
-	RegisterWebhook(context.Context, *connect.Request[v1.RegisterWebhookRequest]) (*connect.Response[v1.WebhookResponse], error)
+	RegisterWebhook(context.Context, *connect.Request[v1.RegisterWebhookRequest]) (*connect.Response[v1.RegisterWebhookResponse], error)
 	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
 	DeleteWebhook(context.Context, *connect.Request[v1.DeleteWebhookRequest]) (*connect.Response[v1.DeleteWebhookResponse], error)
 	ListDeliveries(context.Context, *connect.Request[v1.ListDeliveriesRequest]) (*connect.Response[v1.ListDeliveriesResponse], error)
@@ -179,7 +179,7 @@ func NewWebhookServiceHandler(svc WebhookServiceHandler, opts ...connect.Handler
 // UnimplementedWebhookServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedWebhookServiceHandler struct{}
 
-func (UnimplementedWebhookServiceHandler) RegisterWebhook(context.Context, *connect.Request[v1.RegisterWebhookRequest]) (*connect.Response[v1.WebhookResponse], error) {
+func (UnimplementedWebhookServiceHandler) RegisterWebhook(context.Context, *connect.Request[v1.RegisterWebhookRequest]) (*connect.Response[v1.RegisterWebhookResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.WebhookService.RegisterWebhook is not implemented"))
 }
 

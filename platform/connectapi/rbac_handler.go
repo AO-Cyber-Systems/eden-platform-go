@@ -37,7 +37,7 @@ func (h *RBACHandler) ListRoles(ctx context.Context, req *connect.Request[platfo
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	protoRoles := make([]*platformv1.RoleResponse, 0, len(roles))
+	protoRoles := make([]*platformv1.RoleData, 0, len(roles))
 	for _, role := range roles {
 		protoRoles = append(protoRoles, roleToProto(role))
 	}
@@ -45,7 +45,7 @@ func (h *RBACHandler) ListRoles(ctx context.Context, req *connect.Request[platfo
 	return connect.NewResponse(&platformv1.ListRolesResponse{Roles: protoRoles}), nil
 }
 
-func (h *RBACHandler) CreateRole(ctx context.Context, req *connect.Request[platformv1.CreateRoleRequest]) (*connect.Response[platformv1.RoleResponse], error) {
+func (h *RBACHandler) CreateRole(ctx context.Context, req *connect.Request[platformv1.CreateRoleRequest]) (*connect.Response[platformv1.CreateRoleResponse], error) {
 	companyID, err := uuid.Parse(req.Msg.GetCompanyId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -65,7 +65,7 @@ func (h *RBACHandler) CreateRole(ctx context.Context, req *connect.Request[platf
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	return connect.NewResponse(roleToProto(role)), nil
+	return connect.NewResponse(&platformv1.CreateRoleResponse{Role: roleToProto(role)}), nil
 }
 
 func (h *RBACHandler) AssignRole(ctx context.Context, req *connect.Request[platformv1.AssignRoleRequest]) (*connect.Response[platformv1.AssignRoleResponse], error) {
@@ -229,8 +229,8 @@ func (h *RBACHandler) ResolveMembership(ctx context.Context, req *connect.Reques
 	}), nil
 }
 
-func roleToProto(role rbac.Role) *platformv1.RoleResponse {
-	return &platformv1.RoleResponse{
+func roleToProto(role rbac.Role) *platformv1.RoleData {
+	return &platformv1.RoleData{
 		Id:          role.ID.String(),
 		Name:        role.Name,
 		Description: role.Description,

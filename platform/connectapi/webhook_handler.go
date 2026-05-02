@@ -31,7 +31,7 @@ func NewWebhookHandler(service *webhook.Service, store webhook.WebhookStore, que
 	return &WebhookHandler{service: service, store: store, deliveryQuerier: querier}
 }
 
-func (h *WebhookHandler) RegisterWebhook(ctx context.Context, req *connect.Request[platformv1.RegisterWebhookRequest]) (*connect.Response[platformv1.WebhookResponse], error) {
+func (h *WebhookHandler) RegisterWebhook(ctx context.Context, req *connect.Request[platformv1.RegisterWebhookRequest]) (*connect.Response[platformv1.RegisterWebhookResponse], error) {
 	companyID, err := uuid.Parse(req.Msg.GetCompanyId())
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
@@ -42,7 +42,7 @@ func (h *WebhookHandler) RegisterWebhook(ctx context.Context, req *connect.Reque
 		return nil, connect.NewError(connect.CodeInvalidArgument, err)
 	}
 
-	return connect.NewResponse(webhookToProto(wh)), nil
+	return connect.NewResponse(&platformv1.RegisterWebhookResponse{Webhook: webhookToProto(wh)}), nil
 }
 
 func (h *WebhookHandler) ListWebhooks(ctx context.Context, req *connect.Request[platformv1.ListWebhooksRequest]) (*connect.Response[platformv1.ListWebhooksResponse], error) {
@@ -56,7 +56,7 @@ func (h *WebhookHandler) ListWebhooks(ctx context.Context, req *connect.Request[
 		return nil, connect.NewError(connect.CodeInternal, err)
 	}
 
-	protoWebhooks := make([]*platformv1.WebhookResponse, 0, len(webhooks))
+	protoWebhooks := make([]*platformv1.WebhookData, 0, len(webhooks))
 	for _, wh := range webhooks {
 		protoWebhooks = append(protoWebhooks, webhookToProto(wh))
 	}
@@ -113,8 +113,8 @@ func (h *WebhookHandler) ListDeliveries(ctx context.Context, req *connect.Reques
 	return connect.NewResponse(&platformv1.ListDeliveriesResponse{Deliveries: protoDeliveries}), nil
 }
 
-func webhookToProto(wh webhook.Webhook) *platformv1.WebhookResponse {
-	return &platformv1.WebhookResponse{
+func webhookToProto(wh webhook.Webhook) *platformv1.WebhookData {
+	return &platformv1.WebhookData{
 		Id:        wh.ID.String(),
 		CompanyId: wh.CompanyID.String(),
 		Url:       wh.URL,

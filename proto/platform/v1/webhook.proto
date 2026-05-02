@@ -6,7 +6,7 @@ option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/
 
 // WebhookService manages webhook subscriptions and deliveries.
 service WebhookService {
-  rpc RegisterWebhook(RegisterWebhookRequest) returns (WebhookResponse);
+  rpc RegisterWebhook(RegisterWebhookRequest) returns (RegisterWebhookResponse);
   rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse);
   rpc DeleteWebhook(DeleteWebhookRequest) returns (DeleteWebhookResponse);
   rpc ListDeliveries(ListDeliveriesRequest) returns (ListDeliveriesResponse);
@@ -18,7 +18,10 @@ message RegisterWebhookRequest {
   repeated string events = 3;
 }
 
-message WebhookResponse {
+// WebhookData is the shared webhook payload wrapped by RegisterWebhookResponse
+// and contained in ListWebhooksResponse. Per buf STANDARD lint convention
+// (RPC_REQUEST_RESPONSE_UNIQUE).
+message WebhookData {
   string id = 1;
   string company_id = 2;
   string url = 3;
@@ -28,12 +31,16 @@ message WebhookResponse {
   string created_at = 7;
 }
 
+message RegisterWebhookResponse {
+  WebhookData webhook = 1;
+}
+
 message ListWebhooksRequest {
   string company_id = 1;
 }
 
 message ListWebhooksResponse {
-  repeated WebhookResponse webhooks = 1;
+  repeated WebhookData webhooks = 1;
 }
 
 message DeleteWebhookRequest {
