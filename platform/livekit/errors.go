@@ -1,6 +1,11 @@
 package livekit
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/google/uuid"
+)
 
 // Domain errors. Consumers can errors.Is against these for stable handling.
 var (
@@ -15,3 +20,15 @@ var (
 	ErrUnauthorized      = errors.New("livekit: not authorized for this operation")
 	ErrConfig            = errors.New("livekit: invalid configuration")
 )
+
+// errConfig wraps ErrConfig with a contextual message.
+func errConfig(msg string) error { return fmt.Errorf("%w: %s", ErrConfig, msg) }
+
+// parseUUID is a thin wrapper around uuid.Parse that returns a typed error.
+func parseUUID(s string) (uuid.UUID, error) {
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse uuid %q: %w", s, err)
+	}
+	return id, nil
+}
