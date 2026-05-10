@@ -241,6 +241,24 @@ func (m *JWTManager) ValidateShortLivedToken(tokenStr string) (string, error) {
 	return claims.Subject, nil
 }
 
+// PublicKeys returns a snapshot of the kid → public-key map. The returned
+// map is a fresh copy so callers can iterate it without holding internal
+// JWTManager state. Used by the AO ID JWKS endpoint to enumerate keys
+// for federation.
+func (m *JWTManager) PublicKeys() map[string]*mldsa65.PublicKey {
+	out := make(map[string]*mldsa65.PublicKey, len(m.keys))
+	for kid, entry := range m.keys {
+		out[kid] = entry.PublicKey
+	}
+	return out
+}
+
+// ActiveKID returns the kid currently used for signing new tokens. JWKS
+// consumers may flag this kid as the "preferred" verification key.
+func (m *JWTManager) ActiveKID() string {
+	return m.activeKID
+}
+
 // GenerateKeyPair generates a new ML-DSA-65 key pair.
 func GenerateKeyPair() (*mldsa65.PublicKey, *mldsa65.PrivateKey, error) {
 	return mldsa65.GenerateKey(rand.Reader)
