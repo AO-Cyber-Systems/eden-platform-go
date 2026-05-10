@@ -1,4 +1,4 @@
-# aoid — AO ID identity service (scaffold)
+# aoid — AO ID identity service
 
 `aoid` is the standalone Go service that hosts the AO Cyber portfolio's
 identity stack. It composes three platform packages —
@@ -6,11 +6,11 @@ identity stack. It composes three platform packages —
 and [`platform/consent`](../../platform/consent) — behind a single deployable
 HTTP service that products federate into.
 
-This README covers Objective 29: the **scaffolding** milestone. The
-service runs, its OIDC discovery document and JWKS endpoint are reachable
-and federation tooling can probe them, but token issuance itself is
-deliberately **off** until Objective 30 turns it on. The `/oauth2/*`
-endpoints reply 503 with a documented error body in the meantime.
+As of Objective 30 the service is a **working OIDC issuer**: the
+authorization-code + PKCE flow lives at `/oauth2/authorize`, token
+issuance + refresh rotation at `/oauth2/token`, and bearer-token user
+claims at `/oauth2/userinfo`. AODex is registered as the pilot client.
+The discovery doc reports `service_status: "active"`.
 
 ## Service location
 
@@ -69,16 +69,55 @@ NEVER do this in production.
 |---|---|---|
 | `/healthz` | 200 / 503 | JSON health document; 503 when any registered component is unhealthy |
 | `/readyz` | 200 / 503 | 200 once the listener is up; 503 during startup or shutdown |
-| `/.well-known/openid-configuration` | 200 | OIDC discovery doc with `service_status: "scaffold"` |
+| `/.well-known/openid-configuration` | 200 | OIDC discovery doc with `service_status: "active"` |
 | `/.well-known/jwks.json` | 200 | JSON Web Key Set — one entry per registered ML-DSA-65 key |
-| `/oauth2/token` | 503 | `error: issuer_not_active` until objective 30 |
-| `/oauth2/authorize` | 503 | same |
-| `/oauth2/userinfo` | 503 | same |
+| `/oauth2/authorize` | 200 / 302 | OIDC authorization endpoint (auth-code + PKCE flow); renders the AO ID login form when the session is unauthenticated |
+| `/oauth2/token` | 200 | OIDC token endpoint (`authorization_code` + `refresh_token` grants) |
+| `/oauth2/userinfo` | 200 | OIDC userinfo endpoint — Bearer access token in `Authorization` header |
 
-The discovery doc deliberately returns 200 rather than 503: federation
-libraries probe metadata up front and we want them to find a parseable
-document. The non-standard `service_status` field signals the situation.
-The `/oauth2/*` endpoints are where relying parties get the truth.
+### OIDC issuer flows
+
+#### Authorization code + PKCE (curl walk-through)
+
+```bash
+# 1. Build a PKCE pair.
+VERIFIER=$(openssl rand -base64 32 | tr -d '=+/' | cut -c1-43)
+CHALLENGE=$(printf %s "$VERIFIER" | openssl dgst -sha256 -binary | openssl base64 -A | tr -d '=' | tr '/+' '_-')
+
+# 2. Hit /oauth2/authorize. With no AO ID session this renders an HTML
+#    login form whose POST submits back to /oauth2/authorize with the
+#    same params + email/password.
+curl -s "http://localhost:8090/oauth2/authorize?response_type=code&client_id=aodex-pilot&redirect_uri=http://localhost:8080/auth/aoid/callback&scope=openid+email+profile+offline_access&state=s1&nonce=n1&code_challenge=$CHALLENGE&code_challenge_method=S256"
+
+# 3. Submit credentials. 302 to redirect_uri with ?code=...
+curl -s -i -X POST "http://localhost:8090/oauth2/authorize"   -d "aoid_login=1"   -d "response_type=code"   -d "client_id=aodex-pilot"   -d "redirect_uri=http://localhost:8080/auth/aoid/callback"   -d "scope=openid email profile offline_access"   -d "state=s1"   -d "nonce=n1"   -d "code_challenge=$CHALLENGE"   -d "code_challenge_method=S256"   -d "email=parent@aoid.local"   -d "password=fixtures-pw-1234"
+
+# 4. Exchange the code for tokens.
+CODE=...   # from step 3 redirect
+curl -s -X POST "http://localhost:8090/oauth2/token"   -u "aodex-pilot:dev-aodex-client-secret-do-not-use-in-prod"   -d "grant_type=authorization_code"   -d "code=$CODE"   -d "redirect_uri=http://localhost:8080/auth/aoid/callback"   -d "code_verifier=$VERIFIER"
+
+# 5. Use the access token at /userinfo.
+ACCESS=...  # from step 4 response
+curl -s "http://localhost:8090/oauth2/userinfo" -H "Authorization: Bearer $ACCESS"
+```
+
+#### Refresh rotation
+
+```bash
+REFRESH=...  # from step 4 response
+curl -s -X POST "http://localhost:8090/oauth2/token"   -u "aodex-pilot:dev-aodex-client-secret-do-not-use-in-prod"   -d "grant_type=refresh_token"   -d "refresh_token=$REFRESH"
+```
+
+The old refresh token is single-use; a second redemption returns `400
+invalid_grant`.
+
+### Client registration
+
+For Phase A the AODex client (`client_id: aodex-pilot`) is seeded at
+boot from `AOID_AODEX_CLIENT_SECRET` + `AOID_AODEX_REDIRECT_URIS`. The
+in-memory `internal/aoid/clients.MemoryRegistry` is the source of
+truth. A pgstore-backed registry + admin API for additional clients
+lands in Objective 31.
 
 ## JWKS rotation
 
@@ -97,19 +136,20 @@ Old kids stay in JWKS as long as their seed file is on disk so existing
 tokens still verify; rotate them out of the map only after the relevant
 token expiry has passed.
 
-## Hand-off to objective 30
+## Hand-off to objective 31
 
-Objective 30 ("AO ID OIDC Issuer + AODex pilot") activates token
-issuance:
+Objective 31 ("AO ID Federation + per-product migrations") covers:
 
-- Replaces the `IssuerNotActive` handlers on `/oauth2/{token,authorize,userinfo}`
-  with real OIDC code-flow + refresh-token implementations.
-- Flips `service_status` in the discovery doc to `"active"`.
-- Adds the AODex pilot migration so AODex's existing `internal/auth`
-  delegates verification to AO ID JWTs.
-
-Federation (SAML SP imports, SCIM provisioning, decommissioning per-product
-session stores) is Objective 31.
+- Federated identity: SAML SP imports for customer Okta / Azure AD,
+  SAML IdP-mode for enterprise tenants, SCIM provisioning.
+- pgstore-backed client registry + admin Connect API for client CRUD.
+- Per-product migrations beyond AODex (AOSentry, AOFamily, AOCodex
+  marketing apps). For each, the same OIDC-client-of-AO-ID pattern
+  AODex follows in Obj 30 Phase B applies.
+- Consent UI surfaced at `/oauth2/authorize` for non-pilot clients.
+- MFA on the AO ID login page (currently password-only; underlying
+  `platform/auth` already supports WebAuthn / TOTP / email-OTP, but
+  the AO ID login template doesn't expose them yet).
 
 ## Testing
 
