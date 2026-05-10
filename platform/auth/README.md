@@ -60,6 +60,64 @@ If you're still calling `aodex-go/internal/auth.*` directly, switch to
 `github.com/aocybersystems/eden-platform-go/platform/auth` (or one of the
 sub-packages above) at your earliest convenience.
 
+## Household-aware claims (Obj 24a)
+
+`platform/auth.Claims` hosts two orthogonal identity axes:
+
+| Axis      | Fields                                          | Used by                          |
+|-----------|-------------------------------------------------|----------------------------------|
+| B2B       | `UserID`, `CompanyID`, `CompanyIDs`, `Role`, `RoleLevel` | AODex, eden-biz, AOSentry         |
+| Household | `UserID`, `HouseholdID`, `ChildID`, `ChildMode` | AOFamily-AI/Browser/Connect, Eden Family |
+
+The household fields are tagged `omitempty`, so B2B tokens carry an
+identical wire format pre/post Obj 24a — no existing consumer is affected.
+
+### Issuance
+
+| Method                                              | Use case                          |
+|-----------------------------------------------------|-----------------------------------|
+| `JWTManager.CreateAccessToken(userID, companyID, role, roleLevel, companyIDs)` | B2B token (existing path) |
+| `JWTManager.CreateHouseholdAccessToken(userID, householdID, childID, childMode)` | Household / parental-control token |
+
+Both methods sign with the same ML-DSA-65 key. AOFamily backends inherit
+key rotation, JWKS publication, and kid headers for free — no separate
+signing path.
+
+### Require helpers
+
+`RequireHousehold(ctx) (uuid.UUID, error)` — returns the household UUID
+or `ErrNoHousehold` (HTTP 401).
+
+`RequireParentMode(ctx) (*Claims, error)` — succeeds when `ChildMode==false`.
+Returns `ErrNotParentMode` (HTTP 403) when in child mode, or
+`ErrNoHousehold` when no claims are present. B2B claims (ChildMode defaults
+to false) pass through — this helper enforces "not in child mode," not
+"has household." Pair with `RequireHousehold` when both invariants matter.
+
+`RequireChildMode(ctx) (*Claims, error)` — succeeds only when
+`ChildMode==true`. Use the returned `Claims` to read `ChildID` for the
+active child identity.
+
+```go
+// Parent-only endpoint (e.g., adding a child account):
+func (h *Handler) AddChild(w http.ResponseWriter, r *http.Request) {
+    householdID, err := platformauth.RequireHousehold(r.Context())
+    if err != nil { writeError(w, 401, "missing household"); return }
+    if _, err := platformauth.RequireParentMode(r.Context()); err != nil {
+        writeError(w, 403, "parent mode required")
+        return
+    }
+    // ... add child to householdID
+}
+
+// Child-only endpoint (e.g., kid-safe AI chat):
+func (h *Handler) Chat(w http.ResponseWriter, r *http.Request) {
+    claims, err := platformauth.RequireChildMode(r.Context())
+    if err != nil { writeError(w, 403, "child mode required"); return }
+    // claims.ChildID is the active child's UUID
+}
+```
+
 ## Rollback
 
 See [ROLLBACK.md](./ROLLBACK.md) for the documented procedure if anything

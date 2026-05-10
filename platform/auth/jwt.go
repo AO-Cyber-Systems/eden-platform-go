@@ -12,6 +12,19 @@ import (
 )
 
 // Claims represents the JWT claims included in access tokens.
+//
+// The Claims struct hosts two orthogonal identity axes:
+//
+//  1. B2B axis (UserID + CompanyID/CompanyIDs + Role + RoleLevel): used by
+//     AODex / eden-biz / AOSentry-style consumers where principals belong to
+//     companies and have role-based access levels.
+//  2. Household axis (HouseholdID + ChildID + ChildMode): used by AOFamily /
+//     Eden Family-style consumers where principals belong to households and
+//     parental controls gate restricted-mode sessions.
+//
+// Household fields are tagged `omitempty` so B2B tokens carry an identical
+// wire format to the pre-24a era — adding them did NOT break any existing
+// consumer. Populate them only via JWTManager.CreateHouseholdAccessToken.
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID     string   `json:"uid"`
@@ -19,6 +32,16 @@ type Claims struct {
 	CompanyIDs []string `json:"cids,omitempty"`
 	Role       string   `json:"role"`
 	RoleLevel  int      `json:"rlvl"`
+
+	// Household-aware claims (Obj 24a). All optional so B2B consumers see
+	// no wire-format change. Populated only via CreateHouseholdAccessToken
+	// when a household-shaped product (AOFamily, Eden Family) issues a
+	// token. HouseholdID links to a row in platform/household;
+	// ChildID/ChildMode together control parental-control middleware
+	// enforcement via RequireParentMode / RequireChildMode.
+	HouseholdID string `json:"hid,omitempty"`
+	ChildID     string `json:"child_id,omitempty"`
+	ChildMode   bool   `json:"child_mode,omitempty"`
 }
 
 // KeyEntry holds an ML-DSA-65 key pair identified by a kid (Key ID).
@@ -165,6 +188,38 @@ func (m *JWTManager) CreateAccessToken(userID, companyID, role string, roleLevel
 		CompanyIDs: companyIDs,
 		Role:       role,
 		RoleLevel:  roleLevel,
+	}
+	token := jwt.NewWithClaims(signingMethodMLDSA65, claims)
+	token.Header["kid"] = m.activeKID
+	return token.SignedString(m.keys[m.activeKID].PrivateKey)
+}
+
+// CreateHouseholdAccessToken creates a signed ML-DSA-65 access token scoped
+// to a household. childID and childMode are optional — pass "" / false for
+// a parent-mode token.
+//
+// B2B claims (CompanyID, Role, RoleLevel, CompanyIDs) are left zero-valued
+// — they are orthogonal axes. Consumers that need to mix the two axes (rare)
+// can construct a *Claims directly and sign via the lower-level jwt library,
+// but the supported path is one or the other.
+//
+// Use this method from AOFamily-AI / AOFamily-Browser / AOFamily-Connect /
+// Eden Family backends when issuing tokens for a family session. Use
+// CreateAccessToken for the existing B2B issuance path.
+func (m *JWTManager) CreateHouseholdAccessToken(userID, householdID, childID string, childMode bool) (string, error) {
+	now := time.Now()
+	claims := &Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
+			Issuer:    m.config.Issuer,
+			ExpiresAt: jwt.NewNumericDate(now.Add(m.config.AccessTokenExpiry)),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ID:        generateJTI(),
+		},
+		UserID:      userID,
+		HouseholdID: householdID,
+		ChildID:     childID,
+		ChildMode:   childMode,
 	}
 	token := jwt.NewWithClaims(signingMethodMLDSA65, claims)
 	token.Header["kid"] = m.activeKID

@@ -2,8 +2,11 @@ package auth
 
 import (
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -412,6 +415,183 @@ func TestJWTKeyRotation_UnknownKID(t *testing.T) {
 	// Verify the error message contains "unknown kid".
 	if msg := err.Error(); len(msg) == 0 {
 		t.Error("expected non-empty error message")
+	}
+}
+
+// TestJWTManager_HouseholdRoundTrip asserts that a household-scoped token
+// (Obj 24a extension) round-trips through Validate without losing the
+// new optional fields.
+func TestJWTManager_HouseholdRoundTrip(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	const (
+		userID      = "user-parent-1"
+		householdID = "00000000-0000-0000-0000-0000000000aa"
+		childID     = "00000000-0000-0000-0000-0000000000bb"
+	)
+
+	t.Run("parent_mode", func(t *testing.T) {
+		token, err := manager.CreateHouseholdAccessToken(userID, householdID, "", false)
+		if err != nil {
+			t.Fatalf("CreateHouseholdAccessToken parent-mode: %v", err)
+		}
+		claims, err := manager.ValidateAccessToken(token)
+		if err != nil {
+			t.Fatalf("ValidateAccessToken parent-mode: %v", err)
+		}
+		if claims.UserID != userID {
+			t.Errorf("UserID = %q, want %q", claims.UserID, userID)
+		}
+		if claims.HouseholdID != householdID {
+			t.Errorf("HouseholdID = %q, want %q", claims.HouseholdID, householdID)
+		}
+		if claims.ChildID != "" {
+			t.Errorf("ChildID = %q, want empty", claims.ChildID)
+		}
+		if claims.ChildMode {
+			t.Errorf("ChildMode = true, want false (parent-mode token)")
+		}
+		// B2B fields must be zero.
+		if claims.CompanyID != "" {
+			t.Errorf("CompanyID = %q, want empty (household token)", claims.CompanyID)
+		}
+		if claims.Role != "" {
+			t.Errorf("Role = %q, want empty (household token)", claims.Role)
+		}
+	})
+
+	t.Run("child_mode", func(t *testing.T) {
+		token, err := manager.CreateHouseholdAccessToken(userID, householdID, childID, true)
+		if err != nil {
+			t.Fatalf("CreateHouseholdAccessToken child-mode: %v", err)
+		}
+		claims, err := manager.ValidateAccessToken(token)
+		if err != nil {
+			t.Fatalf("ValidateAccessToken child-mode: %v", err)
+		}
+		if claims.HouseholdID != householdID {
+			t.Errorf("HouseholdID = %q, want %q", claims.HouseholdID, householdID)
+		}
+		if claims.ChildID != childID {
+			t.Errorf("ChildID = %q, want %q", claims.ChildID, childID)
+		}
+		if !claims.ChildMode {
+			t.Errorf("ChildMode = false, want true (child-mode token)")
+		}
+	})
+}
+
+// decodeJWTPayload returns the JSON map of a JWT payload (the middle segment).
+// Used by the backward-compat wire-format tests.
+func decodeJWTPayload(t *testing.T, token string) map[string]any {
+	t.Helper()
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		t.Fatalf("unexpected token segment count: %d", len(parts))
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		t.Fatalf("decode payload: %v", err)
+	}
+	var m map[string]any
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	return m
+}
+
+// TestJWTManager_BackwardCompatWireFormat is the critical regression guard.
+// A B2B token (issued via CreateAccessToken) must NOT carry the new
+// household fields on the wire — they're optional, omitempty, and absent
+// when zero-valued. This protects every existing B2B consumer from a
+// surprise field appearing in their claims.
+func TestJWTManager_BackwardCompatWireFormat(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	token, err := manager.CreateAccessToken("user-1", "company-1", "admin", 80, []string{"company-1", "company-2"})
+	if err != nil {
+		t.Fatalf("CreateAccessToken: %v", err)
+	}
+
+	payload := decodeJWTPayload(t, token)
+
+	// New household-axis fields MUST be absent from the wire format for
+	// B2B-issued tokens.
+	for _, forbidden := range []string{"hid", "child_id", "child_mode"} {
+		if _, present := payload[forbidden]; present {
+			t.Errorf("B2B token payload unexpectedly contains %q: %v", forbidden, payload[forbidden])
+		}
+	}
+
+	// Existing B2B fields MUST still be present.
+	for _, required := range []string{"uid", "cid", "role", "rlvl"} {
+		if _, present := payload[required]; !present {
+			t.Errorf("B2B token payload missing required field %q", required)
+		}
+	}
+}
+
+// TestJWTManager_HouseholdClaimsOmitEmpty ensures that issuing a household
+// token with empty optional fields (parent-mode, no childID) does NOT
+// serialize them to the wire — keeps tokens lean and avoids surprising
+// downstream consumers that don't know about child-mode.
+func TestJWTManager_HouseholdClaimsOmitEmpty(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	token, err := manager.CreateHouseholdAccessToken("user-1", "00000000-0000-0000-0000-0000000000aa", "", false)
+	if err != nil {
+		t.Fatalf("CreateHouseholdAccessToken: %v", err)
+	}
+
+	payload := decodeJWTPayload(t, token)
+
+	// HouseholdID is set; should be present.
+	if _, ok := payload["hid"]; !ok {
+		t.Errorf("parent-mode household token missing 'hid' field")
+	}
+	// ChildID is empty; should be absent (omitempty).
+	if v, ok := payload["child_id"]; ok {
+		t.Errorf("parent-mode household token unexpectedly contains 'child_id' = %v", v)
+	}
+	// ChildMode is false; should be absent (omitempty).
+	if v, ok := payload["child_mode"]; ok {
+		t.Errorf("parent-mode household token unexpectedly contains 'child_mode' = %v", v)
+	}
+}
+
+// TestJWTManager_LegacyB2BTokenStillValid ensures that the existing
+// B2B issuance/validation path produces the same Claims shape as before
+// when household fields are unused — zero-valued.
+func TestJWTManager_LegacyB2BTokenStillValid(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	token, err := manager.CreateAccessToken("user-1", "company-1", "admin", 80, nil)
+	if err != nil {
+		t.Fatalf("CreateAccessToken: %v", err)
+	}
+	claims, err := manager.ValidateAccessToken(token)
+	if err != nil {
+		t.Fatalf("ValidateAccessToken: %v", err)
+	}
+
+	// B2B fields populated.
+	if claims.UserID != "user-1" {
+		t.Errorf("UserID = %q, want %q", claims.UserID, "user-1")
+	}
+	if claims.CompanyID != "company-1" {
+		t.Errorf("CompanyID = %q, want %q", claims.CompanyID, "company-1")
+	}
+
+	// Household fields zero-valued — never set, never populated by
+	// CreateAccessToken.
+	if claims.HouseholdID != "" {
+		t.Errorf("HouseholdID = %q, want empty for B2B token", claims.HouseholdID)
+	}
+	if claims.ChildID != "" {
+		t.Errorf("ChildID = %q, want empty for B2B token", claims.ChildID)
+	}
+	if claims.ChildMode {
+		t.Errorf("ChildMode = true, want false for B2B token")
 	}
 }
 
