@@ -9,27 +9,34 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aocybersystems/eden-platform-go/internal/aoid/composition"
 	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
 	"github.com/aocybersystems/eden-platform-go/internal/aoid/discovery"
+	"github.com/aocybersystems/eden-platform-go/internal/aoid/fixtures"
 	"github.com/aocybersystems/eden-platform-go/internal/aoid/jwks"
 	"github.com/aocybersystems/eden-platform-go/internal/aoid/server"
 )
 
-// TestBootService_EndpointSurface boots the full aoid HTTP service via
-// the production wiring (buildJWTManager + AddRoutes) and asserts every
-// well-known + issuer-stub endpoint replies as documented. This is the
-// integration check for 29-02 — that the boot code mounts the routes
-// correctly, not just that each handler unit works in isolation.
-func TestBootService_EndpointSurface(t *testing.T) {
+// TestBootService_FullStack boots the full aoid HTTP service via the
+// production wiring (composition + fixtures + AddRoutes) and asserts
+// every well-known + issuer-stub endpoint replies as documented. This
+// is the integration check for 29-03 that the boot code threads
+// composition.Services through the routes correctly.
+func TestBootService_FullStack(t *testing.T) {
 	cfg := &config.Config{
 		ListenAddr:      ":0",
 		Issuer:          "http://aoid-boot.test",
 		ShutdownTimeout: time.Second,
 	}
 
-	jm, err := buildJWTManager(cfg)
+	svcs, err := composition.BuildInMemory(cfg)
 	if err != nil {
-		t.Fatalf("buildJWTManager: %v", err)
+		t.Fatalf("BuildInMemory: %v", err)
+	}
+	t.Cleanup(func() { _ = svcs.Close() })
+
+	if _, err := fixtures.Seed(context.Background(), svcs); err != nil {
+		t.Fatalf("Seed: %v", err)
 	}
 
 	srv := server.New(cfg)
@@ -38,7 +45,7 @@ func TestBootService_EndpointSurface(t *testing.T) {
 		mux.HandleFunc("/oauth2/token", discovery.IssuerNotActive)
 		mux.HandleFunc("/oauth2/authorize", discovery.IssuerNotActive)
 		mux.HandleFunc("/oauth2/userinfo", discovery.IssuerNotActive)
-		mux.HandleFunc("/.well-known/jwks.json", jwks.Handler(jm))
+		mux.HandleFunc("/.well-known/jwks.json", jwks.Handler(svcs.JWTManager))
 	})
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
