@@ -234,6 +234,26 @@ func (s *Service) Logout(ctx context.Context, refreshTokenStr string) error {
 	return s.store.RevokeRefreshToken(ctx, tokenHash)
 }
 
+// RememberRefreshToken records a freshly-minted refresh token in the
+// auth store so it can be rotated later via RefreshToken.
+//
+// Used by external issuers (e.g. AO ID) that mint a refresh token via
+// JWTManager.CreateRefreshToken outside the SignUp/Login pipeline and
+// still need rotation to work. The platform's own SignUp + Login paths
+// embed this call inside their transactions.
+func (s *Service) RememberRefreshToken(ctx context.Context, userID uuid.UUID, refreshTokenStr string, expiresAt time.Time) error {
+	tokenHash := HashToken(refreshTokenStr)
+	return s.store.CreateRefreshToken(ctx, userID, tokenHash, expiresAt)
+}
+
+// GetUserByID resolves a user by ID. The auth.Service does not own a
+// public user lookup; this thin pass-through exposes the underlying
+// store for issuer code that needs claim values without re-importing
+// the store interface.
+func (s *Service) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	return s.store.GetUserByID(ctx, id)
+}
+
 // HashToken computes SHA-256 hash of a token for database storage.
 func HashToken(token string) string {
 	h := sha256.Sum256([]byte(token))

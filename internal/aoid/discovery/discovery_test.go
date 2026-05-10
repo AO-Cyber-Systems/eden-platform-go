@@ -98,3 +98,23 @@ func TestIssuerNotActive_Returns503(t *testing.T) {
 		t.Error("error_description missing")
 	}
 }
+
+func TestHandlerActive_StampsActive(t *testing.T) {
+	cfg := &config.Config{Issuer: "https://id.example.com"}
+	rr := httptest.NewRecorder()
+	HandlerActive(cfg)(rr, httptest.NewRequest(http.MethodGet, "/.well-known/openid-configuration", nil))
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status=%d", rr.Code)
+	}
+	var got Doc
+	if err := json.Unmarshal(rr.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.ServiceStatus != ServiceStatusActive {
+		t.Errorf("service_status=%q want %q", got.ServiceStatus, ServiceStatusActive)
+	}
+	// All standard fields still present.
+	if got.AuthorizationEndpoint == "" || got.TokenEndpoint == "" || got.UserinfoEndpoint == "" {
+		t.Error("HandlerActive lost required endpoints")
+	}
+}

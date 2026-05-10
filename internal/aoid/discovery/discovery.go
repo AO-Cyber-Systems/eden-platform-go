@@ -22,6 +22,10 @@ import (
 // issuer on, this becomes "active".
 const ServiceStatusScaffold = "scaffold"
 
+// ServiceStatusActive is the value of the non-standard service_status
+// field once the issuer is active. Set by HandlerActive.
+const ServiceStatusActive = "active"
+
 // Doc is the OpenID Connect discovery document, augmented with a
 // non-standard `service_status` claim. Field names match the spec —
 // keep snake_case JSON tags or relying parties will fail to parse.
@@ -108,4 +112,17 @@ func IssuerNotActive(w http.ResponseWriter, _ *http.Request) {
 		"error":             "issuer_not_active",
 		"error_description": "AO ID is in scaffold mode; token issuance activates in objective 30",
 	})
+}
+
+// HandlerActive is the same as Handler but stamps service_status:"active"
+// instead of "scaffold". Used by cmd/aoid/boot.go once the OIDC issuer
+// endpoints are wired (Objective 30).
+func HandlerActive(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		doc := BuildDoc(cfg)
+		doc.ServiceStatus = ServiceStatusActive
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		_ = json.NewEncoder(w).Encode(doc)
+	}
 }

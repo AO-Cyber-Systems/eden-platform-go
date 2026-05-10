@@ -14,6 +14,7 @@ import (
 	"io/fs"
 
 	edenplatform "github.com/aocybersystems/eden-platform-go"
+	"github.com/aocybersystems/eden-platform-go/internal/aoid/clients"
 	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
 	"github.com/aocybersystems/eden-platform-go/platform/audit"
 	"github.com/aocybersystems/eden-platform-go/platform/auth"
@@ -39,6 +40,7 @@ type Services struct {
 	Household   *household.Service
 	Consent     *consent.Service
 	AuditLogger *audit.Logger
+	Clients     clients.Registry
 	Close       func() error
 }
 
@@ -67,12 +69,19 @@ func BuildInMemory(cfg *config.Config) (*Services, error) {
 	hhSvc := household.NewService(hhStore, auditLogger)
 	consentSvc := consent.NewService(consentStore, auditLogger)
 
+	clientReg := clients.NewMemoryRegistry()
+	if err := seedClientsIfConfigured(clientReg, cfg); err != nil {
+		auditLogger.Stop()
+		return nil, fmt.Errorf("composition: seed clients: %w", err)
+	}
+
 	return &Services{
 		Auth:        authSvc,
 		JWTManager:  jm,
 		Household:   hhSvc,
 		Consent:     consentSvc,
 		AuditLogger: auditLogger,
+		Clients:     clientReg,
 		Close: func() error {
 			auditLogger.Stop()
 			return nil
@@ -117,18 +126,40 @@ func BuildPostgres(ctx context.Context, cfg *config.Config) (*Services, error) {
 	hhSvc := household.NewService(hhStore, auditLogger)
 	consentSvc := consent.NewService(consentStore, auditLogger)
 
+	clientReg := clients.NewMemoryRegistry()
+	if err := seedClientsIfConfigured(clientReg, cfg); err != nil {
+		auditLogger.Stop()
+		backend.Close()
+		return nil, fmt.Errorf("composition: seed clients: %w", err)
+	}
+
 	return &Services{
 		Auth:        authSvc,
 		JWTManager:  jm,
 		Household:   hhSvc,
 		Consent:     consentSvc,
 		AuditLogger: auditLogger,
+		Clients:     clientReg,
 		Close: func() error {
 			auditLogger.Stop()
 			backend.Close()
 			return nil
 		},
 	}, nil
+}
+
+// seedClientsIfConfigured registers the AODex pilot client into reg
+// when both AODexClientSecret and AODexRedirectURIs are populated.
+// Logs at info if AODex is registered; logs at warn if config is partial
+// (helps catch typos in env vars without taking the service down).
+func seedClientsIfConfigured(reg clients.Registry, cfg *config.Config) error {
+	if cfg.AODexClientSecret == "" && len(cfg.AODexRedirectURIs) == 0 {
+		return nil
+	}
+	if cfg.AODexClientSecret == "" || len(cfg.AODexRedirectURIs) == 0 {
+		return fmt.Errorf("AODex client config partial: secret=%t, redirects=%d", cfg.AODexClientSecret != "", len(cfg.AODexRedirectURIs))
+	}
+	return clients.SeedAODex(context.Background(), reg, cfg.AODexClientSecret, cfg.AODexRedirectURIs)
 }
 
 // buildJWTManager applies aoid configuration to the platform/auth JWT
