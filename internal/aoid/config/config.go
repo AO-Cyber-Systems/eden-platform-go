@@ -80,6 +80,19 @@ type Config struct {
 	// ShutdownTimeout caps the graceful shutdown window between SIGTERM and
 	// hard kill. Env: AOID_SHUTDOWN_TIMEOUT (Go duration). Default: 5s.
 	ShutdownTimeout time.Duration
+
+	// AODexClientSecret is the shared secret used to authenticate the
+	// AODex pilot OIDC client at /oauth2/token. Set via env
+	// AOID_AODEX_CLIENT_SECRET. When empty AND Environment != production
+	// a deterministic dev secret is used so local boots Just Work; in
+	// production an empty secret means AODex is not seeded.
+	AODexClientSecret string
+
+	// AODexRedirectURIs is the comma-separated allow-list of redirect
+	// URIs accepted at /oauth2/authorize for the AODex client. Set via
+	// AOID_AODEX_REDIRECT_URIS. Default in non-prod includes
+	// http://localhost:8080/auth/aoid/callback.
+	AODexRedirectURIs []string
 }
 
 // Load reads AOID_* (and a few common fallbacks) from the environment and
@@ -102,8 +115,38 @@ func Load() *Config {
 		AccessTokenExpiry:  parseDuration(os.Getenv("AOID_ACCESS_TOKEN_EXPIRY"), 15*time.Minute),
 		RefreshTokenExpiry: parseDuration(os.Getenv("AOID_REFRESH_TOKEN_EXPIRY"), 7*24*time.Hour),
 		ShutdownTimeout:    parseDuration(os.Getenv("AOID_SHUTDOWN_TIMEOUT"), 5*time.Second),
+		AODexClientSecret:  os.Getenv("AOID_AODEX_CLIENT_SECRET"),
+		AODexRedirectURIs:  parseCSV(os.Getenv("AOID_AODEX_REDIRECT_URIS")),
+	}
+	if c.AODexClientSecret == "" && c.Environment != "production" {
+		c.AODexClientSecret = "dev-aodex-client-secret-do-not-use-in-prod"
+	}
+	if len(c.AODexRedirectURIs) == 0 && c.Environment != "production" {
+		c.AODexRedirectURIs = []string{
+			"http://localhost:8080/auth/aoid/callback",
+		}
 	}
 	return c
+}
+
+// parseCSV splits a comma-separated string into a trimmed, non-empty
+// slice. Returns nil for the empty string.
+func parseCSV(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func envOr(key, def string) string {
