@@ -259,6 +259,18 @@ func (m *JWTManager) ActiveKID() string {
 	return m.activeKID
 }
 
+// ActivePrivateKey returns the private key currently used for signing
+// new tokens. Used by the AO ID issuer to sign custom claim sets (ID
+// tokens) without re-implementing the mldsa key plumbing. Returns nil
+// when no active key is configured.
+func (m *JWTManager) ActivePrivateKey() *mldsa65.PrivateKey {
+	entry, ok := m.keys[m.activeKID]
+	if !ok {
+		return nil
+	}
+	return entry.PrivateKey
+}
+
 // GenerateKeyPair generates a new ML-DSA-65 key pair.
 func GenerateKeyPair() (*mldsa65.PublicKey, *mldsa65.PrivateKey, error) {
 	return mldsa65.GenerateKey(rand.Reader)
