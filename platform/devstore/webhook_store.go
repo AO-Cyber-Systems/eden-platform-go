@@ -156,6 +156,36 @@ func (s *WebhookStore) GetPendingDeliveries(_ context.Context) ([]webhook.Webhoo
 	return pending, nil
 }
 
+// GetDelivery returns a single delivery by ID.
+func (s *WebhookStore) GetDelivery(_ context.Context, id uuid.UUID) (webhook.WebhookDelivery, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+
+	d, ok := s.backend.state.deliveries[id]
+	if !ok {
+		return webhook.WebhookDelivery{}, fmt.Errorf("delivery not found: %s", id)
+	}
+	return d, nil
+}
+
+// ListFailedDeliveriesForRetry returns deliveries with status="failed" and
+// Attempts < maxAttempts. Used by Service.RetryFailedDeliveries.
+func (s *WebhookStore) ListFailedDeliveriesForRetry(_ context.Context, maxAttempts int) ([]webhook.WebhookDelivery, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+
+	var out []webhook.WebhookDelivery
+	for _, d := range s.backend.state.deliveries {
+		if d.Status == "failed" && d.Attempts < maxAttempts {
+			out = append(out, d)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].CreatedAt.Before(out[j].CreatedAt)
+	})
+	return out, nil
+}
+
 // ListDeliveriesByWebhook returns deliveries for a webhook with pagination, sorted by CreatedAt DESC.
 func (s *WebhookStore) ListDeliveriesByWebhook(_ context.Context, webhookID uuid.UUID, limit, offset int) ([]webhook.WebhookDelivery, error) {
 	s.backend.mu.RLock()

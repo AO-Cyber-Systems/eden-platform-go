@@ -44,3 +44,12 @@ SELECT * FROM webhook_deliveries
 WHERE webhook_id = $1
 ORDER BY created_at DESC
 LIMIT $2 OFFSET $3;
+
+-- name: GetDelivery :one
+SELECT * FROM webhook_deliveries WHERE id = $1;
+
+-- name: ListFailedDeliveriesForRetry :many
+SELECT * FROM webhook_deliveries
+WHERE status = 'failed' AND attempts < $1
+ORDER BY created_at ASC
+LIMIT 100;

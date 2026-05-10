@@ -86,6 +86,28 @@ func (q *Queries) DeleteWebhook(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getDelivery = `-- name: GetDelivery :one
+SELECT id, webhook_id, event_type, payload, status, status_code, response_body, attempts, next_retry_at, created_at FROM webhook_deliveries WHERE id = $1
+`
+
+func (q *Queries) GetDelivery(ctx context.Context, id uuid.UUID) (WebhookDelivery, error) {
+	row := q.db.QueryRow(ctx, getDelivery, id)
+	var i WebhookDelivery
+	err := row.Scan(
+		&i.ID,
+		&i.WebhookID,
+		&i.EventType,
+		&i.Payload,
+		&i.Status,
+		&i.StatusCode,
+		&i.ResponseBody,
+		&i.Attempts,
+		&i.NextRetryAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getPendingDeliveries = `-- name: GetPendingDeliveries :many
 SELECT id, webhook_id, event_type, payload, status, status_code, response_body, attempts, next_retry_at, created_at FROM webhook_deliveries
 WHERE status IN ('pending', 'failed') AND (next_retry_at IS NULL OR next_retry_at <= now())
@@ -173,6 +195,44 @@ type ListDeliveriesByWebhookParams struct {
 
 func (q *Queries) ListDeliveriesByWebhook(ctx context.Context, arg ListDeliveriesByWebhookParams) ([]WebhookDelivery, error) {
 	rows, err := q.db.Query(ctx, listDeliveriesByWebhook, arg.WebhookID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WebhookDelivery{}
+	for rows.Next() {
+		var i WebhookDelivery
+		if err := rows.Scan(
+			&i.ID,
+			&i.WebhookID,
+			&i.EventType,
+			&i.Payload,
+			&i.Status,
+			&i.StatusCode,
+			&i.ResponseBody,
+			&i.Attempts,
+			&i.NextRetryAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFailedDeliveriesForRetry = `-- name: ListFailedDeliveriesForRetry :many
+SELECT id, webhook_id, event_type, payload, status, status_code, response_body, attempts, next_retry_at, created_at FROM webhook_deliveries
+WHERE status = 'failed' AND attempts < $1
+ORDER BY created_at ASC
+LIMIT 100
+`
+
+func (q *Queries) ListFailedDeliveriesForRetry(ctx context.Context, attempts int32) ([]WebhookDelivery, error) {
+	rows, err := q.db.Query(ctx, listFailedDeliveriesForRetry, attempts)
 	if err != nil {
 		return nil, err
 	}
