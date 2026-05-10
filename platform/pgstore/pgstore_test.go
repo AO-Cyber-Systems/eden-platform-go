@@ -44,6 +44,7 @@ func truncateAll(t *testing.T, backend *pgstore.Backend) {
 	tables := []string{
 		"webhook_deliveries", "webhooks",
 		"audit_logs",
+		"parent_of_record", "household_members", "households",
 		"company_memberships", "role_permissions", "permissions",
 		"company_hierarchies",
 		"refresh_tokens", "sso_configs",
@@ -56,13 +57,13 @@ func truncateAll(t *testing.T, backend *pgstore.Backend) {
 			t.Fatalf("truncate %s: %v", table, err)
 		}
 	}
+	// Delete non-system roles first (they FK-reference companies).
+	if _, err := backend.Pool().Exec(ctx, "DELETE FROM roles WHERE is_system = false"); err != nil {
+		t.Fatalf("truncate non-system roles: %v", err)
+	}
 	// Delete non-system companies (system roles reference them indirectly)
 	if _, err := backend.Pool().Exec(ctx, "DELETE FROM companies"); err != nil {
 		t.Fatalf("truncate companies: %v", err)
-	}
-	// Delete non-system roles
-	if _, err := backend.Pool().Exec(ctx, "DELETE FROM roles WHERE is_system = false"); err != nil {
-		t.Fatalf("truncate non-system roles: %v", err)
 	}
 	// Delete test users
 	if _, err := backend.Pool().Exec(ctx, "DELETE FROM users"); err != nil {

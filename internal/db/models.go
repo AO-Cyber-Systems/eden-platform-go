@@ -72,6 +72,48 @@ type EncryptedCredential struct {
 	UpdatedAt      time.Time `json:"updated_at"`
 }
 
+type Household struct {
+	ID                   uuid.UUID       `json:"id"`
+	PrimaryContactUserID uuid.UUID       `json:"primary_contact_user_id"`
+	DisplayName          string          `json:"display_name"`
+	Metadata             json.RawMessage `json:"metadata"`
+	CreatedAt            time.Time       `json:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at"`
+}
+
+type HouseholdMember struct {
+	ID           uuid.UUID          `json:"id"`
+	HouseholdID  uuid.UUID          `json:"household_id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	Role         string             `json:"role"`
+	Status       string             `json:"status"`
+	Birthdate    pgtype.Date        `json:"birthdate"`
+	Capabilities json.RawMessage    `json:"capabilities"`
+	AddedAt      time.Time          `json:"added_at"`
+	RemovedAt    pgtype.Timestamptz `json:"removed_at"`
+}
+
+type OauthCredential struct {
+	ID           uuid.UUID          `json:"id"`
+	CompanyID    uuid.UUID          `json:"company_id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	Provider     string             `json:"provider"`
+	AccessToken  string             `json:"access_token"`
+	RefreshToken string             `json:"refresh_token"`
+	TokenExpiry  pgtype.Timestamptz `json:"token_expiry"`
+	Scopes       []string           `json:"scopes"`
+	CreatedAt    time.Time          `json:"created_at"`
+	UpdatedAt    time.Time          `json:"updated_at"`
+}
+
+type ParentOfRecord struct {
+	ID             uuid.UUID          `json:"id"`
+	ChildMemberID  uuid.UUID          `json:"child_member_id"`
+	ParentMemberID uuid.UUID          `json:"parent_member_id"`
+	EstablishedAt  time.Time          `json:"established_at"`
+	RevokedAt      pgtype.Timestamptz `json:"revoked_at"`
+}
+
 type Permission struct {
 	ID          uuid.UUID `json:"id"`
 	Feature     string    `json:"feature"`
@@ -114,6 +156,10 @@ type SsoConfig struct {
 	MetadataUrl  string    `json:"metadata_url"`
 	IsActive     bool      `json:"is_active"`
 	CreatedAt    time.Time `json:"created_at"`
+	DisplayName  string    `json:"display_name"`
+	ExtraScopes  []string  `json:"extra_scopes"`
+	EnforceSso   bool      `json:"enforce_sso"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 type User struct {

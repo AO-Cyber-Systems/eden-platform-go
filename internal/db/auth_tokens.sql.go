@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createRefreshToken = `-- name: CreateRefreshToken :exec
@@ -31,7 +32,7 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 const createSSOConfig = `-- name: CreateSSOConfig :one
 INSERT INTO sso_configs (company_id, provider, issuer_url, client_id, client_secret, metadata_url)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at
+RETURNING id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at, display_name, extra_scopes, enforce_sso, updated_at
 `
 
 type CreateSSOConfigParams struct {
@@ -63,6 +64,51 @@ func (q *Queries) CreateSSOConfig(ctx context.Context, arg CreateSSOConfigParams
 		&i.MetadataUrl,
 		&i.IsActive,
 		&i.CreatedAt,
+		&i.DisplayName,
+		&i.ExtraScopes,
+		&i.EnforceSso,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const deleteSSOConfig = `-- name: DeleteSSOConfig :exec
+DELETE FROM sso_configs WHERE company_id = $1 AND provider = $2
+`
+
+type DeleteSSOConfigParams struct {
+	CompanyID uuid.UUID `json:"company_id"`
+	Provider  string    `json:"provider"`
+}
+
+func (q *Queries) DeleteSSOConfig(ctx context.Context, arg DeleteSSOConfigParams) error {
+	_, err := q.db.Exec(ctx, deleteSSOConfig, arg.CompanyID, arg.Provider)
+	return err
+}
+
+const getOAuthCredential = `-- name: GetOAuthCredential :one
+SELECT id, company_id, user_id, provider, access_token, refresh_token, token_expiry, scopes, created_at, updated_at FROM oauth_credentials WHERE user_id = $1 AND provider = $2
+`
+
+type GetOAuthCredentialParams struct {
+	UserID   uuid.UUID `json:"user_id"`
+	Provider string    `json:"provider"`
+}
+
+func (q *Queries) GetOAuthCredential(ctx context.Context, arg GetOAuthCredentialParams) (OauthCredential, error) {
+	row := q.db.QueryRow(ctx, getOAuthCredential, arg.UserID, arg.Provider)
+	var i OauthCredential
+	err := row.Scan(
+		&i.ID,
+		&i.CompanyID,
+		&i.UserID,
+		&i.Provider,
+		&i.AccessToken,
+		&i.RefreshToken,
+		&i.TokenExpiry,
+		&i.Scopes,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -87,7 +133,7 @@ func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (Refres
 }
 
 const getSSOConfig = `-- name: GetSSOConfig :one
-SELECT id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at FROM sso_configs
+SELECT id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at, display_name, extra_scopes, enforce_sso, updated_at FROM sso_configs
 WHERE company_id = $1 AND provider = $2 AND is_active = true
 `
 
@@ -109,8 +155,64 @@ func (q *Queries) GetSSOConfig(ctx context.Context, arg GetSSOConfigParams) (Sso
 		&i.MetadataUrl,
 		&i.IsActive,
 		&i.CreatedAt,
+		&i.DisplayName,
+		&i.ExtraScopes,
+		&i.EnforceSso,
+		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const hasEnforcedSSO = `-- name: HasEnforcedSSO :one
+SELECT EXISTS(
+    SELECT 1 FROM sso_configs
+    WHERE company_id = $1 AND enforce_sso = true AND is_active = true
+) AS enforced
+`
+
+func (q *Queries) HasEnforcedSSO(ctx context.Context, companyID uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, hasEnforcedSSO, companyID)
+	var enforced bool
+	err := row.Scan(&enforced)
+	return enforced, err
+}
+
+const listSSOConfigs = `-- name: ListSSOConfigs :many
+SELECT id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at, display_name, extra_scopes, enforce_sso, updated_at FROM sso_configs WHERE company_id = $1 ORDER BY provider
+`
+
+func (q *Queries) ListSSOConfigs(ctx context.Context, companyID uuid.UUID) ([]SsoConfig, error) {
+	rows, err := q.db.Query(ctx, listSSOConfigs, companyID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SsoConfig{}
+	for rows.Next() {
+		var i SsoConfig
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.Provider,
+			&i.IssuerUrl,
+			&i.ClientID,
+			&i.ClientSecret,
+			&i.MetadataUrl,
+			&i.IsActive,
+			&i.CreatedAt,
+			&i.DisplayName,
+			&i.ExtraScopes,
+			&i.EnforceSso,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const revokeAllUserTokens = `-- name: RevokeAllUserTokens :exec
@@ -128,5 +230,83 @@ UPDATE refresh_tokens SET revoked = true WHERE token_hash = $1
 
 func (q *Queries) RevokeRefreshToken(ctx context.Context, tokenHash string) error {
 	_, err := q.db.Exec(ctx, revokeRefreshToken, tokenHash)
+	return err
+}
+
+const upsertOAuthCredential = `-- name: UpsertOAuthCredential :exec
+INSERT INTO oauth_credentials (company_id, user_id, provider, access_token, refresh_token, token_expiry, scopes, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, now())
+ON CONFLICT (company_id, user_id, provider) DO UPDATE SET
+    access_token = EXCLUDED.access_token,
+    refresh_token = EXCLUDED.refresh_token,
+    token_expiry = EXCLUDED.token_expiry,
+    scopes = EXCLUDED.scopes,
+    updated_at = now()
+`
+
+type UpsertOAuthCredentialParams struct {
+	CompanyID    uuid.UUID          `json:"company_id"`
+	UserID       uuid.UUID          `json:"user_id"`
+	Provider     string             `json:"provider"`
+	AccessToken  string             `json:"access_token"`
+	RefreshToken string             `json:"refresh_token"`
+	TokenExpiry  pgtype.Timestamptz `json:"token_expiry"`
+	Scopes       []string           `json:"scopes"`
+}
+
+func (q *Queries) UpsertOAuthCredential(ctx context.Context, arg UpsertOAuthCredentialParams) error {
+	_, err := q.db.Exec(ctx, upsertOAuthCredential,
+		arg.CompanyID,
+		arg.UserID,
+		arg.Provider,
+		arg.AccessToken,
+		arg.RefreshToken,
+		arg.TokenExpiry,
+		arg.Scopes,
+	)
+	return err
+}
+
+const upsertSSOConfig = `-- name: UpsertSSOConfig :exec
+INSERT INTO sso_configs (company_id, provider, issuer_url, client_id, client_secret, metadata_url, display_name, extra_scopes, enforce_sso, is_active, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+ON CONFLICT (company_id, provider) DO UPDATE SET
+    issuer_url = EXCLUDED.issuer_url,
+    client_id = EXCLUDED.client_id,
+    client_secret = EXCLUDED.client_secret,
+    metadata_url = EXCLUDED.metadata_url,
+    display_name = EXCLUDED.display_name,
+    extra_scopes = EXCLUDED.extra_scopes,
+    enforce_sso = EXCLUDED.enforce_sso,
+    is_active = EXCLUDED.is_active,
+    updated_at = now()
+`
+
+type UpsertSSOConfigParams struct {
+	CompanyID    uuid.UUID `json:"company_id"`
+	Provider     string    `json:"provider"`
+	IssuerUrl    string    `json:"issuer_url"`
+	ClientID     string    `json:"client_id"`
+	ClientSecret string    `json:"client_secret"`
+	MetadataUrl  string    `json:"metadata_url"`
+	DisplayName  string    `json:"display_name"`
+	ExtraScopes  []string  `json:"extra_scopes"`
+	EnforceSso   bool      `json:"enforce_sso"`
+	IsActive     bool      `json:"is_active"`
+}
+
+func (q *Queries) UpsertSSOConfig(ctx context.Context, arg UpsertSSOConfigParams) error {
+	_, err := q.db.Exec(ctx, upsertSSOConfig,
+		arg.CompanyID,
+		arg.Provider,
+		arg.IssuerUrl,
+		arg.ClientID,
+		arg.ClientSecret,
+		arg.MetadataUrl,
+		arg.DisplayName,
+		arg.ExtraScopes,
+		arg.EnforceSso,
+		arg.IsActive,
+	)
 	return err
 }
