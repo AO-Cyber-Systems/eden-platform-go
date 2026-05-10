@@ -18,24 +18,74 @@ import (
 	"github.com/google/uuid"
 )
 
-const maxRetries = 5
-const maxConsecutiveFailures = 10
+// Default service limits. Override via Service options.
+const (
+	DefaultMaxRetries             = 5
+	DefaultMaxConsecutiveFailures = 10
+	DefaultHTTPTimeout            = 10 * time.Second
+	DefaultDeliveryTimeout        = 30 * time.Second
+)
 
 // Service handles webhook operations.
 type Service struct {
-	store  WebhookStore
-	client *http.Client
-	wg     sync.WaitGroup
+	store                  WebhookStore
+	client                 *http.Client
+	wg                     sync.WaitGroup
+	maxRetries             int
+	maxConsecutiveFailures int
+	deliveryTimeout        time.Duration
 }
 
-// NewService creates a new webhook service.
-func NewService(store WebhookStore) *Service {
-	return &Service{
+// ServiceOption configures a Service.
+type ServiceOption func(*Service)
+
+// WithMaxRetries sets the max delivery attempts before status flips to "exhausted".
+func WithMaxRetries(n int) ServiceOption {
+	return func(s *Service) { s.maxRetries = n }
+}
+
+// WithMaxConsecutiveFailures sets the threshold above which a webhook is
+// auto-paused (Active=false).
+func WithMaxConsecutiveFailures(n int) ServiceOption {
+	return func(s *Service) { s.maxConsecutiveFailures = n }
+}
+
+// WithHTTPTimeout sets the per-request HTTP timeout (the http.Client.Timeout).
+func WithHTTPTimeout(d time.Duration) ServiceOption {
+	return func(s *Service) {
+		s.client.Timeout = d
+	}
+}
+
+// WithDeliveryTimeout sets the per-delivery context timeout (overall budget
+// for one delivery attempt including I/O).
+func WithDeliveryTimeout(d time.Duration) ServiceOption {
+	return func(s *Service) { s.deliveryTimeout = d }
+}
+
+// WithHTTPClient replaces the underlying HTTP client (for tests, custom
+// transports, or telemetry instrumentation).
+func WithHTTPClient(c *http.Client) ServiceOption {
+	return func(s *Service) { s.client = c }
+}
+
+// NewService creates a new webhook service. Defaults match the historical
+// behaviour: 5 retries, auto-pause after 10 consecutive failures, 10s HTTP
+// timeout, 30s per-delivery context timeout.
+func NewService(store WebhookStore, opts ...ServiceOption) *Service {
+	s := &Service{
 		store: store,
 		client: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: DefaultHTTPTimeout,
 		},
+		maxRetries:             DefaultMaxRetries,
+		maxConsecutiveFailures: DefaultMaxConsecutiveFailures,
+		deliveryTimeout:        DefaultDeliveryTimeout,
 	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
 }
 
 // Register creates a new webhook subscription.
@@ -68,10 +118,10 @@ func (s *Service) Trigger(ctx context.Context, companyID uuid.UUID, eventType, p
 		}
 
 		s.wg.Add(1)
-		go func() {
+		go func(wh Webhook, d WebhookDelivery) {
 			defer s.wg.Done()
-			s.deliver(ctx, wh, delivery)
-		}()
+			s.deliver(ctx, wh, d)
+		}(wh, delivery)
 	}
 
 	return nil
@@ -79,7 +129,7 @@ func (s *Service) Trigger(ctx context.Context, companyID uuid.UUID, eventType, p
 
 // deliver attempts to deliver a webhook payload.
 func (s *Service) deliver(parent context.Context, wh Webhook, delivery WebhookDelivery) {
-	ctx, cancel := context.WithTimeout(parent, 30*time.Second)
+	ctx, cancel := context.WithTimeout(parent, s.deliveryTimeout)
 	defer cancel()
 
 	timestamp := time.Now().Unix()
@@ -119,7 +169,7 @@ func (s *Service) recordFailure(ctx context.Context, wh Webhook, delivery Webhoo
 	status := "failed"
 
 	var nextRetry *time.Time
-	if attempt < maxRetries {
+	if attempt < s.maxRetries {
 		retryDelay := time.Duration(math.Pow(2, float64(attempt))) * time.Minute
 		t := time.Now().Add(retryDelay)
 		nextRetry = &t
@@ -130,7 +180,7 @@ func (s *Service) recordFailure(ctx context.Context, wh Webhook, delivery Webhoo
 	_ = s.store.UpdateDelivery(ctx, delivery.ID, status, statusCode, responseBody, nextRetry)
 
 	failCount, err := s.store.IncrementFailureCount(ctx, wh.ID)
-	if err == nil && failCount >= maxConsecutiveFailures {
+	if err == nil && failCount >= s.maxConsecutiveFailures {
 		_ = s.store.UpdateWebhookStatus(ctx, wh.ID, false)
 		slog.Warn("webhook auto-paused after consecutive failures",
 			"webhook_id", wh.ID, "fail_count", failCount)
@@ -160,6 +210,11 @@ func sign(secret, timestamp, payload string) string {
 }
 
 // VerifySignature verifies an incoming webhook signature.
+//
+// The header format is "t=<unix-seconds>,v1=<hex-hmac-sha256>". This function
+// validates the signature shape and the HMAC; it does NOT validate the
+// timestamp window — receivers should additionally enforce a replay window
+// (recommended: 5 minutes). See platform/webhook/README.md for an example.
 func VerifySignature(secret, sigHeader, payload string) bool {
 	parts := strings.Split(sigHeader, ",")
 	if len(parts) != 2 {

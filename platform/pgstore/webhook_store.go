@@ -127,6 +127,32 @@ func (s *WebhookStore) GetPendingDeliveries(ctx context.Context) ([]webhook.Webh
 	return deliveries, nil
 }
 
+// GetDelivery returns a single delivery by ID.
+func (s *WebhookStore) GetDelivery(ctx context.Context, id uuid.UUID) (webhook.WebhookDelivery, error) {
+	row, err := s.queries().GetDelivery(ctx, id)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return webhook.WebhookDelivery{}, fmt.Errorf("delivery not found: %s", id)
+		}
+		return webhook.WebhookDelivery{}, fmt.Errorf("get delivery: %w", err)
+	}
+	return dbDeliveryToDomain(row), nil
+}
+
+// ListFailedDeliveriesForRetry returns deliveries with status='failed' and
+// attempts < maxAttempts, ordered oldest-first.
+func (s *WebhookStore) ListFailedDeliveriesForRetry(ctx context.Context, maxAttempts int) ([]webhook.WebhookDelivery, error) {
+	rows, err := s.queries().ListFailedDeliveriesForRetry(ctx, int32(maxAttempts))
+	if err != nil {
+		return nil, fmt.Errorf("list failed deliveries: %w", err)
+	}
+	deliveries := make([]webhook.WebhookDelivery, len(rows))
+	for i, row := range rows {
+		deliveries[i] = dbDeliveryToDomain(row)
+	}
+	return deliveries, nil
+}
+
 // ListDeliveriesByWebhook satisfies connectapi.deliveryQuerier.
 func (s *WebhookStore) ListDeliveriesByWebhook(ctx context.Context, webhookID uuid.UUID, limit, offset int) ([]webhook.WebhookDelivery, error) {
 	rows, err := s.queries().ListDeliveriesByWebhook(ctx, db.ListDeliveriesByWebhookParams{

@@ -20,6 +20,13 @@ type WebhookStore interface {
 	CreateDelivery(ctx context.Context, webhookID uuid.UUID, eventType, payload string) (WebhookDelivery, error)
 	UpdateDelivery(ctx context.Context, id uuid.UUID, status string, statusCode int, responseBody string, nextRetryAt *time.Time) error
 	GetPendingDeliveries(ctx context.Context) ([]WebhookDelivery, error)
+
+	// GetDelivery looks up a single delivery by ID. Used by ExecuteDelivery.
+	GetDelivery(ctx context.Context, id uuid.UUID) (WebhookDelivery, error)
+
+	// ListFailedDeliveriesForRetry returns deliveries with status="failed"
+	// and Attempts < maxAttempts. Used by RetryFailedDeliveries.
+	ListFailedDeliveriesForRetry(ctx context.Context, maxAttempts int) ([]WebhookDelivery, error)
 }
 
 // Webhook represents a webhook subscription.
