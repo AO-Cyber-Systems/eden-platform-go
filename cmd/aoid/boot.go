@@ -67,6 +67,11 @@ func bootService(ctx context.Context, cfg *config.Config) error {
 			mux.HandleFunc("/oauth2/userinfo", discovery.IssuerNotActive)
 		}
 		mux.HandleFunc("/.well-known/jwks.json", jwks.Handler(svcs.JWTManager))
+		// Mount the federation surface (SAML IdP exports, inbound IdP
+		// onboarding, assertion bridge). Added in Obj 31 — M8.
+		if svcs.Federation != nil {
+			svcs.Federation.Mount(mux)
+		}
 	})
 	return srv.Start(ctx, nil)
 }
