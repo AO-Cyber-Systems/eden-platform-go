@@ -54,6 +54,20 @@ type CompanyMembership struct {
 	UpdatedAt           time.Time `json:"updated_at"`
 }
 
+type ConsentLedger struct {
+	ID                 uuid.UUID       `json:"id"`
+	HouseholdID        uuid.UUID       `json:"household_id"`
+	PrincipalMemberID  uuid.UUID       `json:"principal_member_id"`
+	ConsenterMemberID  uuid.UUID       `json:"consenter_member_id"`
+	Purpose            string          `json:"purpose"`
+	Scope              json.RawMessage `json:"scope"`
+	ConsentTextVersion string          `json:"consent_text_version"`
+	Evidence           json.RawMessage `json:"evidence"`
+	GrantedAt          time.Time       `json:"granted_at"`
+	RevokesID          pgtype.UUID     `json:"revokes_id"`
+	CreatedAt          time.Time       `json:"created_at"`
+}
+
 type DeviceToken struct {
 	ID        uuid.UUID `json:"id"`
 	UserID    uuid.UUID `json:"user_id"`

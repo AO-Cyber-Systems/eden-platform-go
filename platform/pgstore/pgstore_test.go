@@ -41,6 +41,11 @@ func truncateAll(t *testing.T, backend *pgstore.Backend) {
 	t.Helper()
 	ctx := context.Background()
 	// Truncate in reverse dependency order to avoid FK violations.
+	// consent_ledger is append-only via row triggers; use TRUNCATE which
+	// bypasses BEFORE DELETE row-level triggers.
+	if _, err := backend.Pool().Exec(ctx, "TRUNCATE consent_ledger CASCADE"); err != nil {
+		t.Fatalf("truncate consent_ledger: %v", err)
+	}
 	tables := []string{
 		"webhook_deliveries", "webhooks",
 		"audit_logs",

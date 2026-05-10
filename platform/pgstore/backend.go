@@ -38,6 +38,7 @@ func (b *Backend) RBACStore() *RBACStore           { return NewRBACStore(b.pool)
 func (b *Backend) AuditStore() *AuditStore         { return NewAuditStore(b.pool) }
 func (b *Backend) WebhookStore() *WebhookStore     { return NewWebhookStore(b.pool) }
 func (b *Backend) HouseholdStore() *HouseholdStore { return NewHouseholdStore(b.pool) }
+func (b *Backend) ConsentStore() *ConsentStore     { return NewConsentStore(b.pool) }
 
 // Close releases all pool connections.
 func (b *Backend) Close() {
