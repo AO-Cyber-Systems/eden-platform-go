@@ -16,6 +16,7 @@ import (
 	edenplatform "github.com/aocybersystems/eden-platform-go"
 	"github.com/aocybersystems/eden-platform-go/internal/aoid/clients"
 	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
+	"github.com/aocybersystems/eden-platform-go/internal/aoid/federation"
 	"github.com/aocybersystems/eden-platform-go/platform/audit"
 	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/aocybersystems/eden-platform-go/platform/consent"
@@ -41,6 +42,7 @@ type Services struct {
 	Consent     *consent.Service
 	AuditLogger *audit.Logger
 	Clients     clients.Registry
+	Federation  *federation.Stack
 	Close       func() error
 }
 
@@ -75,7 +77,7 @@ func BuildInMemory(cfg *config.Config) (*Services, error) {
 		return nil, fmt.Errorf("composition: seed clients: %w", err)
 	}
 
-	return &Services{
+	out := &Services{
 		Auth:        authSvc,
 		JWTManager:  jm,
 		Household:   hhSvc,
@@ -86,7 +88,14 @@ func BuildInMemory(cfg *config.Config) (*Services, error) {
 			auditLogger.Stop()
 			return nil
 		},
-	}, nil
+	}
+	fed, err := BuildFederation(cfg, out)
+	if err != nil {
+		auditLogger.Stop()
+		return nil, fmt.Errorf("composition: federation: %w", err)
+	}
+	out.Federation = fed
+	return out, nil
 }
 
 // BuildPostgres builds a Services on top of pgstore. Migrations run
@@ -133,7 +142,7 @@ func BuildPostgres(ctx context.Context, cfg *config.Config) (*Services, error) {
 		return nil, fmt.Errorf("composition: seed clients: %w", err)
 	}
 
-	return &Services{
+	out := &Services{
 		Auth:        authSvc,
 		JWTManager:  jm,
 		Household:   hhSvc,
@@ -145,7 +154,15 @@ func BuildPostgres(ctx context.Context, cfg *config.Config) (*Services, error) {
 			backend.Close()
 			return nil
 		},
-	}, nil
+	}
+	fed, err := BuildFederation(cfg, out)
+	if err != nil {
+		auditLogger.Stop()
+		backend.Close()
+		return nil, fmt.Errorf("composition: federation: %w", err)
+	}
+	out.Federation = fed
+	return out, nil
 }
 
 // seedClientsIfConfigured registers the AODex pilot client into reg

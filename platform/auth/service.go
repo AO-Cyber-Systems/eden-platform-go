@@ -254,6 +254,21 @@ func (s *Service) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	return s.store.GetUserByID(ctx, id)
 }
 
+// GetUserByEmail resolves a user by email. Same shape as
+// GetUserByID — exposed so federation flows (aoid Bridge) can JIT-
+// provision without re-importing the store interface.
+func (s *Service) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	return s.store.GetUserByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
+}
+
+// CreateUser inserts a new user. Federation callers supply an unusable
+// password hash (e.g. "fed:<random>") to disable password login for
+// SSO-only accounts. Companies and memberships are NOT created here —
+// that remains the caller's responsibility.
+func (s *Service) CreateUser(ctx context.Context, email, passwordHash, displayName string) (User, error) {
+	return s.store.CreateUser(ctx, strings.ToLower(strings.TrimSpace(email)), passwordHash, strings.TrimSpace(displayName))
+}
+
 // HashToken computes SHA-256 hash of a token for database storage.
 func HashToken(token string) string {
 	h := sha256.Sum256([]byte(token))
