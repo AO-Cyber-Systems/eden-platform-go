@@ -33,10 +33,34 @@ jobs:
         run: buf lint
       - name: go vet
         run: go vet ./...
+      - name: go build aoid
+        run: go build ./cmd/aoid
       - name: go test
         run: go test ./... -v -race
         env:
           DATABASE_URL: postgres://test:test@localhost:5432/eden_platform_test?sslmode=disable
+      - name: aoid smoke (binary boot + endpoint curl)
+        run: |
+          set -euo pipefail
+          ./aoid &
+          AOID_PID=$!
+          trap "kill $AOID_PID 2>/dev/null || true" EXIT
+          # Poll readyz for up to 10 seconds.
+          for i in $(seq 1 50); do
+            if curl -sf http://127.0.0.1:8090/readyz >/dev/null; then
+              break
+            fi
+            sleep 0.2
+          done
+          curl -sf http://127.0.0.1:8090/healthz | grep -q '"status"'
+          curl -sf http://127.0.0.1:8090/.well-known/openid-configuration | grep -q '"service_status":"scaffold"'
+          curl -sf http://127.0.0.1:8090/.well-known/jwks.json | grep -q '"keys"'
+          # Issuer endpoints must reply 503.
+          status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/oauth2/token)
+          test "$status" = "503"
+        env:
+          AOID_LISTEN_ADDR: 127.0.0.1:8090
+          AOID_ISSUER: http://127.0.0.1:8090
       - name: sqlc verify
         run: |
           go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
