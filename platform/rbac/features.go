@@ -25,6 +25,14 @@ const (
 	FeatureInvestorPortal    Feature = "investor_portal"
 	FeatureStrategicPlanning Feature = "strategic_planning"
 	FeatureWorkflows         Feature = "workflows"
+
+	// Eden-biz parity (donor: eden-biz/permissions). Add new feature names
+	// here so a single matrix covers AODex, AOSentry, and Eden-Biz callers.
+	FeatureBanking        Feature = "banking"
+	FeatureCustomerPortal Feature = "customer_portal"
+	FeatureSoftware       Feature = "software"
+	FeatureSettings       Feature = "settings"
+	FeatureNotifications  Feature = "notifications"
 )
 
 // DefaultPermissionMatrix returns the default feature:action -> minimum role level matrix.
@@ -193,6 +201,39 @@ func DefaultPermissionMatrix() PermissionMatrix {
 			"edit":    RoleLevelMember,
 			"execute": RoleLevelMember,
 			"admin":   RoleLevelAdmin,
+		},
+		// Eden-biz parity (donor: eden-biz/permissions defaultPermissions).
+		FeatureBanking: {
+			"view":   RoleLevelViewer,
+			"create": RoleLevelMember,
+			"edit":   RoleLevelMember,
+			"delete": RoleLevelManager,
+			"admin":  RoleLevelAdmin,
+		},
+		FeatureCustomerPortal: {
+			"view":   RoleLevelViewer,
+			"create": RoleLevelMember,
+			"edit":   RoleLevelMember,
+			"delete": RoleLevelManager,
+			"admin":  RoleLevelAdmin,
+		},
+		FeatureSoftware: {
+			"view":   RoleLevelViewer,
+			"create": RoleLevelMember,
+			"edit":   RoleLevelMember,
+			"delete": RoleLevelManager,
+			"admin":  RoleLevelAdmin,
+		},
+		FeatureSettings: {
+			"view":  RoleLevelViewer,
+			"edit":  RoleLevelManager,
+			"admin": RoleLevelAdmin,
+		},
+		FeatureNotifications: {
+			"view":   RoleLevelViewer,
+			"create": RoleLevelMember,
+			"send":   RoleLevelMember,
+			"admin":  RoleLevelAdmin,
 		},
 	}
 }
