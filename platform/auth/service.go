@@ -169,6 +169,79 @@ func (s *Service) Login(ctx context.Context, email, password string) (*AuthRespo
 	return &AuthResponse{AccessToken: accessToken, RefreshToken: refreshToken, User: user}, nil
 }
 
+// SignInNavigators authenticates a user the same way Login does, but issues
+// an access token carrying Scopes=["volunteer:field"] and an EMPTY staff
+// Role (RoleLevel=0). Used by the Navigators OAuth client at AO ID to mint
+// tokens explicitly bounded to /v1/me/* on the politihub API (per ADR-0003).
+//
+// The refresh token is unchanged in shape — refresh-shape changes are NOT
+// in scope for politihub ADR-0003 v1. When a Navigators access token
+// expires the client re-issues via SignInNavigators rather than using the
+// AO ID refresh endpoint (which would call CreateAccessToken — not
+// CreateAccessTokenWithScopes — and lose the volunteer:field scope). This
+// is documented behavior, not a bug.
+//
+// Audit log entry: "user.login_navigators" with a {"client":"navigators"}
+// metadata blob to distinguish from the staff "user.login" path.
+func (s *Service) SignInNavigators(ctx context.Context, email, password string) (*AuthResponse, error) {
+	genericErr := fmt.Errorf("invalid credentials")
+
+	user, err := s.store.GetUserByEmail(ctx, strings.ToLower(strings.TrimSpace(email)))
+	if err != nil {
+		slog.Debug("signin-navigators: user not found", "email", email)
+		return nil, genericErr
+	}
+	if !user.IsActive {
+		return nil, genericErr
+	}
+
+	match, err := s.passwordHasher.Verify(password, user.PasswordHash)
+	if err != nil || !match {
+		return nil, genericErr
+	}
+
+	membership, err := s.store.GetCompanyMembershipByUser(ctx, user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("get company membership: %w", err)
+	}
+
+	companyIDStr := membership.CompanyID.String()
+	accessToken, err := s.jwtManager.CreateAccessTokenWithScopes(
+		user.ID.String(),
+		companyIDStr,
+		"", // explicit: no staff role on Navigators tokens
+		0,  // explicit: no role level
+		[]string{companyIDStr},
+		[]string{"volunteer:field"}, // the politihub volunteer scope per ADR-0003
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create navigators access token: %w", err)
+	}
+
+	refreshToken, err := s.jwtManager.CreateRefreshToken(user.ID.String())
+	if err != nil {
+		return nil, fmt.Errorf("create refresh token: %w", err)
+	}
+
+	tokenHash := HashToken(refreshToken)
+	if err := s.store.CreateRefreshToken(ctx, user.ID, tokenHash, time.Now().Add(s.jwtManager.config.RefreshTokenExpiry)); err != nil {
+		return nil, fmt.Errorf("store refresh token: %w", err)
+	}
+
+	_ = s.store.CreateAuditLog(ctx, membership.CompanyID, user.ID, "user.login_navigators", "user", user.ID.String(), "", []byte(`{"client":"navigators"}`))
+
+	return &AuthResponse{AccessToken: accessToken, RefreshToken: refreshToken, User: user}, nil
+}
+
+// JWTManagerForTest exposes the internal JWTManager for in-package and
+// _test.go callers that need to validate tokens issued by the service
+// against the same ephemeral key the service used. NOT for production use
+// — the naming makes that explicit. (Exported because external _test.go
+// files cannot reach unexported fields.)
+func (s *Service) JWTManagerForTest() *JWTManager {
+	return s.jwtManager
+}
+
 // RefreshToken validates, revokes old, and issues new token pair.
 func (s *Service) RefreshToken(ctx context.Context, refreshTokenStr string) (*AuthResponse, error) {
 	_, err := s.jwtManager.ValidateRefreshToken(refreshTokenStr)

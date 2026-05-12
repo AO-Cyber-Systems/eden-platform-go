@@ -33,6 +33,18 @@ type Claims struct {
 	Role       string   `json:"role"`
 	RoleLevel  int      `json:"rlvl"`
 
+	// Scopes lists capability scopes carried by this token. Used by per-product
+	// consumers to gate route access along an axis orthogonal to Role. The
+	// first consumer is politihub (ADR-0003 — "volunteer:field" gates /v1/me/*
+	// and is rejected by staff endpoints when it is the SOLE scope; politihub
+	// combines OnlyHasScope("volunteer:field") with claims.Role == "" to
+	// distinguish production Navigators tokens from dual-axis dev tokens).
+	//
+	// omitempty preserves wire-format compatibility — staff issuance paths
+	// (CreateAccessToken) leave Scopes nil, so existing tokens carry no
+	// "scopes" key.
+	Scopes []string `json:"scopes,omitempty"`
+
 	// Household-aware claims (Obj 24a). All optional so B2B consumers see
 	// no wire-format change. Populated only via CreateHouseholdAccessToken
 	// when a household-shaped product (AOFamily, Eden Family) issues a
@@ -42,6 +54,32 @@ type Claims struct {
 	HouseholdID string `json:"hid,omitempty"`
 	ChildID     string `json:"child_id,omitempty"`
 	ChildMode   bool   `json:"child_mode,omitempty"`
+}
+
+// HasScope returns true if the token's scope list contains the given scope.
+// Pure scope-axis — does NOT inspect Role/RoleLevel. Callers that need a
+// dual-axis check must combine HasScope with their own Role check.
+func (c *Claims) HasScope(scope string) bool {
+	for _, s := range c.Scopes {
+		if s == scope {
+			return true
+		}
+	}
+	return false
+}
+
+// OnlyHasScope returns true iff the token's scope list is exactly [scope]
+// (length 1, single value). Pure scope-axis — does NOT inspect Role/RoleLevel.
+// Callers needing a "production-Navigators token" check combine OnlyHasScope
+// with their own Role check (e.g. politihub: OnlyHasScope("volunteer:field")
+// && claims.Role == "").
+//
+// This contract is locked: a dual-axis token (staff Role + volunteer:field
+// scope) returns true from OnlyHasScope("volunteer:field") because the
+// scope-list is still exactly one value. The Role check belongs to the
+// caller's middleware, where the staff/volunteer model is known.
+func (c *Claims) OnlyHasScope(scope string) bool {
+	return len(c.Scopes) == 1 && c.Scopes[0] == scope
 }
 
 // KeyEntry holds an ML-DSA-65 key pair identified by a kid (Key ID).
@@ -172,8 +210,19 @@ func (m *JWTManager) keyfunc(t *jwt.Token) (interface{}, error) {
 	return entry.PublicKey, nil
 }
 
-// CreateAccessToken creates a signed ML-DSA-65 access token with a kid header.
-func (m *JWTManager) CreateAccessToken(userID, companyID, role string, roleLevel int, companyIDs []string) (string, error) {
+// CreateAccessTokenWithScopes is CreateAccessToken with an explicit scopes
+// parameter. Used by issuance flows (e.g. SignInNavigators) that need to set
+// per-product capability scopes alongside the standard B2B claims.
+//
+// Backward compat: the existing CreateAccessToken is preserved as a thin
+// delegate that passes scopes=nil. Tokens issued via CreateAccessToken are
+// wire-format identical to pre-Scopes-field behavior because the
+// `omitempty` tag drops nil/empty slices from the JSON payload.
+func (m *JWTManager) CreateAccessTokenWithScopes(
+	userID, companyID, role string,
+	roleLevel int,
+	companyIDs, scopes []string,
+) (string, error) {
 	now := time.Now()
 	claims := &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -188,10 +237,21 @@ func (m *JWTManager) CreateAccessToken(userID, companyID, role string, roleLevel
 		CompanyIDs: companyIDs,
 		Role:       role,
 		RoleLevel:  roleLevel,
+		Scopes:     scopes,
 	}
 	token := jwt.NewWithClaims(signingMethodMLDSA65, claims)
 	token.Header["kid"] = m.activeKID
 	return token.SignedString(m.keys[m.activeKID].PrivateKey)
+}
+
+// CreateAccessToken creates a signed ML-DSA-65 access token with a kid header.
+//
+// This signature is preserved for backward compatibility — all existing
+// staff issuance callers (auth.Service.Login, auth.Service.SignUp,
+// sso.go) keep compiling. The body delegates to CreateAccessTokenWithScopes
+// with scopes=nil; omitempty drops the field from the wire format.
+func (m *JWTManager) CreateAccessToken(userID, companyID, role string, roleLevel int, companyIDs []string) (string, error) {
+	return m.CreateAccessTokenWithScopes(userID, companyID, role, roleLevel, companyIDs, nil)
 }
 
 // CreateHouseholdAccessToken creates a signed ML-DSA-65 access token scoped
