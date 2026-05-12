@@ -249,3 +249,119 @@ func TestService_Logout_RevokesToken(t *testing.T) {
 		t.Fatalf("RefreshToken() after logout expected error, got nil")
 	}
 }
+
+// --- politihub Obj 3 / TRD 03-01: SignInNavigators issuance path ---
+
+// validateNavigatorsAccessToken validates the access token via a fresh
+// JWTManager — used to assert claim shape independent of svc internals.
+//
+// We build a parallel manager configured exactly like setupAuthService, but
+// since each setupAuthService run creates a NewJWTManager with an EPHEMERAL
+// key, tests must validate via the same svc that issued the token. The
+// helper here uses an interior package-test helper exported only for tests.
+//
+// In practice the issuance tests below reuse the seeded backend and a
+// `validateViaService(t, svc, token)` helper that pokes the manager.
+
+func TestService_SignInNavigators_HappyPath(t *testing.T) {
+	svc, _ := setupAuthService(t)
+	ctx := context.Background()
+
+	const email = "navigator@example.com"
+	if _, err := svc.SignUp(ctx, email, "password123", "Navigator User"); err != nil {
+		t.Fatalf("seed SignUp: %v", err)
+	}
+
+	resp, err := svc.SignInNavigators(ctx, email, "password123")
+	if err != nil {
+		t.Fatalf("SignInNavigators: %v", err)
+	}
+	if resp == nil {
+		t.Fatalf("SignInNavigators returned nil response")
+	}
+	if resp.AccessToken == "" {
+		t.Errorf("AccessToken is empty")
+	}
+	if resp.RefreshToken == "" {
+		t.Errorf("RefreshToken is empty")
+	}
+	if resp.User.Email != email {
+		t.Errorf("User.Email = %q, want %q", resp.User.Email, email)
+	}
+
+	claims, err := navigatorsValidate(t, svc, resp.AccessToken)
+	if err != nil {
+		t.Fatalf("validate navigators token: %v", err)
+	}
+	if len(claims.Scopes) != 1 || claims.Scopes[0] != "volunteer:field" {
+		t.Errorf("Scopes = %v, want [volunteer:field]", claims.Scopes)
+	}
+	if claims.Role != "" {
+		t.Errorf("Role = %q, want empty (Navigators tokens have no staff role)", claims.Role)
+	}
+	if claims.RoleLevel != 0 {
+		t.Errorf("RoleLevel = %d, want 0", claims.RoleLevel)
+	}
+	if claims.UserID == "" {
+		t.Errorf("UserID is empty")
+	}
+	if claims.CompanyID == "" {
+		t.Errorf("CompanyID is empty (Navigators tokens are still tied to the user's company)")
+	}
+}
+
+func TestService_SignInNavigators_InvalidPassword(t *testing.T) {
+	svc, _ := setupAuthService(t)
+	ctx := context.Background()
+
+	const email = "navigator-wrong@example.com"
+	if _, err := svc.SignUp(ctx, email, "password123", "Navigator Wrong"); err != nil {
+		t.Fatalf("seed SignUp: %v", err)
+	}
+
+	resp, err := svc.SignInNavigators(ctx, email, "WRONGpassword")
+	if err == nil {
+		t.Fatalf("expected error for wrong password, got nil (resp=%v)", resp)
+	}
+	if resp != nil {
+		t.Errorf("expected nil response on wrong password, got %v", resp)
+	}
+	if !strings.Contains(err.Error(), "invalid credentials") {
+		t.Errorf("err = %q, want substring %q", err.Error(), "invalid credentials")
+	}
+}
+
+func TestService_SignInNavigators_UserNotFound(t *testing.T) {
+	svc, _ := setupAuthService(t)
+	ctx := context.Background()
+
+	resp, err := svc.SignInNavigators(ctx, "nobody-navigator@example.com", "password123")
+	if err == nil {
+		t.Fatalf("expected error for unknown user, got nil (resp=%v)", resp)
+	}
+	if resp != nil {
+		t.Errorf("expected nil response, got %v", resp)
+	}
+	if !strings.Contains(err.Error(), "invalid credentials") {
+		t.Errorf("err = %q, want substring %q", err.Error(), "invalid credentials")
+	}
+}
+
+// navigatorsValidate is a tiny indirection so tests can poke the JWT
+// manager living inside the *auth.Service without exporting it. The
+// helper rebuilds a JWTManager using the same approach as setupAuthService
+// would not work because keys are ephemeral per Service. We instead
+// short-circuit by issuing a follow-up validate via the same Service.
+//
+// Implementation: call svc.ValidateAccessToken if present; otherwise fall
+// back to a public helper. We'll add ValidateAccessToken pass-through on
+// the Service in the GREEN slice if needed. For now we use Login + a
+// JWT manager exposed through the test backend's auth store knowledge.
+//
+// Pragmatic alternative: validate by parsing the token client-side via a
+// fresh JWTManager that wraps the SAME key. We can't reach the ephemeral
+// key, so we add a test-only export on the Service: JWTManager().
+func navigatorsValidate(t *testing.T, svc *auth.Service, token string) (*auth.Claims, error) {
+	t.Helper()
+	return svc.JWTManagerForTest().ValidateAccessToken(token)
+}
