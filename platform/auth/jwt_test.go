@@ -505,6 +505,10 @@ func decodeJWTPayload(t *testing.T, token string) map[string]any {
 // household fields on the wire — they're optional, omitempty, and absent
 // when zero-valued. This protects every existing B2B consumer from a
 // surprise field appearing in their claims.
+//
+// Extended (politihub Obj 3 / TRD 03-01): the new "scopes" field MUST also
+// be absent from a vanilla CreateAccessToken token. The Scopes axis is
+// additive — staff issuance never sets it, so omitempty drops it.
 func TestJWTManager_BackwardCompatWireFormat(t *testing.T) {
 	manager := newTestJWTManager(t)
 
@@ -515,9 +519,9 @@ func TestJWTManager_BackwardCompatWireFormat(t *testing.T) {
 
 	payload := decodeJWTPayload(t, token)
 
-	// New household-axis fields MUST be absent from the wire format for
-	// B2B-issued tokens.
-	for _, forbidden := range []string{"hid", "child_id", "child_mode"} {
+	// New household-axis fields AND the new scopes axis (politihub ADR-0003)
+	// MUST be absent from the wire format for B2B-issued tokens.
+	for _, forbidden := range []string{"hid", "child_id", "child_mode", "scopes"} {
 		if _, present := payload[forbidden]; present {
 			t.Errorf("B2B token payload unexpectedly contains %q: %v", forbidden, payload[forbidden])
 		}
@@ -528,6 +532,203 @@ func TestJWTManager_BackwardCompatWireFormat(t *testing.T) {
 		if _, present := payload[required]; !present {
 			t.Errorf("B2B token payload missing required field %q", required)
 		}
+	}
+}
+
+// --- politihub Obj 3 / TRD 03-01: Scopes claim + helpers ---
+
+// TestJWTManager_ScopesRoundTrip asserts that an access token issued with
+// CreateAccessTokenWithScopes round-trips the Scopes axis through
+// ValidateAccessToken without loss.
+func TestJWTManager_ScopesRoundTrip(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	token, err := manager.CreateAccessTokenWithScopes(
+		"user-1", "company-1", "", 0,
+		[]string{"company-1"},
+		[]string{"volunteer:field"},
+	)
+	if err != nil {
+		t.Fatalf("CreateAccessTokenWithScopes: %v", err)
+	}
+	claims, err := manager.ValidateAccessToken(token)
+	if err != nil {
+		t.Fatalf("ValidateAccessToken: %v", err)
+	}
+	if len(claims.Scopes) != 1 || claims.Scopes[0] != "volunteer:field" {
+		t.Errorf("Scopes = %v, want [volunteer:field]", claims.Scopes)
+	}
+}
+
+// TestJWTManager_ScopesRoundTrip_Multi asserts that order is preserved when
+// a token carries multiple scopes.
+func TestJWTManager_ScopesRoundTrip_Multi(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	want := []string{"volunteer:field", "training:author"}
+	token, err := manager.CreateAccessTokenWithScopes(
+		"user-1", "company-1", "", 0,
+		[]string{"company-1"},
+		want,
+	)
+	if err != nil {
+		t.Fatalf("CreateAccessTokenWithScopes: %v", err)
+	}
+	claims, err := manager.ValidateAccessToken(token)
+	if err != nil {
+		t.Fatalf("ValidateAccessToken: %v", err)
+	}
+	if len(claims.Scopes) != len(want) {
+		t.Fatalf("Scopes length = %d, want %d", len(claims.Scopes), len(want))
+	}
+	for i := range want {
+		if claims.Scopes[i] != want[i] {
+			t.Errorf("Scopes[%d] = %q, want %q", i, claims.Scopes[i], want[i])
+		}
+	}
+}
+
+// TestJWTManager_ScopesOmitEmpty_Nil asserts that nil scopes produce no
+// "scopes" key on the wire (omitempty).
+func TestJWTManager_ScopesOmitEmpty_Nil(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	token, err := manager.CreateAccessTokenWithScopes(
+		"user-1", "company-1", "admin", 80,
+		[]string{"company-1"},
+		nil,
+	)
+	if err != nil {
+		t.Fatalf("CreateAccessTokenWithScopes(nil scopes): %v", err)
+	}
+	payload := decodeJWTPayload(t, token)
+	if v, ok := payload["scopes"]; ok {
+		t.Errorf("nil scopes: payload unexpectedly contains 'scopes' = %v", v)
+	}
+}
+
+// TestJWTManager_ScopesOmitEmpty_Empty asserts that an empty (non-nil)
+// scopes slice ALSO produces no "scopes" key (Go encoding/json honors
+// omitempty for len-0 slices).
+func TestJWTManager_ScopesOmitEmpty_Empty(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	token, err := manager.CreateAccessTokenWithScopes(
+		"user-1", "company-1", "admin", 80,
+		[]string{"company-1"},
+		[]string{},
+	)
+	if err != nil {
+		t.Fatalf("CreateAccessTokenWithScopes(empty scopes): %v", err)
+	}
+	payload := decodeJWTPayload(t, token)
+	if v, ok := payload["scopes"]; ok {
+		t.Errorf("empty scopes: payload unexpectedly contains 'scopes' = %v", v)
+	}
+}
+
+// TestClaims_HasScope covers the helper's table of cases (pure scope-axis).
+func TestClaims_HasScope(t *testing.T) {
+	cases := []struct {
+		name   string
+		scopes []string
+		query  string
+		want   bool
+	}{
+		{"nil scopes", nil, "x", false},
+		{"empty scopes", []string{}, "x", false},
+		{"single match", []string{"volunteer:field"}, "volunteer:field", true},
+		{"single no match", []string{"volunteer:field"}, "x", false},
+		{"multi has", []string{"volunteer:field", "training:author"}, "training:author", true},
+		{"multi miss", []string{"volunteer:field", "training:author"}, "missing", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &Claims{Scopes: tc.scopes}
+			if got := c.HasScope(tc.query); got != tc.want {
+				t.Errorf("HasScope(%q) on %v = %v, want %v", tc.query, tc.scopes, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestClaims_OnlyHasScope (MANDATORY) covers the exclusive single-scope
+// contract.
+func TestClaims_OnlyHasScope(t *testing.T) {
+	cases := []struct {
+		name   string
+		scopes []string
+		query  string
+		want   bool
+	}{
+		{"nil scopes", nil, "x", false},
+		{"empty scopes", []string{}, "x", false},
+		{"single match", []string{"volunteer:field"}, "volunteer:field", true},
+		{"single mismatch", []string{"volunteer:field"}, "other", false},
+		{"multi with match", []string{"volunteer:field", "training:author"}, "volunteer:field", false},
+		{"single wrong scope", []string{"other:thing"}, "volunteer:field", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			c := &Claims{Scopes: tc.scopes}
+			if got := c.OnlyHasScope(tc.query); got != tc.want {
+				t.Errorf("OnlyHasScope(%q) on %v = %v, want %v", tc.query, tc.scopes, got, tc.want)
+			}
+		})
+	}
+}
+
+// TestClaims_OnlyHasScope_IgnoresRole (MANDATORY) pins the user-locked
+// decision: OnlyHasScope is PURE scope-axis. It does NOT inspect Role.
+// Callers needing a "production-Navigators token" check combine it with
+// `claims.Role == ""` themselves.
+func TestClaims_OnlyHasScope_IgnoresRole(t *testing.T) {
+	cases := []struct {
+		name   string
+		claims *Claims
+	}{
+		{
+			name:   "no role",
+			claims: &Claims{Scopes: []string{"volunteer:field"}, Role: "", RoleLevel: 0},
+		},
+		{
+			name:   "owner role and same scope",
+			claims: &Claims{Scopes: []string{"volunteer:field"}, Role: "owner", RoleLevel: 90},
+		},
+		{
+			name:   "member role and same scope",
+			claims: &Claims{Scopes: []string{"volunteer:field"}, Role: "member", RoleLevel: 40},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if !tc.claims.OnlyHasScope("volunteer:field") {
+				t.Errorf("OnlyHasScope must be pure scope-axis: returned false for token with sole scope (Role=%q, RoleLevel=%d)", tc.claims.Role, tc.claims.RoleLevel)
+			}
+		})
+	}
+}
+
+// TestJWTManager_CreateAccessToken_StaffIssuanceUnchanged asserts that the
+// legacy CreateAccessToken signature still works and produces tokens
+// without a Scopes axis (delegates to CreateAccessTokenWithScopes with
+// scopes=nil).
+func TestJWTManager_CreateAccessToken_StaffIssuanceUnchanged(t *testing.T) {
+	manager := newTestJWTManager(t)
+
+	token, err := manager.CreateAccessToken("user-1", "company-1", "admin", 80, []string{"company-1"})
+	if err != nil {
+		t.Fatalf("CreateAccessToken: %v", err)
+	}
+	claims, err := manager.ValidateAccessToken(token)
+	if err != nil {
+		t.Fatalf("ValidateAccessToken: %v", err)
+	}
+	if len(claims.Scopes) != 0 {
+		t.Errorf("legacy CreateAccessToken Scopes = %v, want empty/nil", claims.Scopes)
+	}
+	if claims.Role != "admin" {
+		t.Errorf("Role = %q, want %q", claims.Role, "admin")
 	}
 }
 
