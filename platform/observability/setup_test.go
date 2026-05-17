@@ -131,3 +131,30 @@ func TestInterceptor_OnlyTraceID(t *testing.T) {
 		t.Errorf("did not expect span_id when only TraceID is set, got: %s", out)
 	}
 }
+
+func TestSetup_OTLPNilKeepsExistingSentryBehavior(t *testing.T) {
+	shutdown, err := Setup(Config{ServiceName: "test-otlp-nil", SentryDSN: ""})
+	if err != nil {
+		t.Fatalf("Setup returned error: %v", err)
+	}
+	if shutdown == nil {
+		t.Fatal("Setup returned nil shutdown")
+	}
+	// Shutdown must be callable without panic.
+	shutdown()
+}
+
+func TestSetup_OTLPEmptyEndpointDegradesToNoop(t *testing.T) {
+	shutdown, err := Setup(Config{
+		ServiceName: "test-otlp-empty",
+		SentryDSN:   "",
+		OTLP:        &OTLPConfig{Endpoint: ""},
+	})
+	if err != nil {
+		t.Fatalf("Setup returned error: %v", err)
+	}
+	if shutdown == nil {
+		t.Fatal("Setup returned nil shutdown")
+	}
+	shutdown()
+}

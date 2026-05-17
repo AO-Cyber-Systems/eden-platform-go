@@ -1,6 +1,7 @@
 package observability
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -35,6 +36,12 @@ type Config struct {
 
 	// SampleRate forwarded to errortrack (0 = unset = sentry-go default 1.0).
 	SampleRate float64
+
+	// OTLP optionally enables the OTLP/HTTP exporter pipeline (tracer +
+	// meter, with logger to follow). Nil = OTLP disabled (existing behavior
+	// preserved for AOSentry/AODex). SetupOTLP availability invariants apply:
+	// empty Endpoint or init failure degrades silently to no-op providers.
+	OTLP *OTLPConfig
 }
 
 // Shutdown is the cleanup function returned by Setup. Callers must `defer`
@@ -102,7 +109,23 @@ func Setup(cfg Config) (Shutdown, error) {
 	combined := errortrack.NewMultiHandler(base, errortrack.SlogHandler())
 	slog.SetDefault(slog.New(combined))
 
-	return Shutdown(flush), nil
+	// Optional OTLP chain. Never blocks boot — SetupOTLP returns nil error
+	// in all degrade paths. We still log any unexpected non-nil error.
+	var otlpShutdown OTLPShutdown = noopOTLPShutdown
+	if cfg.OTLP != nil {
+		res := BuildResource(cfg)
+		sh, otlpErr := SetupOTLP(context.Background(), *cfg.OTLP, res)
+		if otlpErr != nil {
+			slog.Warn("observability: SetupOTLP returned unexpected error", "error", otlpErr)
+		} else {
+			otlpShutdown = sh
+		}
+	}
+
+	return Shutdown(func() {
+		otlpShutdown()
+		flush()
+	}), nil
 }
 
 // MustSetup is the panic-on-error variant for boot code that wants a
