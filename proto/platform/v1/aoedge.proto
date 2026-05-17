@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package platform.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// AOEdgeAdminService exposes the headless boundary proxy's operational
+// surface: health, FIPS mode reporting, and build/version metadata.
+// The data plane (TLS termination, WAF, DDoS, geo, DLP, identity proxy,
+// policy evaluation) is NOT exposed here — those are handled at the
+// TCP/HTTP listener, not via Connect RPC. This service is reachable
+// only from the platform's internal admin network over mTLS.
+//
+// AOEdge owns: SC-7 boundary protection, identity-aware proxy, WAF,
+// DDoS, geo, egress DLP. AOEdge does NOT own: credential issuance
+// (AOID), AI-aware policy (AOCore), audit storage (AOAudit).
+service AOEdgeAdminService {
+  // HealthCheck reports liveness, readiness, and FIPS posture for a
+  // single AOEdge instance. Used by L4 LBs for backend selection and
+  // by operators verifying FIPS mode is active in regulated
+  // deployments.
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+
+  // GetBuildInfo returns the binary's build metadata: version,
+  // commit, build timestamp, Go version, FIPS module identifier, and
+  // the eden proto schema version this binary was generated against.
+  // Used for compliance evidence (which build is enforcing the
+  // boundary right now) and for cross-fleet drift detection.
+  rpc GetBuildInfo(GetBuildInfoRequest) returns (GetBuildInfoResponse);
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  // Liveness: process is up and able to serve admin RPCs.
+  bool alive = 1;
+
+  // Readiness: data plane is ready to accept external traffic (TLS
+  // listener bound, upstream connection pool healthy, policy bundle
+  // loaded if Objective 10 has shipped).
+  bool ready = 2;
+
+  // FIPS mode flag — true when the binary was built with BoringCrypto
+  // and the runtime has verified the FIPS module is the active crypto
+  // provider. Required to be true for FedRAMP Moderate / High / IL4 /
+  // IL5 deployments.
+  bool fips_mode = 3;
+
+  // Human-readable status detail, e.g. "ready", "draining",
+  // "upstream_unreachable", "policy_bundle_stale".
+  string status_detail = 4;
+}
+
+message GetBuildInfoRequest {}
+
+message GetBuildInfoResponse {
+  // Semantic version of this AOEdge binary, e.g. "1.0.0".
+  string version = 1;
+
+  // Git commit SHA the binary was built from.
+  string commit = 2;
+
+  // RFC 3339 timestamp of the build.
+  string built_at = 3;
+
+  // Go toolchain version, e.g. "go1.26.1 (FIPS)".
+  string go_version = 4;
+
+  // Identifier of the FIPS-validated cryptographic module in use.
+  string fips_module = 5;
+
+  // Eden proto schema version (or commit) this binary was generated
+  // against. Lets operators detect drift between the AOEdge binary's
+  // expected contracts and what AOID / AOCore / AOAudit are running.
+  string eden_proto_schema_version = 6;
+}
