@@ -180,3 +180,143 @@ func TestLogger_LogSync_Success(t *testing.T) {
 		t.Errorf("action = %q, want auth.user.login", store.events[0].Action)
 	}
 }
+
+// Test list (TRD 02-03 — identity lifecycle Action constants):
+//   - TestActionConstants_AllUnique
+//     Every Action constant added in TRD 02-03 has a unique string value, with
+//     no collision against pre-existing audit, RBAC, or generic constants.
+//   - TestIdentityActions_NamespacePrefix
+//     All 16 new identity lifecycle constants carry the "identity." prefix in
+//     their string value (operator-grep contract — AOAudit + Obj 9 pipeline
+//     filter on prefix).
+//   - TestIdentityActions_StringValuesExact
+//     Lock the exact RESEARCH.md Task 12 string-value contract. Downstream
+//     consumers parse on these strings — renaming requires a coordinated
+//     cross-repo change.
+//
+// Naming-collision note: the pre-existing RBAC namespace defines
+// ActionRoleGrant ("rbac.role.grant") and ActionRoleRevoke ("rbac.role.revoke").
+// To avoid Go identifier collision, the TRD 02-03 identity-domain role
+// constants use the Identity prefix:
+//   - ActionIdentityRoleCreate ("identity.role.create")
+//   - ActionIdentityRoleAssign ("identity.role.assign")
+//   - ActionIdentityRoleRevoke ("identity.role.revoke")
+// This deviation from RESEARCH.md Task 12 is documented in the TRD SUMMARY.
+
+// identityActions is the canonical list of Action constants added in TRD 02-03.
+// Updating this list when adding a new identity constant is part of the
+// contract: keeps failures immediately actionable (which constant was missed).
+func identityActions() map[string]Action {
+	return map[string]Action{
+		// Account lifecycle
+		"ActionAccountCreate":  ActionAccountCreate,
+		"ActionAccountUpdate":  ActionAccountUpdate,
+		"ActionAccountSuspend": ActionAccountSuspend,
+		"ActionAccountRecover": ActionAccountRecover,
+		"ActionAccountDelete":  ActionAccountDelete,
+		"ActionAccountExpire":  ActionAccountExpire,
+		// Groups + group membership
+		"ActionGroupCreate":       ActionGroupCreate,
+		"ActionGroupDelete":       ActionGroupDelete,
+		"ActionGroupMemberAdd":    ActionGroupMemberAdd,
+		"ActionGroupMemberRemove": ActionGroupMemberRemove,
+		// Roles + role bindings (Identity-prefixed to avoid RBAC collision)
+		"ActionIdentityRoleCreate": ActionIdentityRoleCreate,
+		"ActionIdentityRoleAssign": ActionIdentityRoleAssign,
+		"ActionIdentityRoleRevoke": ActionIdentityRoleRevoke,
+		// Entitlement attributes
+		"ActionEntitlementSet":    ActionEntitlementSet,
+		"ActionEntitlementDelete": ActionEntitlementDelete,
+		// Tenants (super-admin only)
+		"ActionTenantCreate": ActionTenantCreate,
+	}
+}
+
+// preExistingActions is the pre-TRD-02-03 set. Used to assert that the new
+// identity constants do not collide with any existing audit-string value.
+// Keep in sync with the const block in event.go (auth.*, generic.*, rbac.*).
+func preExistingActions() map[string]Action {
+	return map[string]Action{
+		"ActionUserLogin":    ActionUserLogin,
+		"ActionUserLogout":   ActionUserLogout,
+		"ActionUserSignup":   ActionUserSignup,
+		"ActionUserPwReset":  ActionUserPwReset,
+		"ActionTokenRefresh": ActionTokenRefresh,
+		"ActionAPIKeyCreate": ActionAPIKeyCreate,
+		"ActionAPIKeyRevoke": ActionAPIKeyRevoke,
+		"ActionAPIKeyRotate": ActionAPIKeyRotate,
+		"ActionCreate":       ActionCreate,
+		"ActionUpdate":       ActionUpdate,
+		"ActionDelete":       ActionDelete,
+		"ActionRoleGrant":    ActionRoleGrant,
+		"ActionRoleRevoke":   ActionRoleRevoke, // RBAC-namespaced; "rbac.role.revoke"
+	}
+}
+
+func TestActionConstants_AllUnique(t *testing.T) {
+	all := map[string]Action{}
+	for k, v := range preExistingActions() {
+		all[k] = v
+	}
+	for k, v := range identityActions() {
+		all[k] = v
+	}
+
+	seen := map[string]string{} // string value -> first constant name
+	for name, val := range all {
+		s := val.String()
+		if s == "" {
+			t.Errorf("%s has empty string value", name)
+			continue
+		}
+		if existing, ok := seen[s]; ok {
+			t.Fatalf("audit.Action duplicate string value %q: %s collides with %s", s, name, existing)
+		}
+		seen[s] = name
+	}
+}
+
+func TestIdentityActions_NamespacePrefix(t *testing.T) {
+	ids := identityActions()
+	if len(ids) != 16 {
+		t.Fatalf("TRD 02-03 ships exactly 16 identity actions; got %d", len(ids))
+	}
+	for name, a := range ids {
+		s := a.String()
+		if len(s) <= 9 || s[:9] != "identity." {
+			t.Errorf("%s must have 'identity.' prefix; got %q", name, s)
+		}
+	}
+}
+
+func TestIdentityActions_StringValuesExact(t *testing.T) {
+	// Lock the exact string values per RESEARCH.md Task 12. Downstream
+	// consumers (AOAudit, Obj 9 pipeline) treat these strings as a stable
+	// contract — renaming requires a coordinated cross-repo change.
+	want := map[Action]string{
+		ActionAccountCreate:       "identity.account.create",
+		ActionAccountUpdate:       "identity.account.update",
+		ActionAccountSuspend:      "identity.account.suspend",
+		ActionAccountRecover:      "identity.account.recover",
+		ActionAccountDelete:       "identity.account.delete",
+		ActionAccountExpire:       "identity.account.expire",
+		ActionGroupCreate:         "identity.group.create",
+		ActionGroupDelete:         "identity.group.delete",
+		ActionGroupMemberAdd:      "identity.group.member.add",
+		ActionGroupMemberRemove:   "identity.group.member.remove",
+		ActionIdentityRoleCreate:  "identity.role.create",
+		ActionIdentityRoleAssign:  "identity.role.assign",
+		ActionIdentityRoleRevoke:  "identity.role.revoke",
+		ActionEntitlementSet:      "identity.entitlement.set",
+		ActionEntitlementDelete:   "identity.entitlement.delete",
+		ActionTenantCreate:        "identity.tenant.create",
+	}
+	if len(want) != 16 {
+		t.Fatalf("test table out of sync: expected 16 entries, got %d", len(want))
+	}
+	for a, expected := range want {
+		if got := a.String(); got != expected {
+			t.Errorf("Action %q = %q, want %q", expected, got, expected)
+		}
+	}
+}
