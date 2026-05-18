@@ -1,0 +1,535 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// AccountAdminService is the admin surface for AOID identity lifecycle:
+// accounts, groups, roles, entitlements, and tenants. All RPCs are mTLS-only
+// and require an authenticated admin actor (super_admin or tenant_admin).
+//
+// Tenant scoping (enforced by server.NewTenantScopeInterceptor):
+//   - Every mutating request carries tenant_id as field 1.
+//   - Super admins may target any tenant (including uuid.Nil for tenant ops).
+//   - Tenant admins are rejected at the request boundary when tenant_id
+//     does not match their bound tenant.
+//
+// Audit emission: every successful mutation emits a platform/audit.Event
+// with the action constants added in TRD 02-03 (identity.*).
+//
+// See AOID .planning/objectives/02-account-model-admin-lifecycle/ for the
+// design backing this contract.
+service AccountAdminService {
+  // -------------------------- Accounts (LIFE-01/02/03/05/08, MGMT-08) -----
+
+  // ProvisionAccount creates a human user account.
+  rpc ProvisionAccount(ProvisionAccountRequest) returns (ProvisionAccountResponse);
+
+  // ProvisionServiceAccount creates a service_account or workload_identity
+  // with an optional or required expires_at lifetime.
+  rpc ProvisionServiceAccount(ProvisionServiceAccountRequest) returns (ProvisionServiceAccountResponse);
+
+  // GetAccount retrieves a single account by id within the tenant.
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
+
+  // ListAccounts returns a paginated list of accounts in the tenant.
+  rpc ListAccounts(ListAccountsRequest) returns (ListAccountsResponse);
+
+  // UpdateAccount mutates non-lifecycle attributes (display_name, email,
+  // org_affiliation, clearance). Status transitions go through
+  // Suspend/Recover/Deprovision.
+  rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse);
+
+  // SuspendAccount transitions the account to "suspended". Attributes retained.
+  rpc SuspendAccount(SuspendAccountRequest) returns (SuspendAccountResponse);
+
+  // RecoverAccount transitions a suspended account back to "active".
+  rpc RecoverAccount(RecoverAccountRequest) returns (RecoverAccountResponse);
+
+  // DeprovisionAccount transitions the account to "deleted" (soft delete).
+  rpc DeprovisionAccount(DeprovisionAccountRequest) returns (DeprovisionAccountResponse);
+
+  // -------------------------- Groups (MGMT-07) -----------------------------
+
+  // DefineGroup creates a tenant-scoped group.
+  rpc DefineGroup(DefineGroupRequest) returns (DefineGroupResponse);
+
+  // ListGroups returns groups in the tenant.
+  rpc ListGroups(ListGroupsRequest) returns (ListGroupsResponse);
+
+  // AddAccountToGroup adds an account to a group.
+  rpc AddAccountToGroup(AddAccountToGroupRequest) returns (AddAccountToGroupResponse);
+
+  // RemoveAccountFromGroup removes an account from a group.
+  rpc RemoveAccountFromGroup(RemoveAccountFromGroupRequest) returns (RemoveAccountFromGroupResponse);
+
+  // -------------------------- Roles (MGMT-05, MGMT-07) ---------------------
+
+  // DefineRole creates a tenant-scoped role.
+  rpc DefineRole(DefineRoleRequest) returns (DefineRoleResponse);
+
+  // ListRoles returns roles available in the tenant.
+  rpc ListRoles(AccountAdminServiceListRolesRequest) returns (AccountAdminServiceListRolesResponse);
+
+  // AssignRole binds a role to an account.
+  rpc AssignRole(AccountAdminServiceAssignRoleRequest) returns (AccountAdminServiceAssignRoleResponse);
+
+  // RevokeRole unbinds a role from an account.
+  rpc RevokeRole(RevokeRoleRequest) returns (RevokeRoleResponse);
+
+  // -------------------------- Entitlements (MGMT-08) -----------------------
+
+  // SetEntitlement creates or replaces an entitlement on an account.
+  rpc SetEntitlement(SetEntitlementRequest) returns (SetEntitlementResponse);
+
+  // DeleteEntitlement removes an entitlement from an account.
+  rpc DeleteEntitlement(DeleteEntitlementRequest) returns (DeleteEntitlementResponse);
+
+  // ListEntitlements returns entitlements for an account.
+  rpc ListEntitlements(ListEntitlementsRequest) returns (ListEntitlementsResponse);
+
+  // -------------------------- Tenants (super-admin only) -------------------
+
+  // CreateTenant creates a new tenant. Super-admin only.
+  rpc CreateTenant(CreateTenantRequest) returns (CreateTenantResponse);
+
+  // GetTenant retrieves a tenant by id. Super-admin only.
+  rpc GetTenant(GetTenantRequest) returns (GetTenantResponse);
+
+  // ListTenants enumerates all tenants. Super-admin only (AC-2 evidence).
+  rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
+}
+
+// ============================================================================
+// Messages
+// ============================================================================
+
+// ClearanceInfo is the strongly-typed shape that maps to aoid.accounts.clearance
+// jsonb. See RESEARCH.md Task 3 for the taxonomy. Application layer validates
+// field values (level enum, compartment list); proto carries the shape only.
+message ClearanceInfo {
+  // level is the clearance level (e.g. "UNCLASSIFIED", "SECRET", "TS", "TS/SCI").
+  string level = 1;
+
+  // compartments lists SCI compartments (e.g. ["SI", "TK"]).
+  repeated string compartments = 2;
+
+  // caveats lists release caveats (e.g. ["NOFORN", "RELTO USA, FVEY"]).
+  repeated string caveats = 3;
+
+  // investigation_type is the background investigation type (e.g. "T5").
+  string investigation_type = 4;
+
+  // adjudication_agency is the agency that granted clearance (e.g. "DCSA").
+  string adjudication_agency = 5;
+
+  // formal_access_date is when the subject was read into the clearance.
+  google.protobuf.Timestamp formal_access_date = 6;
+
+  // expiry_date is when the clearance lapses (5y/10y per investigation type).
+  google.protobuf.Timestamp expiry_date = 7;
+
+  // verified_at is when an admin verified the clearance record.
+  google.protobuf.Timestamp verified_at = 8;
+
+  // verified_by is the admin actor (UUID string) who verified.
+  string verified_by = 9;
+}
+
+// AccountData is the canonical wire shape of an account.
+message AccountData {
+  // id is the account UUID.
+  string id = 1;
+
+  // tenant_id is the owning tenant UUID.
+  string tenant_id = 2;
+
+  // account_type is "human" | "service_account" | "workload_identity".
+  string account_type = 3;
+
+  // status is "active" | "suspended" | "deleted".
+  string status = 4;
+
+  // display_name is the human-readable name.
+  string display_name = 5;
+
+  // email is optional for service/workload accounts.
+  string email = 6;
+
+  // org_affiliation is the subject's organizational affiliation.
+  string org_affiliation = 7;
+
+  // description is required for service/workload accounts.
+  string description = 8;
+
+  // clearance is the structured clearance information.
+  ClearanceInfo clearance = 9;
+
+  // expires_at is unset for human accounts; set for service/workload.
+  google.protobuf.Timestamp expires_at = 10;
+
+  // created_at is when the account was provisioned.
+  google.protobuf.Timestamp created_at = 11;
+
+  // updated_at is the last mutation timestamp.
+  google.protobuf.Timestamp updated_at = 12;
+
+  // created_by is the actor identifier (UUID string or CN).
+  string created_by = 13;
+
+  // last_modified_by is the actor that last mutated this account.
+  string last_modified_by = 14;
+}
+
+// Account-lifecycle requests/responses
+
+// ProvisionAccountRequest provisions a human account.
+message ProvisionAccountRequest {
+  // tenant_id is the target tenant (canonical field 1 for tenant scope).
+  string tenant_id = 1;
+  string display_name = 2;
+  string email = 3;
+  string org_affiliation = 4;
+  ClearanceInfo clearance = 5;
+  // group_ids attaches the account to the listed groups at provision time.
+  repeated string group_ids = 6;
+}
+
+// ProvisionAccountResponse returns the new account.
+message ProvisionAccountResponse {
+  AccountData account = 1;
+}
+
+// ProvisionServiceAccountRequest provisions a service or workload account.
+message ProvisionServiceAccountRequest {
+  string tenant_id = 1;
+  // account_type is "service_account" or "workload_identity".
+  string account_type = 2;
+  string display_name = 3;
+  string description = 4;
+  // email is optional for service accounts.
+  string email = 5;
+  // expires_at is required for workload_identity, optional for service_account.
+  google.protobuf.Timestamp expires_at = 6;
+  repeated string group_ids = 7;
+}
+
+// ProvisionServiceAccountResponse returns the new service/workload account.
+message ProvisionServiceAccountResponse {
+  AccountData account = 1;
+}
+
+// GetAccountRequest reads a single account by id within the tenant.
+message GetAccountRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+}
+
+// GetAccountResponse returns the requested account.
+message GetAccountResponse {
+  AccountData account = 1;
+}
+
+// ListAccountsRequest paginates accounts in the tenant.
+message ListAccountsRequest {
+  string tenant_id = 1;
+  // page_size defaults to 50, max 500.
+  int32 page_size = 2;
+  string page_token = 3;
+  // account_type optional filter.
+  string account_type = 4;
+  // status optional filter (default excludes "deleted").
+  string status = 5;
+  // include_deleted overrides the default exclusion of deleted accounts.
+  bool include_deleted = 6;
+}
+
+// ListAccountsResponse returns a page of accounts and the next page token.
+message ListAccountsResponse {
+  repeated AccountData accounts = 1;
+  string next_page_token = 2;
+}
+
+// UpdateAccountRequest mutates non-lifecycle attributes. Status changes go
+// through Suspend/Recover/Deprovision, not Update.
+message UpdateAccountRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string display_name = 3;
+  string email = 4;
+  string org_affiliation = 5;
+  ClearanceInfo clearance = 6;
+  google.protobuf.Timestamp expires_at = 7;
+}
+
+// UpdateAccountResponse returns the mutated account.
+message UpdateAccountResponse {
+  AccountData account = 1;
+}
+
+// SuspendAccountRequest transitions an account to "suspended".
+message SuspendAccountRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string reason = 3;
+}
+
+// SuspendAccountResponse returns the suspended account.
+message SuspendAccountResponse {
+  AccountData account = 1;
+}
+
+// RecoverAccountRequest transitions a suspended account back to "active".
+message RecoverAccountRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string reason = 3;
+}
+
+// RecoverAccountResponse returns the recovered account.
+message RecoverAccountResponse {
+  AccountData account = 1;
+}
+
+// DeprovisionAccountRequest soft-deletes an account.
+message DeprovisionAccountRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string reason = 3;
+}
+
+// DeprovisionAccountResponse returns the deprovisioned account.
+message DeprovisionAccountResponse {
+  AccountData account = 1;
+}
+
+// Groups
+
+// Group is the canonical wire shape of a group.
+message Group {
+  string id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string description = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// DefineGroupRequest creates a group in the tenant.
+message DefineGroupRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+// DefineGroupResponse returns the new group.
+message DefineGroupResponse {
+  Group group = 1;
+}
+
+// ListGroupsRequest paginates groups in the tenant.
+message ListGroupsRequest {
+  string tenant_id = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+// ListGroupsResponse returns a page of groups.
+message ListGroupsResponse {
+  repeated Group groups = 1;
+  string next_page_token = 2;
+}
+
+// AddAccountToGroupRequest binds an account to a group.
+message AddAccountToGroupRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string group_id = 3;
+}
+
+// AddAccountToGroupResponse is empty (membership is acknowledged by absence
+// of error).
+message AddAccountToGroupResponse {}
+
+// RemoveAccountFromGroupRequest unbinds an account from a group.
+message RemoveAccountFromGroupRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string group_id = 3;
+}
+
+// RemoveAccountFromGroupResponse is empty.
+message RemoveAccountFromGroupResponse {}
+
+// Roles
+
+// Role is the canonical wire shape of a role.
+message Role {
+  string id = 1;
+  // tenant_id is empty for system-wide roles (e.g. super_admin).
+  string tenant_id = 2;
+  string name = 3;
+  string description = 4;
+  bool is_system = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+// DefineRoleRequest creates a role in the tenant.
+message DefineRoleRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+// DefineRoleResponse returns the new role.
+message DefineRoleResponse {
+  Role role = 1;
+}
+
+// AccountAdminServiceListRolesRequest paginates roles available in the tenant. Named
+// `Admin*` to disambiguate from rbac.proto's `ListRolesRequest` (same proto
+// package, different service surface).
+message AccountAdminServiceListRolesRequest {
+  string tenant_id = 1;
+  // include_system includes system roles (e.g. tenant_admin) in the result.
+  bool include_system = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+// AccountAdminServiceListRolesResponse returns a page of roles.
+message AccountAdminServiceListRolesResponse {
+  repeated Role roles = 1;
+  string next_page_token = 2;
+}
+
+// AccountAdminServiceAssignRoleRequest binds a role to an account. Named `Admin*` to
+// disambiguate from rbac.proto's `AssignRoleRequest`.
+message AccountAdminServiceAssignRoleRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string role_id = 3;
+}
+
+// AccountAdminServiceAssignRoleResponse is empty.
+message AccountAdminServiceAssignRoleResponse {}
+
+// RevokeRoleRequest unbinds a role from an account.
+message RevokeRoleRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string role_id = 3;
+}
+
+// RevokeRoleResponse is empty.
+message RevokeRoleResponse {}
+
+// Entitlements
+
+// Entitlement is the canonical wire shape of an account entitlement.
+message Entitlement {
+  string id = 1;
+  string account_id = 2;
+  string tenant_id = 3;
+  // namespace partitions entitlement keys per consumer (e.g. "aoid", "aocore").
+  string namespace = 4;
+  string key = 5;
+  // value_json is the JSON-encoded value (object/scalar/array).
+  string value_json = 6;
+  google.protobuf.Timestamp set_at = 7;
+  string set_by = 8;
+}
+
+// SetEntitlementRequest creates or replaces an entitlement on an account.
+message SetEntitlementRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string namespace = 3;
+  string key = 4;
+  string value_json = 5;
+}
+
+// SetEntitlementResponse returns the upserted entitlement.
+message SetEntitlementResponse {
+  Entitlement entitlement = 1;
+}
+
+// DeleteEntitlementRequest removes an entitlement from an account.
+message DeleteEntitlementRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string namespace = 3;
+  string key = 4;
+}
+
+// DeleteEntitlementResponse is empty.
+message DeleteEntitlementResponse {}
+
+// ListEntitlementsRequest returns entitlements for an account, optionally
+// filtered by namespace.
+message ListEntitlementsRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  // namespace optional filter.
+  string namespace = 3;
+}
+
+// ListEntitlementsResponse returns the matching entitlements.
+message ListEntitlementsResponse {
+  repeated Entitlement entitlements = 1;
+}
+
+// Tenants (super-admin only)
+
+// Tenant is the canonical wire shape of a tenant.
+message Tenant {
+  string id = 1;
+  string slug = 2;
+  string display_name = 3;
+  // isolation_tier is "logical" | "cryptographic" | "physical".
+  string isolation_tier = 4;
+  // settings_json carries JSON-encoded MFA / federation / session policies.
+  string settings_json = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// CreateTenantRequest creates a new tenant. Super-admin only. No tenant_id
+// field — this RPC creates the tenant.
+message CreateTenantRequest {
+  string slug = 1;
+  string display_name = 2;
+  // isolation_tier defaults to "logical" when empty.
+  string isolation_tier = 3;
+  string settings_json = 4;
+}
+
+// CreateTenantResponse returns the new tenant.
+message CreateTenantResponse {
+  Tenant tenant = 1;
+}
+
+// GetTenantRequest reads a tenant by id.
+message GetTenantRequest {
+  string tenant_id = 1;
+}
+
+// GetTenantResponse returns the requested tenant.
+message GetTenantResponse {
+  Tenant tenant = 1;
+}
+
+// ListTenantsRequest paginates all tenants. Super-admin only.
+message ListTenantsRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+  // isolation_tier optional filter.
+  string isolation_tier = 3;
+}
+
+// ListTenantsResponse returns a page of tenants.
+message ListTenantsResponse {
+  repeated Tenant tenants = 1;
+  string next_page_token = 2;
+}
