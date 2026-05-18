@@ -40,6 +40,45 @@ const (
 	// Permissions / RBAC.
 	ActionRoleGrant  Action = "rbac.role.grant"
 	ActionRoleRevoke Action = "rbac.role.revoke"
+
+	// -------------------------------------------------------------------
+	// Identity lifecycle (AOID domain — added in TRD 02-03).
+	//
+	// Emitted by AOID's admin API for account, group, role, entitlement,
+	// and tenant lifecycle events. AC-2 evidence — see doc.go for the
+	// sub-control mapping table.
+	//
+	// Naming note: the role constants are Identity-prefixed to avoid Go
+	// identifier collision with the pre-existing rbac.* ActionRoleRevoke.
+	// String values follow the canonical "identity.<resource>.<verb>"
+	// convention; downstream consumers (AOAudit, Obj 9) parse on strings.
+	// -------------------------------------------------------------------
+
+	// Account lifecycle.
+	ActionAccountCreate  Action = "identity.account.create"
+	ActionAccountUpdate  Action = "identity.account.update"
+	ActionAccountSuspend Action = "identity.account.suspend"
+	ActionAccountRecover Action = "identity.account.recover"
+	ActionAccountDelete  Action = "identity.account.delete"
+	ActionAccountExpire  Action = "identity.account.expire" // system-triggered (expiration sweep)
+
+	// Groups + group membership.
+	ActionGroupCreate       Action = "identity.group.create"
+	ActionGroupDelete       Action = "identity.group.delete"
+	ActionGroupMemberAdd    Action = "identity.group.member.add"
+	ActionGroupMemberRemove Action = "identity.group.member.remove"
+
+	// Roles + role bindings (Identity-prefixed to avoid RBAC collision).
+	ActionIdentityRoleCreate Action = "identity.role.create"
+	ActionIdentityRoleAssign Action = "identity.role.assign"
+	ActionIdentityRoleRevoke Action = "identity.role.revoke"
+
+	// Entitlement attributes.
+	ActionEntitlementSet    Action = "identity.entitlement.set"
+	ActionEntitlementDelete Action = "identity.entitlement.delete"
+
+	// Tenants (super-admin only).
+	ActionTenantCreate Action = "identity.tenant.create"
 )
 
 // Standard detail keys. Use these so cross-product queries on audit details
