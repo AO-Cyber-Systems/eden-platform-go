@@ -139,10 +139,10 @@ func TestLeafTemplateSVID_FreshTemplatePerCall(t *testing.T) {
 	if b.DNSNames != nil {
 		t.Error("template b was mutated through alias of a")
 	}
-	// URIs slices must be independent.
-	if &a.URIs[0] == &b.URIs[0] {
-		// Different *url.URL pointers OK if they alias the same underlying object — assert not.
-	}
+	// URIs[0] *url.URL pointers must be independent — mutating a's must
+	// not leak through to b's. (The slice header is independent by
+	// definition because a and b are distinct *x509.Certificate; the
+	// concern is whether the pointer inside aliases.)
 	a.URIs[0].Path = "/HIJACKED"
 	if b.URIs[0].Path == "/HIJACKED" {
 		t.Error("URIs[0] is shared between calls — must be independent *url.URL")
