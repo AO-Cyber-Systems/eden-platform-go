@@ -516,12 +516,30 @@ message Tenant {
 
 // CreateTenantRequest creates a new tenant. Super-admin only. No tenant_id
 // field — this RPC creates the tenant.
+//
+// AOID Obj 10 TRD 10-05 extension:
+//   - intended_kms_key_id        (field 5) — KMS key URI for token signing
+//   - intended_audit_kms_key_id  (field 6) — KMS key URI for audit signing
+//
+// Both KMS URI fields are REQUIRED when isolation_tier ∈
+// {'cryptographic','physical'}; empty when isolation_tier='logical'.
+// Operators pre-provision the KMS keys (AWS GovCloud KMS, Azure Gov
+// Managed HSM, on-prem HSM); AOID consumes the URIs as opaque secrets.
+// Adding fields 5+6 is wire-compatible with logical-tier callers that
+// omit them.
 message CreateTenantRequest {
   string slug = 1;
   string display_name = 2;
   // isolation_tier defaults to "logical" when empty.
   string isolation_tier = 3;
   string settings_json = 4;
+  // Required iff isolation_tier in ('cryptographic','physical').
+  // KMS key URI (awskms://..., azkeys://..., pkcs11://...) for token signing.
+  // Opaque to AOID; never logged plaintext.
+  string intended_kms_key_id = 5;
+  // Required iff isolation_tier in ('cryptographic','physical').
+  // KMS key URI for audit-event signing (separate trust domain from tokens).
+  string intended_audit_kms_key_id = 6;
 }
 
 // CreateTenantResponse returns the new tenant.

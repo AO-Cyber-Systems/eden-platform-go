@@ -2819,6 +2819,17 @@ func (x *Tenant) GetUpdatedAt() *timestamppb.Timestamp {
 
 // CreateTenantRequest creates a new tenant. Super-admin only. No tenant_id
 // field — this RPC creates the tenant.
+//
+// AOID Obj 10 TRD 10-05 extension:
+//   - intended_kms_key_id        (field 5) — KMS key URI for token signing
+//   - intended_audit_kms_key_id  (field 6) — KMS key URI for audit signing
+//
+// Both KMS URI fields are REQUIRED when isolation_tier ∈
+// {'cryptographic','physical'}; empty when isolation_tier='logical'.
+// Operators pre-provision the KMS keys (AWS GovCloud KMS, Azure Gov
+// Managed HSM, on-prem HSM); AOID consumes the URIs as opaque secrets.
+// Adding fields 5+6 is wire-compatible with logical-tier callers that
+// omit them.
 type CreateTenantRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	Slug        string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
@@ -2826,8 +2837,15 @@ type CreateTenantRequest struct {
 	// isolation_tier defaults to "logical" when empty.
 	IsolationTier string `protobuf:"bytes,3,opt,name=isolation_tier,json=isolationTier,proto3" json:"isolation_tier,omitempty"`
 	SettingsJson  string `protobuf:"bytes,4,opt,name=settings_json,json=settingsJson,proto3" json:"settings_json,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Required iff isolation_tier in ('cryptographic','physical').
+	// KMS key URI (awskms://..., azkeys://..., pkcs11://...) for token signing.
+	// Opaque to AOID; never logged plaintext.
+	IntendedKmsKeyId string `protobuf:"bytes,5,opt,name=intended_kms_key_id,json=intendedKmsKeyId,proto3" json:"intended_kms_key_id,omitempty"`
+	// Required iff isolation_tier in ('cryptographic','physical').
+	// KMS key URI for audit-event signing (separate trust domain from tokens).
+	IntendedAuditKmsKeyId string `protobuf:"bytes,6,opt,name=intended_audit_kms_key_id,json=intendedAuditKmsKeyId,proto3" json:"intended_audit_kms_key_id,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *CreateTenantRequest) Reset() {
@@ -2884,6 +2902,20 @@ func (x *CreateTenantRequest) GetIsolationTier() string {
 func (x *CreateTenantRequest) GetSettingsJson() string {
 	if x != nil {
 		return x.SettingsJson
+	}
+	return ""
+}
+
+func (x *CreateTenantRequest) GetIntendedKmsKeyId() string {
+	if x != nil {
+		return x.IntendedKmsKeyId
+	}
+	return ""
+}
+
+func (x *CreateTenantRequest) GetIntendedAuditKmsKeyId() string {
+	if x != nil {
+		return x.IntendedAuditKmsKeyId
 	}
 	return ""
 }
@@ -4012,12 +4044,14 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x98\x01\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\x81\x02\n" +
 	"\x13CreateTenantRequest\x12\x12\n" +
 	"\x04slug\x18\x01 \x01(\tR\x04slug\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12%\n" +
 	"\x0eisolation_tier\x18\x03 \x01(\tR\risolationTier\x12#\n" +
-	"\rsettings_json\x18\x04 \x01(\tR\fsettingsJson\"C\n" +
+	"\rsettings_json\x18\x04 \x01(\tR\fsettingsJson\x12-\n" +
+	"\x13intended_kms_key_id\x18\x05 \x01(\tR\x10intendedKmsKeyId\x128\n" +
+	"\x19intended_audit_kms_key_id\x18\x06 \x01(\tR\x15intendedAuditKmsKeyId\"C\n" +
 	"\x14CreateTenantResponse\x12+\n" +
 	"\x06tenant\x18\x01 \x01(\v2\x13.platform.v1.TenantR\x06tenant\"/\n" +
 	"\x10GetTenantRequest\x12\x1b\n" +
