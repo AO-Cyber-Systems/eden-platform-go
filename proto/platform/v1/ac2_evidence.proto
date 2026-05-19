@@ -1,0 +1,195 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// AC2EvidenceService produces NIST SP 800-53 AC-2 evidence reports for an
+// admin's tenant scope. All 5 RPCs are tenant-scoped (admin session
+// interceptor) and emit a self-audit event (identity.ac2_evidence.read) on
+// every call.
+//
+// Reports are computed on demand from the live aoid.* tables + aoid.audit_buffer.
+// `as_of` enables point-in-time evidence (uses created_at <= as_of clause).
+service AC2EvidenceService {
+  // GetAccountInventory returns the account inventory for the tenant
+  // (AC-2(a)/(b) evidence). Optional `kind_filter` narrows to human / service
+  // / workload / admin.
+  rpc GetAccountInventory(AC2EvidenceServiceGetAccountInventoryRequest) returns (AC2EvidenceServiceGetAccountInventoryResponse);
+
+  // GetRoleBindings returns the role-binding inventory for the tenant
+  // (AC-2(j)/(k) evidence).
+  rpc GetRoleBindings(AC2EvidenceServiceGetRoleBindingsRequest) returns (AC2EvidenceServiceGetRoleBindingsResponse);
+
+  // GetRecertificationStatus returns the recertification posture per account
+  // (AC-2(j) evidence): when last reviewed, by whom, next due, days overdue.
+  rpc GetRecertificationStatus(AC2EvidenceServiceGetRecertificationStatusRequest) returns (AC2EvidenceServiceGetRecertificationStatusResponse);
+
+  // GetDormantAccounts returns accounts past their dormancy threshold
+  // (AC-2(3) evidence). `dormancy_threshold_days` overrides the tenant
+  // policy threshold for ad-hoc reports.
+  rpc GetDormantAccounts(AC2EvidenceServiceGetDormantAccountsRequest) returns (AC2EvidenceServiceGetDormantAccountsResponse);
+
+  // GetLifecycleDecisions returns the audit-derived lifecycle decision log
+  // (AC-2(d)/(e)/(f) evidence). Filters by action prefix + time range.
+  rpc GetLifecycleDecisions(AC2EvidenceServiceGetLifecycleDecisionsRequest) returns (AC2EvidenceServiceGetLifecycleDecisionsResponse);
+}
+
+// ===== Row shapes =====
+
+// AccountInventoryRow is one row of the account inventory (AC-2(a)/(b)).
+// `kind` values: "human" | "service" | "workload" | "admin".
+// `owner_account_id` is set for service accounts and empty for humans.
+message AccountInventoryRow {
+  string account_id = 1;
+  string tenant_id = 2;
+  string email = 3;
+  string display_name = 4;
+  string kind = 5;
+  string status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp last_login_at = 8;
+  google.protobuf.Timestamp expires_at = 9;
+  string owner_account_id = 10;
+}
+
+// RoleBindingRow is one row of the role-binding inventory (AC-2(j)/(k)).
+message RoleBindingRow {
+  string binding_id = 1;
+  string tenant_id = 2;
+  string account_id = 3;
+  string role_id = 4;
+  string role_name = 5;
+  google.protobuf.Timestamp bound_at = 6;
+  string bound_by_actor = 7;
+}
+
+// RecertificationStatusRow is one row of the per-account recertification
+// posture (AC-2(j)). `last_decision` values: "approved" | "revoked" |
+// "deferred" | "" (never reviewed).
+message RecertificationStatusRow {
+  string account_id = 1;
+  string tenant_id = 2;
+  string campaign_id = 3;
+  string campaign_name = 4;
+  google.protobuf.Timestamp last_reviewed_at = 5;
+  string last_decision = 6;
+  google.protobuf.Timestamp next_due_at = 7;
+  int32 days_overdue = 8;
+}
+
+// DormantAccountRow is one row of the dormant-account report (AC-2(3)).
+message DormantAccountRow {
+  string account_id = 1;
+  string tenant_id = 2;
+  string email = 3;
+  google.protobuf.Timestamp last_login_at = 4;
+  int32 days_dormant = 5;
+  bool will_be_suspended = 6;
+  google.protobuf.Timestamp warning_sent_at = 7;
+}
+
+// LifecycleDecisionRow is one row of the lifecycle decision log
+// (AC-2(d)/(e)/(f)). Derived from the signed audit buffer; `event_id` is
+// the jti from the JWS payload.
+message LifecycleDecisionRow {
+  string event_id = 1;
+  google.protobuf.Timestamp emitted_at = 2;
+  string action = 3;
+  string actor_id = 4;
+  string actor_kind = 5;
+  string subject_id = 6;
+  string decision = 7;
+  string reason = 8;
+  string details_json = 9;
+}
+
+// ===== Request / Response =====
+
+// AC2EvidenceServiceGetAccountInventoryRequest fetches a page of the
+// account inventory. `as_of` enables point-in-time evidence.
+message AC2EvidenceServiceGetAccountInventoryRequest {
+  string tenant_id = 1;
+  optional google.protobuf.Timestamp as_of = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+  // kind_filter narrows the report. Empty = all kinds.
+  optional string kind_filter = 5;
+}
+
+// AC2EvidenceServiceGetAccountInventoryResponse returns a page of inventory rows.
+message AC2EvidenceServiceGetAccountInventoryResponse {
+  repeated AccountInventoryRow rows = 1;
+  string next_page_token = 2;
+}
+
+// AC2EvidenceServiceGetRoleBindingsRequest fetches a page of role bindings.
+message AC2EvidenceServiceGetRoleBindingsRequest {
+  string tenant_id = 1;
+  optional google.protobuf.Timestamp as_of = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+// AC2EvidenceServiceGetRoleBindingsResponse returns a page of binding rows.
+message AC2EvidenceServiceGetRoleBindingsResponse {
+  repeated RoleBindingRow rows = 1;
+  string next_page_token = 2;
+}
+
+// AC2EvidenceServiceGetRecertificationStatusRequest fetches a page of
+// recertification posture. `only_overdue=true` returns just past-due
+// accounts.
+message AC2EvidenceServiceGetRecertificationStatusRequest {
+  string tenant_id = 1;
+  optional string campaign_id = 2;
+  bool only_overdue = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+// AC2EvidenceServiceGetRecertificationStatusResponse returns a page of
+// recertification posture rows.
+message AC2EvidenceServiceGetRecertificationStatusResponse {
+  repeated RecertificationStatusRow rows = 1;
+  string next_page_token = 2;
+}
+
+// AC2EvidenceServiceGetDormantAccountsRequest fetches a page of dormant
+// accounts. `dormancy_threshold_days` overrides tenant policy for ad-hoc
+// reports.
+message AC2EvidenceServiceGetDormantAccountsRequest {
+  string tenant_id = 1;
+  optional int32 dormancy_threshold_days = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+// AC2EvidenceServiceGetDormantAccountsResponse returns a page of dormant
+// account rows.
+message AC2EvidenceServiceGetDormantAccountsResponse {
+  repeated DormantAccountRow rows = 1;
+  string next_page_token = 2;
+}
+
+// AC2EvidenceServiceGetLifecycleDecisionsRequest fetches a page of audit
+// rows whose `action` matches one of `action_prefix` over [start_at, end_at].
+message AC2EvidenceServiceGetLifecycleDecisionsRequest {
+  string tenant_id = 1;
+  optional google.protobuf.Timestamp start_at = 2;
+  optional google.protobuf.Timestamp end_at = 3;
+  // Filter by action prefix(es), e.g. "identity.account." or
+  // "identity.recertification.". Empty = all actions.
+  repeated string action_prefix = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+// AC2EvidenceServiceGetLifecycleDecisionsResponse returns a page of lifecycle
+// decision rows.
+message AC2EvidenceServiceGetLifecycleDecisionsResponse {
+  repeated LifecycleDecisionRow rows = 1;
+  string next_page_token = 2;
+}
