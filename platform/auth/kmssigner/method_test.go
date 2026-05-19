@@ -353,6 +353,64 @@ func TestES256_Alg(t *testing.T) {
 	}
 }
 
+func TestRegisterAll_Idempotent(t *testing.T) {
+	// Two consecutive calls MUST NOT panic; the sync.Once gate ensures only
+	// the first call mutates the global registry. We cannot easily assert the
+	// "second call is no-op" property without poking internals, but we can
+	// assert it does not panic and the post-state is consistent.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("RegisterAll panicked: %v", r)
+		}
+	}()
+	RegisterAll()
+	RegisterAll() // must be idempotent
+	RegisterAll() // and idempotent again
+}
+
+func TestRegisterAll_OverridesDefault(t *testing.T) {
+	// After RegisterAll, jwt.GetSigningMethod("ES256") must return our type,
+	// not the default golang-jwt ES256 method (which expects *ecdsa.PrivateKey
+	// in memory).
+	RegisterAll()
+
+	es := jwt.GetSigningMethod("ES256")
+	if es == nil {
+		t.Fatal("jwt.GetSigningMethod(ES256) returned nil")
+	}
+	if _, ok := es.(*ES256SigningMethod); !ok {
+		t.Errorf("jwt.GetSigningMethod(ES256) = %T, want *ES256SigningMethod", es)
+	}
+
+	rs := jwt.GetSigningMethod("RS256")
+	if rs == nil {
+		t.Fatal("jwt.GetSigningMethod(RS256) returned nil")
+	}
+	if _, ok := rs.(*RS256SigningMethod); !ok {
+		t.Errorf("jwt.GetSigningMethod(RS256) = %T, want *RS256SigningMethod", rs)
+	}
+}
+
+func TestRegisterAll_EndToEndViaGetSigningMethod(t *testing.T) {
+	// After RegisterAll, callers can resolve the method by name and the
+	// returned instance must sign+verify correctly with a KMS-shaped fake.
+	RegisterAll()
+	method := jwt.GetSigningMethod("ES256")
+	if method == nil {
+		t.Fatal("ES256 not registered")
+	}
+
+	signer := newES256Fake(t)
+	signingString := "h." + base64.RawURLEncoding.EncodeToString([]byte("p"))
+	sig, err := method.Sign(signingString, signer)
+	if err != nil {
+		t.Fatalf("Sign via registered method: %v", err)
+	}
+	if err := method.Verify(signingString, sig, &signer.priv.PublicKey); err != nil {
+		t.Errorf("Verify via registered method: %v", err)
+	}
+}
+
 // Sanity assertion: ES256 + RS256 methods satisfy jwt.SigningMethod.
 var (
 	_ jwt.SigningMethod = (*ES256SigningMethod)(nil)
