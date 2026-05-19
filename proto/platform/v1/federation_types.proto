@@ -1,0 +1,224 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// federation_types.proto carries the canonical wire shapes for AOID's
+// inbound/outbound federation surface (Obj 6). The types are referenced
+// by FederationAdminService (federation_admin.proto) and by AOID's
+// audit emissions for federation events (audit.proto, TRD 06-03).
+//
+// Conventions (matches Obj 2 / Obj 3 / Obj 4 precedent):
+//   - No proto enums. String fields carry enumerated values with the
+//     allowed set documented inline; the application layer validates.
+//     This keeps Connect-RPC wire format and Dart client JSON stable
+//     across additions and avoids the "proto enum migration" foot-gun
+//     (renaming a value rewrites every persisted record).
+//   - UUIDs are `string`.
+//   - Timestamps are `google.protobuf.Timestamp`.
+//   - Secret material is NEVER read back on Get/List responses; write
+//     paths use companion "_set" bool signals on responses.
+//   - tenant_id is always field 2 on resource messages (id=1, tenant_id=2)
+//     to match Obj 2 AccountData and Obj 4 OAuthClient.
+//
+// Security notes:
+//   - ExternalIdP.oidc_client_secret is set only on Create/Update requests;
+//     it is never present on responses. Read paths surface
+//     oidc_client_secret_set (bool) so admin UIs can show "configured" state.
+//   - ExternalIdP.saml_metadata_xml MUST be validated by
+//     platform/saml.XSWGuard + ParseAndCacheMetadata (TRD 06-01) before
+//     AOID persists. The bytes here are the verbatim input.
+//   - AOID encrypts oidc_client_secret + saml_metadata_xml at rest (TRD 06-05).
+
+// ExternalIdP is an upstream identity provider (SAML IdP or OIDC OP) that
+// a tenant has configured to federate into AOID. Inbound federation
+// (TRD 06-07 / 06-08) consumes these records.
+message ExternalIdP {
+  // id is the ExternalIdP UUID (database primary key).
+  string id = 1;
+
+  // tenant_id is the owning tenant UUID.
+  string tenant_id = 2;
+
+  // name is the admin-facing display label.
+  string name = 3;
+
+  // kind is the federation protocol. Valid values:
+  //   "saml" — uses saml_metadata_xml.
+  //   "oidc" — uses oidc_issuer_url + oidc_client_id + oidc_client_secret.
+  string kind = 4;
+
+  // enabled toggles the IdP without deleting the configuration.
+  bool enabled = 5;
+
+  // saml_metadata_xml is the verbatim SAML 2.0 metadata document.
+  // Populated only when kind == "saml". MUST be validated by
+  // platform/saml.XSWGuard + ParseAndCacheMetadata (TRD 06-01) before
+  // AOID persists. AOID encrypts at rest (TRD 06-05).
+  bytes saml_metadata_xml = 6;
+
+  // oidc_issuer_url is the OIDC issuer (iss claim) URL.
+  // Populated only when kind == "oidc".
+  string oidc_issuer_url = 7;
+
+  // oidc_client_id is AOID's registered client_id at the upstream OP.
+  // Populated only when kind == "oidc".
+  string oidc_client_id = 8;
+
+  // oidc_client_secret_set is a write-only signal. On responses it
+  // reports whether a secret is configured. The plaintext is never
+  // returned on read paths (Get / List). Use the dedicated rotate flow
+  // in FederationAdminService to change a secret.
+  bool oidc_client_secret_set = 9;
+
+  // oidc_scopes are the scopes AOID requests on each authorization
+  // (e.g. ["openid", "profile", "email"]). Populated only when
+  // kind == "oidc".
+  repeated string oidc_scopes = 10;
+
+  // attribute_mapping_id binds this IdP to an AttributeMapping (below)
+  // that translates upstream claims/attributes into AOID account fields.
+  string attribute_mapping_id = 11;
+
+  // created_at is when the IdP record was first persisted.
+  google.protobuf.Timestamp created_at = 12;
+
+  // updated_at is the last mutation timestamp.
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// AttributeMapping describes how to extract AOID account fields from an
+// upstream IdP's claims / SAML attributes. Paths are dotted JSON-path-lite
+// (e.g. "email", "user.email", "profile.name"). Matches the shape consumed
+// by Eden oidcrp.ClaimMap (TRD 06-02) and the SAML attribute extractor
+// (TRD 06-01).
+message AttributeMapping {
+  // id is the mapping UUID.
+  string id = 1;
+
+  // tenant_id is the owning tenant UUID.
+  string tenant_id = 2;
+
+  // name is the admin-facing label.
+  string name = 3;
+
+  // email_path locates the user's email in the upstream payload.
+  string email_path = 4;
+
+  // email_verified_path locates the boolean "email verified" signal.
+  // Empty means AOID treats the upstream email as verified.
+  string email_verified_path = 5;
+
+  // sub_path locates the upstream stable subject identifier. Required.
+  string sub_path = 6;
+
+  // preferred_username_path locates the preferred username (optional).
+  string preferred_username_path = 7;
+
+  // name_path locates the display name (optional).
+  string name_path = 8;
+
+  // groups_path locates a list-typed groups claim/attribute (optional).
+  string groups_path = 9;
+
+  // assurance_level_path locates an upstream-asserted assurance level
+  // (e.g. acr, amr; optional). When present, the value passes through
+  // the federation policy's assurance_level_override gate.
+  string assurance_level_path = 10;
+
+  // custom_attrs maps AOID-side attribute names → upstream paths for
+  // tenant-specific extensions (e.g. {"clearance": "extensions.clearance"}).
+  map<string, string> custom_attrs = 11;
+
+  // created_at is when the mapping was created.
+  google.protobuf.Timestamp created_at = 12;
+
+  // updated_at is the last mutation timestamp.
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+// FederationPolicy gates federation behavior per (tenant, external IdP).
+// Stored one-per-tenant-per-IdP. Primary key is the (tenant_id, idp_id) pair.
+message FederationPolicy {
+  // tenant_id is the owning tenant UUID.
+  string tenant_id = 1;
+
+  // idp_id is the ExternalIdP UUID this policy applies to.
+  string idp_id = 2;
+
+  // allowed gates the IdP entirely. When false, federation attempts are
+  // rejected regardless of other settings.
+  bool allowed = 3;
+
+  // jit_enabled allows just-in-time provisioning of new accounts on first
+  // successful federation. When false, the account must pre-exist.
+  bool jit_enabled = 4;
+
+  // jit_default_role_id is the role assigned to a JIT-provisioned account.
+  // Empty means no automatic role assignment. UUID string when present.
+  string jit_default_role_id = 5;
+
+  // assurance_level_override sets the AAL recorded on the session
+  // regardless of the upstream assertion. Empty means "use upstream value
+  // when present, else fall back to AAL1". Valid values: "AAL1" | "AAL2" | "AAL3".
+  string assurance_level_override = 6;
+
+  // required_attributes lists AOID-side attribute names that MUST be
+  // resolvable from the upstream assertion via the AttributeMapping.
+  // Federation attempts missing a required attribute are rejected.
+  repeated string required_attributes = 7;
+
+  // email_domain_allowlist limits federated accounts to email addresses
+  // matching one of the listed domains. Empty means "no domain filter".
+  repeated string email_domain_allowlist = 8;
+
+  // created_at is when the policy was first persisted.
+  google.protobuf.Timestamp created_at = 9;
+
+  // updated_at is the last mutation timestamp.
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+// DownstreamSP is a SAML Service Provider that AOID acts as IdP for
+// (outbound federation, TRD 06-09). For OIDC RPs, AOID uses
+// OAuthAdminService.CreateClient from Obj 4 — DownstreamSP is the
+// SAML-specific equivalent.
+message DownstreamSP {
+  // id is the DownstreamSP UUID.
+  string id = 1;
+
+  // tenant_id is the owning tenant UUID.
+  string tenant_id = 2;
+
+  // name is the admin-facing label.
+  string name = 3;
+
+  // entity_id is the SP entityID (SAML EntityDescriptor/@entityID).
+  string entity_id = 4;
+
+  // acs_url is the SP's Assertion Consumer Service URL where AOID
+  // POSTs the SAML Response.
+  string acs_url = 5;
+
+  // slo_url is the SP's Single Logout Service URL. Empty if SLO is not
+  // wired for this SP.
+  string slo_url = 6;
+
+  // signing_cert_pem is the SP's signing certificate, used to verify
+  // SAML AuthnRequests when the SP signs them. Empty when the SP does
+  // not sign AuthnRequests.
+  bytes signing_cert_pem = 7;
+
+  // nameid_format is the SAML NameID format AOID emits in assertions.
+  // Valid values: "email" | "persistent" | "transient".
+  string nameid_format = 8;
+
+  // created_at is when the SP was first registered.
+  google.protobuf.Timestamp created_at = 9;
+
+  // updated_at is the last mutation timestamp.
+  google.protobuf.Timestamp updated_at = 10;
+}
