@@ -1,0 +1,440 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "platform/v1/federation_types.proto";
+import "platform/v1/oauth_admin.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// FederationAdminService manages AOID's federation surface (Obj 6):
+// inbound external IdPs (SAML / OIDC), attribute mappings, per-tenant
+// federation policy, and outbound SAML downstream Service Providers.
+// OIDC RPs (outbound) are managed via Obj 4's OAuthAdminService;
+// RegisterDownstreamClient here is a thin convenience wrapper that
+// fans out to OAuthAdminService.CreateClient with federation-friendly
+// defaults (response_types code, grant_types authorization_code +
+// refresh_token, allowed_scopes "openid profile email").
+//
+// All RPCs are mTLS-only and bound under super_admin or tenant_admin
+// CNs by Obj 2's adminauth resolver and TenantScopeInterceptor:
+//   - Every request carries tenant_id as field 1.
+//   - Super admins may target any tenant.
+//   - Tenant admins are rejected when tenant_id does not match their
+//     bound tenant.
+//
+// Audit emission: every successful mutation emits a platform/audit.Event
+// with the action constants added in TRD 06-03 (federation.*).
+//
+// Pagination: list RPCs use the (limit, cursor) shape that matches
+// Obj 4's OAuthAdminService.ListClients (limit default 100, max 500;
+// opaque server-issued cursor; empty next_cursor means "no more results").
+service FederationAdminService {
+  // ----- ExternalIdP -----
+
+  // CreateExternalIdP registers a new upstream IdP for the tenant.
+  // For OIDC IdPs, oidc_client_secret is consumed and stored
+  // bcrypt-hashed (TRD 06-05) and never returned. For SAML IdPs,
+  // saml_metadata_xml MUST validate via platform/saml.XSWGuard +
+  // ParseAndCacheMetadata (TRD 06-01) or the RPC returns
+  // CodeInvalidArgument.
+  rpc CreateExternalIdP(FederationAdminServiceCreateExternalIdPRequest) returns (FederationAdminServiceCreateExternalIdPResponse);
+
+  // GetExternalIdP fetches a single IdP by id within the tenant.
+  // The response never includes oidc_client_secret material;
+  // oidc_client_secret_set reports configured/not-configured state.
+  rpc GetExternalIdP(FederationAdminServiceGetExternalIdPRequest) returns (FederationAdminServiceGetExternalIdPResponse);
+
+  // UpdateExternalIdP mutates IdP attributes. Setting
+  // oidc_client_secret to a non-empty value replaces the stored secret;
+  // empty means "leave unchanged". To clear an enabled IdP, set
+  // enabled = false explicitly.
+  rpc UpdateExternalIdP(FederationAdminServiceUpdateExternalIdPRequest) returns (FederationAdminServiceUpdateExternalIdPResponse);
+
+  // DeleteExternalIdP permanently removes an IdP configuration along
+  // with the attached FederationPolicy. Federated accounts retain their
+  // local records; subsequent federation attempts via the deleted IdP
+  // are rejected.
+  rpc DeleteExternalIdP(FederationAdminServiceDeleteExternalIdPRequest) returns (FederationAdminServiceDeleteExternalIdPResponse);
+
+  // ListExternalIdPs returns a paginated list of IdPs in the tenant.
+  rpc ListExternalIdPs(FederationAdminServiceListExternalIdPsRequest) returns (FederationAdminServiceListExternalIdPsResponse);
+
+  // ----- AttributeMapping -----
+
+  // CreateAttributeMapping registers a new attribute mapping in the
+  // tenant. Multiple ExternalIdPs may reference the same mapping.
+  rpc CreateAttributeMapping(FederationAdminServiceCreateAttributeMappingRequest) returns (FederationAdminServiceCreateAttributeMappingResponse);
+
+  // UpdateAttributeMapping mutates the mapping. Existing IdPs referencing
+  // this mapping pick up the change on their next federation attempt.
+  rpc UpdateAttributeMapping(FederationAdminServiceUpdateAttributeMappingRequest) returns (FederationAdminServiceUpdateAttributeMappingResponse);
+
+  // DeleteAttributeMapping removes the mapping. The RPC returns
+  // CodeFailedPrecondition if any ExternalIdP still references it.
+  rpc DeleteAttributeMapping(FederationAdminServiceDeleteAttributeMappingRequest) returns (FederationAdminServiceDeleteAttributeMappingResponse);
+
+  // ListAttributeMappings returns a paginated list of mappings in the
+  // tenant.
+  rpc ListAttributeMappings(FederationAdminServiceListAttributeMappingsRequest) returns (FederationAdminServiceListAttributeMappingsResponse);
+
+  // ----- FederationPolicy -----
+
+  // UpsertFederationPolicy creates or replaces the federation policy for
+  // a (tenant, IdP) pair. Primary key is the (tenant_id, idp_id) pair —
+  // there is at most one policy per IdP per tenant.
+  rpc UpsertFederationPolicy(FederationAdminServiceUpsertFederationPolicyRequest) returns (FederationAdminServiceUpsertFederationPolicyResponse);
+
+  // GetFederationPolicy fetches the policy for a (tenant, IdP) pair.
+  rpc GetFederationPolicy(FederationAdminServiceGetFederationPolicyRequest) returns (FederationAdminServiceGetFederationPolicyResponse);
+
+  // DeleteFederationPolicy removes the policy. With no policy present,
+  // federation attempts default to the safe denial path.
+  rpc DeleteFederationPolicy(FederationAdminServiceDeleteFederationPolicyRequest) returns (FederationAdminServiceDeleteFederationPolicyResponse);
+
+  // ----- DownstreamSP (outbound SAML) -----
+
+  // RegisterDownstreamSP creates a new SAML SP registration that AOID
+  // will issue assertions to.
+  rpc RegisterDownstreamSP(FederationAdminServiceRegisterDownstreamSPRequest) returns (FederationAdminServiceRegisterDownstreamSPResponse);
+
+  // ListDownstreamSPs returns a paginated list of SPs in the tenant.
+  rpc ListDownstreamSPs(FederationAdminServiceListDownstreamSPsRequest) returns (FederationAdminServiceListDownstreamSPsResponse);
+
+  // DeleteDownstreamSP removes an SP registration. In-flight assertions
+  // already issued remain valid for their lifetime.
+  rpc DeleteDownstreamSP(FederationAdminServiceDeleteDownstreamSPRequest) returns (FederationAdminServiceDeleteDownstreamSPResponse);
+
+  // ----- DownstreamClient (outbound OIDC convenience) -----
+
+  // RegisterDownstreamClient is a thin convenience wrapper around
+  // OAuthAdminService.CreateClient (Obj 4). It applies federation-friendly
+  // defaults (client_type=confidential, grant_types=
+  // [authorization_code, refresh_token], token_endpoint_auth_method=
+  // client_secret_basic, default scopes openid+profile+email) and
+  // returns the canonical OAuthClient + one-time client_secret. Admin
+  // UIs that need finer control should call OAuthAdminService.CreateClient
+  // directly instead.
+  rpc RegisterDownstreamClient(FederationAdminServiceRegisterDownstreamClientRequest) returns (FederationAdminServiceRegisterDownstreamClientResponse);
+}
+
+// ============================================================================
+// ExternalIdP messages
+// ============================================================================
+
+message FederationAdminServiceCreateExternalIdPRequest {
+  // tenant_id is the owning tenant (canonical field 1 for tenant scope).
+  string tenant_id = 1;
+
+  // name is the admin-facing display label.
+  string name = 2;
+
+  // kind is "saml" or "oidc".
+  string kind = 3;
+
+  // enabled toggles the IdP at creation time (default false).
+  bool enabled = 4;
+
+  // saml_metadata_xml is required when kind == "saml". MUST validate via
+  // platform/saml.XSWGuard + ParseAndCacheMetadata (TRD 06-01).
+  bytes saml_metadata_xml = 5;
+
+  // oidc_issuer_url is required when kind == "oidc".
+  string oidc_issuer_url = 6;
+
+  // oidc_client_id is required when kind == "oidc".
+  string oidc_client_id = 7;
+
+  // oidc_client_secret is the plaintext upstream client secret. Required
+  // when kind == "oidc". Stored bcrypt-hashed at rest (TRD 06-05).
+  // Never returned on read paths.
+  string oidc_client_secret = 8;
+
+  // oidc_scopes overrides the default ["openid", "profile", "email"]
+  // when kind == "oidc".
+  repeated string oidc_scopes = 9;
+
+  // attribute_mapping_id binds the IdP to a previously-created
+  // AttributeMapping. The RPC returns CodeFailedPrecondition if the
+  // mapping does not exist in the tenant.
+  string attribute_mapping_id = 10;
+}
+
+message FederationAdminServiceCreateExternalIdPResponse {
+  // idp carries the persisted record. oidc_client_secret is never set
+  // on responses; oidc_client_secret_set reflects the configured state.
+  ExternalIdP idp = 1;
+}
+
+message FederationAdminServiceGetExternalIdPRequest {
+  string tenant_id = 1;
+  string idp_id = 2;
+}
+
+message FederationAdminServiceGetExternalIdPResponse {
+  ExternalIdP idp = 1;
+}
+
+message FederationAdminServiceUpdateExternalIdPRequest {
+  string tenant_id = 1;
+  string idp_id = 2;
+
+  // name replaces the display label. Empty means no change.
+  string name = 3;
+
+  // enabled always applies (the field is a bool — callers must send the
+  // intended value on every UpdateExternalIdP call).
+  bool enabled = 4;
+
+  // saml_metadata_xml replaces the stored metadata when kind == "saml".
+  // Empty bytes mean no change. Replacement bytes MUST re-validate via
+  // platform/saml.XSWGuard + ParseAndCacheMetadata.
+  bytes saml_metadata_xml = 5;
+
+  // oidc_issuer_url replaces the issuer URL when kind == "oidc".
+  // Empty means no change.
+  string oidc_issuer_url = 6;
+
+  // oidc_client_id replaces the client_id when kind == "oidc".
+  // Empty means no change.
+  string oidc_client_id = 7;
+
+  // oidc_client_secret replaces the stored client secret when set.
+  // Empty means no change — the existing secret is retained.
+  string oidc_client_secret = 8;
+
+  // oidc_scopes replaces the requested scopes when kind == "oidc".
+  // Empty list means no change.
+  repeated string oidc_scopes = 9;
+
+  // attribute_mapping_id replaces the mapping binding. Empty means
+  // no change.
+  string attribute_mapping_id = 10;
+}
+
+message FederationAdminServiceUpdateExternalIdPResponse {
+  ExternalIdP idp = 1;
+}
+
+message FederationAdminServiceDeleteExternalIdPRequest {
+  string tenant_id = 1;
+  string idp_id = 2;
+}
+
+message FederationAdminServiceDeleteExternalIdPResponse {}
+
+message FederationAdminServiceListExternalIdPsRequest {
+  string tenant_id = 1;
+
+  // limit defaults to server-side 100, capped at 500.
+  int32 limit = 2;
+
+  // cursor is opaque, server-issued. Empty for first page.
+  string cursor = 3;
+
+  // kind optionally filters to "saml" or "oidc" only.
+  string kind = 4;
+}
+
+message FederationAdminServiceListExternalIdPsResponse {
+  repeated ExternalIdP idps = 1;
+
+  // next_cursor is empty when there are no more results.
+  string next_cursor = 2;
+}
+
+// ============================================================================
+// AttributeMapping messages
+// ============================================================================
+
+message FederationAdminServiceCreateAttributeMappingRequest {
+  string tenant_id = 1;
+  string name = 2;
+  string email_path = 3;
+  string email_verified_path = 4;
+  string sub_path = 5;
+  string preferred_username_path = 6;
+  string name_path = 7;
+  string groups_path = 8;
+  string assurance_level_path = 9;
+  map<string, string> custom_attrs = 10;
+}
+
+message FederationAdminServiceCreateAttributeMappingResponse {
+  AttributeMapping mapping = 1;
+}
+
+message FederationAdminServiceUpdateAttributeMappingRequest {
+  string tenant_id = 1;
+  string mapping_id = 2;
+
+  // name replaces the label. Empty means no change.
+  string name = 3;
+
+  // Path fields below replace the stored path when non-empty; empty
+  // means no change. To clear a path (e.g. drop email_verified), use
+  // the literal sentinel "-" — the application layer translates "-" to
+  // "no path / clear". This sentinel avoids proto's inability to
+  // distinguish unset string from empty string.
+  string email_path = 4;
+  string email_verified_path = 5;
+  string sub_path = 6;
+  string preferred_username_path = 7;
+  string name_path = 8;
+  string groups_path = 9;
+  string assurance_level_path = 10;
+
+  // custom_attrs is a full-replace when non-empty. Empty map means
+  // no change. To clear, callers must use a dedicated tool.
+  map<string, string> custom_attrs = 11;
+}
+
+message FederationAdminServiceUpdateAttributeMappingResponse {
+  AttributeMapping mapping = 1;
+}
+
+message FederationAdminServiceDeleteAttributeMappingRequest {
+  string tenant_id = 1;
+  string mapping_id = 2;
+}
+
+message FederationAdminServiceDeleteAttributeMappingResponse {}
+
+message FederationAdminServiceListAttributeMappingsRequest {
+  string tenant_id = 1;
+  int32 limit = 2;
+  string cursor = 3;
+}
+
+message FederationAdminServiceListAttributeMappingsResponse {
+  repeated AttributeMapping mappings = 1;
+  string next_cursor = 2;
+}
+
+// ============================================================================
+// FederationPolicy messages
+// ============================================================================
+
+message FederationAdminServiceUpsertFederationPolicyRequest {
+  string tenant_id = 1;
+  string idp_id = 2;
+  bool allowed = 3;
+  bool jit_enabled = 4;
+
+  // jit_default_role_id is the role assigned to JIT-provisioned accounts.
+  // Empty means no automatic role assignment.
+  string jit_default_role_id = 5;
+
+  // assurance_level_override sets the AAL recorded on federated sessions.
+  // Empty means "use upstream value when present, else AAL1". Valid
+  // values: "AAL1" | "AAL2" | "AAL3".
+  string assurance_level_override = 6;
+
+  // required_attributes lists AOID-side attribute names that MUST be
+  // resolvable from the upstream assertion. Federation attempts missing
+  // a required attribute are rejected.
+  repeated string required_attributes = 7;
+
+  // email_domain_allowlist limits federated accounts to email addresses
+  // matching one of the listed domains. Empty means "no domain filter".
+  repeated string email_domain_allowlist = 8;
+}
+
+message FederationAdminServiceUpsertFederationPolicyResponse {
+  FederationPolicy policy = 1;
+}
+
+message FederationAdminServiceGetFederationPolicyRequest {
+  string tenant_id = 1;
+  string idp_id = 2;
+}
+
+message FederationAdminServiceGetFederationPolicyResponse {
+  FederationPolicy policy = 1;
+}
+
+message FederationAdminServiceDeleteFederationPolicyRequest {
+  string tenant_id = 1;
+  string idp_id = 2;
+}
+
+message FederationAdminServiceDeleteFederationPolicyResponse {}
+
+// ============================================================================
+// DownstreamSP messages
+// ============================================================================
+
+message FederationAdminServiceRegisterDownstreamSPRequest {
+  string tenant_id = 1;
+  string name = 2;
+
+  // entity_id is the SP entityID (SAML EntityDescriptor/@entityID).
+  string entity_id = 3;
+
+  // acs_url is the SP's Assertion Consumer Service URL.
+  string acs_url = 4;
+
+  // slo_url is the SP's Single Logout Service URL. Empty if SLO is
+  // not wired.
+  string slo_url = 5;
+
+  // signing_cert_pem is the SP's signing certificate (PEM-encoded),
+  // used to verify SAML AuthnRequests when the SP signs them.
+  // Empty bytes when the SP does not sign AuthnRequests.
+  bytes signing_cert_pem = 6;
+
+  // nameid_format is "email" | "persistent" | "transient".
+  string nameid_format = 7;
+}
+
+message FederationAdminServiceRegisterDownstreamSPResponse {
+  DownstreamSP sp = 1;
+}
+
+message FederationAdminServiceListDownstreamSPsRequest {
+  string tenant_id = 1;
+  int32 limit = 2;
+  string cursor = 3;
+}
+
+message FederationAdminServiceListDownstreamSPsResponse {
+  repeated DownstreamSP sps = 1;
+  string next_cursor = 2;
+}
+
+message FederationAdminServiceDeleteDownstreamSPRequest {
+  string tenant_id = 1;
+  string sp_id = 2;
+}
+
+message FederationAdminServiceDeleteDownstreamSPResponse {}
+
+// ============================================================================
+// DownstreamClient convenience messages
+// ============================================================================
+
+message FederationAdminServiceRegisterDownstreamClientRequest {
+  string tenant_id = 1;
+
+  // client_name is the admin-facing label (forwarded to
+  // OAuthAdminService.CreateClient).
+  string client_name = 2;
+
+  // redirect_uris is the SP's redirect_uri allowlist. At least one
+  // entry required.
+  repeated string redirect_uris = 3;
+
+  // allowed_scopes overrides the federation defaults
+  // ["openid", "profile", "email"]. Empty list means "use defaults".
+  repeated string allowed_scopes = 4;
+}
+
+message FederationAdminServiceRegisterDownstreamClientResponse {
+  // client is the canonical OAuthClient record returned by
+  // OAuthAdminService.CreateClient.
+  OAuthClient client = 1;
+
+  // client_secret is the one-time plaintext secret emitted exactly
+  // once at creation. The server retains only the bcrypt hash.
+  string client_secret = 2;
+}
