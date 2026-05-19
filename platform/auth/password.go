@@ -182,18 +182,4 @@ func (h *PasswordHasher) verifyArgon2id(password string, parts []string) (bool, 
 	return subtle.ConstantTimeCompare(computedHash, expectedHash) == 1, nil
 }
 
-// hashPBKDF2 / verifyPBKDF2 are implemented in password_fips.go (TRD 03-01
-// Task 2). Until Task 2 lands, the dispatch returns ErrUnsupportedAlgorithm
-// for pbkdf2-sha256 inputs via these placeholders. Task 2 removes them.
-//
-// NOTE: these placeholders are intentionally minimal and will be deleted
-// when the real PBKDF2 hasher is added — the TRD requires that the PBKDF2
-// code path live in password_fips.go, not here.
-func (h *PasswordHasher) hashPBKDF2(string) (string, error) {
-	return "", fmt.Errorf("%w: pbkdf2-sha256 not yet implemented (TRD 03-01 Task 2)", ErrUnsupportedAlgorithm)
-}
-
-func (h *PasswordHasher) verifyPBKDF2(string, []string) (bool, error) {
-	return false, fmt.Errorf("%w: pbkdf2-sha256 not yet implemented (TRD 03-01 Task 2)", ErrUnsupportedAlgorithm)
-}
-
+// hashPBKDF2 and verifyPBKDF2 are implemented in password_fips.go.
