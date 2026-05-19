@@ -202,11 +202,11 @@ func TestHIBPScreener_MalformedBody_ReturnsErr(t *testing.T) {
 
 // TestHIBPScreener_RespectsContextCancellation — cancel ctx mid-request.
 func TestHIBPScreener_RespectsContextCancellation(t *testing.T) {
-	// Stub blocks forever so the cancellation has time to fire.
-	block := make(chan struct{})
-	defer close(block)
+	// Stub blocks until the request context is cancelled OR the server
+	// shuts down — either signal releases the handler so ts.Close() doesn't
+	// hang waiting for an orphaned connection.
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		<-block
+		<-r.Context().Done()
 	}))
 	defer ts.Close()
 
