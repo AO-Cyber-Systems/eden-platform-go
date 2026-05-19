@@ -1,6 +1,21 @@
+// Test list
+//
+// Existing (Argon2id baseline — MUST stay green):
+//   - TestPasswordHasher_HashAndVerify         — round-trip + wrong-password
+//   - TestPasswordHasher_DifferentSalts        — independent salts per Hash call
+//   - TestPasswordHasher_InvalidHash           — table of malformed inputs (now via ErrMalformedHash)
+//
+// New (TRD 03-01 Task 1):
+//   - TestPasswordHasher_VerifyUnknownAlgorithm   — $scrypt$... → ErrUnsupportedAlgorithm
+//   - TestPasswordHasher_VerifyMalformedNoLeadingDollar — "argon2id$v=19$..." → ErrMalformedHash
+//   - TestPasswordHasher_VerifyEmptyString        — "" → ErrMalformedHash
+//   - TestSentinelErrors_Hasher                   — errors.Is identity check for both sentinels
+//   - TestPasswordHasher_HashHasArgon2idAlgo      — default constructor uses AlgoArgon2id
+
 package auth
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -73,5 +88,64 @@ func TestPasswordHasher_InvalidHash(t *testing.T) {
 				t.Errorf("Verify() with invalid hash %q expected error, got nil", tt.hash)
 			}
 		})
+	}
+}
+
+func TestPasswordHasher_VerifyUnknownAlgorithm(t *testing.T) {
+	hasher := NewPasswordHasher()
+
+	// Synthetic scrypt-flavored string with a plausible 4-part-after-leading-empty shape.
+	encoded := "$scrypt$N=16384,r=8,p=1$" +
+		"YWJjZGVmZ2hpamtsbW5vcA$" + // 16 bytes base64 RawStd
+		"MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY" // 32 bytes
+	ok, err := hasher.Verify("password", encoded)
+	if ok {
+		t.Errorf("Verify() with $scrypt$ prefix returned true, expected false")
+	}
+	if !errors.Is(err, ErrUnsupportedAlgorithm) {
+		t.Errorf("Verify() error = %v; want errors.Is(err, ErrUnsupportedAlgorithm)", err)
+	}
+}
+
+func TestPasswordHasher_VerifyMalformedNoLeadingDollar(t *testing.T) {
+	hasher := NewPasswordHasher()
+	encoded := "argon2id$v=19$m=47104,t=1,p=1$YWJjZGVmZ2hpamtsbW5vcA$aGFzaA"
+	ok, err := hasher.Verify("password", encoded)
+	if ok {
+		t.Errorf("Verify() with no leading $ returned true, expected false")
+	}
+	if !errors.Is(err, ErrMalformedHash) {
+		t.Errorf("Verify() error = %v; want errors.Is(err, ErrMalformedHash)", err)
+	}
+}
+
+func TestPasswordHasher_VerifyEmptyString(t *testing.T) {
+	hasher := NewPasswordHasher()
+	ok, err := hasher.Verify("password", "")
+	if ok {
+		t.Errorf("Verify() of empty string returned true, expected false")
+	}
+	if !errors.Is(err, ErrMalformedHash) {
+		t.Errorf("Verify() error = %v; want errors.Is(err, ErrMalformedHash)", err)
+	}
+}
+
+func TestSentinelErrors_Hasher(t *testing.T) {
+	if !errors.Is(ErrMalformedHash, ErrMalformedHash) {
+		t.Errorf("errors.Is(ErrMalformedHash, ErrMalformedHash) = false; expected true")
+	}
+	if !errors.Is(ErrUnsupportedAlgorithm, ErrUnsupportedAlgorithm) {
+		t.Errorf("errors.Is(ErrUnsupportedAlgorithm, ErrUnsupportedAlgorithm) = false; expected true")
+	}
+	// They must NOT collide.
+	if errors.Is(ErrMalformedHash, ErrUnsupportedAlgorithm) {
+		t.Errorf("ErrMalformedHash should not satisfy ErrUnsupportedAlgorithm")
+	}
+}
+
+func TestPasswordHasher_HashHasArgon2idAlgo(t *testing.T) {
+	h := NewPasswordHasher()
+	if h.algo != AlgoArgon2id {
+		t.Errorf("NewPasswordHasher().algo = %v; want AlgoArgon2id", h.algo)
 	}
 }
