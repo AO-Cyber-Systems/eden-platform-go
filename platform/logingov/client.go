@@ -1,9 +1,16 @@
 package logingov
 
 import (
+	"context"
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
+
+	"github.com/aocybersystems/eden-platform-go/platform/oidcrp"
+	oidc "github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 )
 
 // Exported sentinel errors. Callers branch on these via errors.Is.
@@ -131,6 +138,121 @@ type ID struct {
 	// RawClaims is the entire ID token claims map for downstream
 	// attribute mapping (oidcrp.ApplyClaimMap or bespoke logic).
 	RawClaims map[string]any
+}
+
+// defaultACR is the lowest-tier ACR value, used when cfg.ACRValues is
+// empty in BuildAuthURL. IAL1 — proofing not required, basic auth only.
+const defaultACR = "urn:acr.login.gov:auth-only"
+
+// defaultScopes is Login.gov's minimum acceptable scope set. "openid" is
+// mandatory for OIDC; "email" yields the verified email address used as
+// the primary identity attribute by the AOID federation handler.
+var defaultScopes = []string{oidc.ScopeOpenID, "email"}
+
+// Client is a Login.gov-specialized OIDC RP. Holds the cached
+// *oidc.Provider (populated via the shared platform/oidcrp ProviderCache),
+// the OAuth2 config derived from discovery, and a reference to the
+// VerifierCache used at Exchange time.
+//
+// Construct via NewClient. Safe for concurrent use across goroutines:
+// the embedded provider + verifier cache are themselves concurrent-safe.
+type Client struct {
+	cfg           Config
+	provider      *oidc.Provider
+	oauthConfig   *oauth2.Config
+	verifierCache *oidcrp.VerifierCache
+	httpClient    *http.Client
+	tokenEndpoint string
+}
+
+// NewClient constructs a Login.gov RP Client. Runs validation on the
+// caller-supplied Config, executes OIDC discovery via the shared
+// ProviderCache (singleflight-collapsed on cold start), and pre-derives
+// the oauth2.Config + token endpoint URL.
+//
+// Validation:
+//
+//   - cfg.SigningKey must be non-nil → otherwise ErrSigningKeyMissing.
+//   - cfg.SigningKey.N.BitLen() must be ≥ 2048 → otherwise
+//     ErrSigningKeyTooShort.
+//   - cfg.HTTPClient defaults to http.DefaultClient when nil.
+//   - cfg.Scopes defaults to ["openid","email"] when empty.
+//
+// providerCache + verifierCache should be process-singletons shared
+// across all Clients (one set per Eden binary, not one per Config). They
+// are passed in explicitly so callers can control invalidation around
+// JWKS rotation events.
+func NewClient(ctx context.Context, cfg Config, providerCache *oidcrp.ProviderCache, verifierCache *oidcrp.VerifierCache) (*Client, error) {
+	if cfg.SigningKey == nil {
+		return nil, ErrSigningKeyMissing
+	}
+	if cfg.SigningKey.N.BitLen() < minRSAKeyBits {
+		return nil, ErrSigningKeyTooShort
+	}
+	if cfg.HTTPClient == nil {
+		cfg.HTTPClient = http.DefaultClient
+	}
+	if len(cfg.Scopes) == 0 {
+		cfg.Scopes = defaultScopes
+	}
+	if providerCache == nil {
+		return nil, fmt.Errorf("logingov: NewClient: nil providerCache")
+	}
+	if verifierCache == nil {
+		return nil, fmt.Errorf("logingov: NewClient: nil verifierCache")
+	}
+
+	cacheKey := "logingov:" + cfg.TenantID
+	p, err := providerCache.Get(ctx, cacheKey, cfg.IssuerURL)
+	if err != nil {
+		return nil, fmt.Errorf("logingov: provider discovery: %w", err)
+	}
+
+	return &Client{
+		cfg:      cfg,
+		provider: p,
+		oauthConfig: &oauth2.Config{
+			ClientID:    cfg.ClientID,
+			RedirectURL: cfg.RedirectURL,
+			Scopes:      cfg.Scopes,
+			Endpoint:    p.Endpoint(),
+		},
+		verifierCache: verifierCache,
+		httpClient:    cfg.HTTPClient,
+		tokenEndpoint: p.Endpoint().TokenURL,
+	}, nil
+}
+
+// BuildAuthURL composes the Login.gov authorization-code request URL.
+// PKCE (S256) and nonce are mandatory (enforced by oidcrp.BuildAuthURL);
+// Login.gov-specific acr_values is attached as an extra auth code option.
+//
+// acr_values resolution:
+//   - If cfg.ACRValues was set, it forms the base set.
+//   - Otherwise the base set is ["urn:acr.login.gov:auth-only"] (IAL1).
+//   - extraACR is appended to the base set. Callers requesting AAL
+//     escalation pass values like
+//     "http://idmanagement.gov/ns/assurance/aal/2?phishing_resistant=true".
+//
+// The final acr_values parameter is space-separated per OIDC core §3.1.2.1.
+//
+// state and nonce MUST be caller-managed opaque values (typically the
+// signed-state from oidcrp.SignedState and a cryptographically random
+// nonce stored in the InFlightStore). pkceVerifier MUST be ≥ 43 chars
+// (oidcrp.BuildAuthURL enforces).
+func (c *Client) BuildAuthURL(state, nonce, pkceVerifier string, extraACR []string) (string, error) {
+	acrValues := make([]string, 0, len(c.cfg.ACRValues)+len(extraACR)+1)
+	if len(c.cfg.ACRValues) == 0 {
+		acrValues = append(acrValues, defaultACR)
+	} else {
+		acrValues = append(acrValues, c.cfg.ACRValues...)
+	}
+	acrValues = append(acrValues, extraACR...)
+
+	extra := []oauth2.AuthCodeOption{
+		oauth2.SetAuthURLParam("acr_values", strings.Join(acrValues, " ")),
+	}
+	return oidcrp.BuildAuthURL(c.oauthConfig, state, nonce, pkceVerifier, extra)
 }
 
 // mapACR is the authoritative Login.gov ACR -> AOID assurance enum
