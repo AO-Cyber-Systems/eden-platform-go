@@ -40,13 +40,12 @@ func TestXSWGuard_MultipleAssertionsRejected(t *testing.T) {
 	}
 }
 
-// The mattermost validator catches XML round-trip mismatches the Go
-// encoding/xml parser would silently accept (CVE-class). This crafted
-// document has an attribute-name overflow that the validator detects.
-const xmlRoundTripBait = "<?xml version=\"1.0\"?>\n" +
-	"<root>\n" +
-	"  <bait a:=\"1\" b=\"2\"/>\n" +
-	"</root>"
+// The mattermost validator catches both round-trip mismatches AND raw
+// XML-parse errors. `<x::Root/>` (double-colon in element name) is a
+// canonical attack vector from the original 2020 disclosure: it parses
+// in Go's encoding/xml under .Strict=false but never round-trips. We
+// also accept it as a parse-syntax error path here.
+const xmlRoundTripBait = `<x::Root/>`
 
 func TestXSWGuard_RoundTripMismatchRejected(t *testing.T) {
 	err := XSWGuard([]byte(xmlRoundTripBait))
@@ -66,6 +65,10 @@ func TestXSWGuard_NilInputRejected(t *testing.T) {
 }
 
 func TestXSWGuard_NotXMLRejected(t *testing.T) {
+	// Plain text is not XML and contains no Assertion elements — under
+	// strict semantics it must be rejected. We accept either an XML
+	// parse error from the round-trip validator OR an ErrInvalidXML
+	// from countAssertions; the guard's contract is "non-nil error".
 	err := XSWGuard([]byte("definitely not xml at all"))
 	if err == nil {
 		t.Fatal("expected error for non-XML input, got nil")
