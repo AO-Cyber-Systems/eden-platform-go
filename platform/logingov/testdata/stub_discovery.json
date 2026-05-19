@@ -5,9 +5,22 @@
   "userinfo_endpoint": "__STUB__/api/openid_connect/userinfo",
   "jwks_uri": "__STUB__/api/openid_connect/certs",
   "response_types_supported": ["code"],
+  "response_modes_supported": ["query"],
+  "grant_types_supported": ["authorization_code"],
   "subject_types_supported": ["public"],
   "id_token_signing_alg_values_supported": ["RS256"],
   "token_endpoint_auth_methods_supported": ["private_key_jwt"],
+  "token_endpoint_auth_signing_alg_values_supported": ["RS256"],
   "claims_supported": ["sub", "email", "email_verified", "acr", "iss", "aud", "exp", "iat", "nonce"],
-  "scopes_supported": ["openid", "email", "profile", "phone", "address"]
+  "scopes_supported": ["openid", "email", "profile", "phone", "address", "all_emails"],
+  "code_challenge_methods_supported": ["S256"],
+  "acr_values_supported": [
+    "urn:acr.login.gov:auth-only",
+    "urn:acr.login.gov:verified",
+    "urn:acr.login.gov:verified-facial-match-required",
+    "urn:acr.login.gov:verified-facial-match-preferred",
+    "http://idmanagement.gov/ns/assurance/aal/2",
+    "http://idmanagement.gov/ns/assurance/aal/2?phishing_resistant=true",
+    "http://idmanagement.gov/ns/assurance/aal/2?hspd12=true"
+  ]
 }
