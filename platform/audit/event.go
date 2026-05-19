@@ -89,6 +89,54 @@ const (
 	// failure during initial Log call).
 	// -------------------------------------------------------------------
 	ActionEventResigned Action = "aoid.audit.event_resigned"
+
+	// -------------------------------------------------------------------
+	// Obj 9 — Audit emission + AC-2 + Lifecycle automation (TRD 09-01).
+	//
+	// Auth attempts: AUD-01 emits the success/failure of every login.
+	// Federation: AUD-04 records the assertion accept/reject + JIT creates.
+	// Recovery: LIFE-04 lifecycle.
+	// Recertification: LIFE-07 lifecycle.
+	// Dormant: LIFE-06 lifecycle.
+	// MFA-clear: admin action under LIFE-04 lost-MFA recovery.
+	// AC-2 / Audit-query read: read-API self-audit (auditors auditing the auditors).
+	// Credential issued: AUD-02 reusable for OAuth tokens, API keys, mTLS certs.
+	// -------------------------------------------------------------------
+
+	// Auth attempts (AUD-01).
+	ActionAuthAttempt       Action = "auth.attempt"
+	ActionAuthAttemptFailed Action = "auth.attempt.failed"
+
+	// Federation (AUD-04). Distinct from Obj 6's ActionFederationAccept/Reject
+	// (which emit on the assertion-decision boundary); these emit the wire-
+	// level accepted/rejected events for AUD-04 signed-audit pipeline.
+	ActionFederationAssertionAccepted Action = "federation.assertion.accepted"
+	ActionFederationAssertionRejected Action = "federation.assertion.rejected"
+	ActionFederationJITUserCreated    Action = "federation.jit.user_created"
+
+	// Recovery (LIFE-04).
+	ActionRecoveryRequested Action = "identity.account.recovery.requested"
+	ActionRecoveryCompleted Action = "identity.account.recovery.completed"
+	ActionRecoveryRefused   Action = "identity.account.recovery.refused"
+
+	// Recertification (LIFE-07).
+	ActionRecertReviewCreated Action = "identity.recertification.review_created"
+	ActionRecertDecision      Action = "identity.recertification.decision"
+	ActionRecertExpired       Action = "identity.recertification.expired"
+
+	// Dormant lifecycle (LIFE-06).
+	ActionDormantWarning     Action = "identity.account.dormant_warning_sent"
+	ActionDormantAutoSuspend Action = "identity.account.dormant_auto_suspend"
+
+	// MFA clear (LIFE-04 admin assist).
+	ActionMFAClearedByAdmin Action = "auth.mfa.cleared_by_admin"
+
+	// Read-API self-audit (AUD-06 + MGMT-06).
+	ActionAC2ReportRead  Action = "identity.ac2_evidence.read"
+	ActionAuditQueryRead Action = "identity.audit_query.read"
+
+	// Generic credential-issuance (AUD-02 — wraps OAuth, API key, mTLS issuance).
+	ActionCredentialIssued Action = "auth.credential.issued"
 )
 
 // Standard detail keys. Use these so cross-product queries on audit details
