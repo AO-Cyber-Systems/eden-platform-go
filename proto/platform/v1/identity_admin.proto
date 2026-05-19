@@ -100,6 +100,25 @@ service AccountAdminService {
 
   // ListTenants enumerates all tenants. Super-admin only (AC-2 evidence).
   rpc ListTenants(ListTenantsRequest) returns (ListTenantsResponse);
+
+  // -------------------------- Obj 9: Recertification + MFA-clear (LIFE-07/04)
+
+  // ListPendingRecertifications returns reviews awaiting an admin decision.
+  rpc ListPendingRecertifications(AccountAdminServiceListPendingRecertificationsRequest) returns (AccountAdminServiceListPendingRecertificationsResponse);
+
+  // SubmitRecertificationDecision records the calling admin's decision on a
+  // pending review (approved | revoked | deferred). Reviewer is read from
+  // the session context (no field).
+  rpc SubmitRecertificationDecision(AccountAdminServiceSubmitRecertificationDecisionRequest) returns (AccountAdminServiceSubmitRecertificationDecisionResponse);
+
+  // GetRecertificationHistory returns the historical decision log for one
+  // account.
+  rpc GetRecertificationHistory(AccountAdminServiceGetRecertificationHistoryRequest) returns (AccountAdminServiceGetRecertificationHistoryResponse);
+
+  // ClearAccountMFAFactors removes all MFA factors for an account (e.g.
+  // lost YubiKey path — LIFE-04 admin assist). reason is required + emitted
+  // as auth.mfa.cleared_by_admin Details.
+  rpc ClearAccountMFAFactors(AccountAdminServiceClearAccountMFAFactorsRequest) returns (AccountAdminServiceClearAccountMFAFactorsResponse);
 }
 
 // ============================================================================
@@ -533,3 +552,91 @@ message ListTenantsResponse {
   repeated Tenant tenants = 1;
   string next_page_token = 2;
 }
+
+// ============================================================================
+// Obj 9 — Recertification + MFA-clear shapes (LIFE-07 / LIFE-04 admin assist)
+// ============================================================================
+
+// PendingRecertificationRow is one row of the pending-review queue.
+// days_until_due is negative when the review is overdue.
+message PendingRecertificationRow {
+  string review_id = 1;
+  string account_id = 2;
+  string account_email = 3;
+  string campaign_id = 4;
+  string campaign_name = 5;
+  google.protobuf.Timestamp due_at = 6;
+  int32 days_until_due = 7;
+}
+
+// RecertificationHistoryRow is one row of the per-account decision history.
+// decision values: "approved" | "revoked" | "deferred".
+message RecertificationHistoryRow {
+  string review_id = 1;
+  string campaign_id = 2;
+  string campaign_name = 3;
+  google.protobuf.Timestamp due_at = 4;
+  google.protobuf.Timestamp reviewed_at = 5;
+  string reviewer_id = 6;
+  string decision = 7;
+  string comment = 8;
+}
+
+// AccountAdminServiceListPendingRecertificationsRequest paginates pending
+// reviews. campaign_id optional filter.
+message AccountAdminServiceListPendingRecertificationsRequest {
+  string tenant_id = 1;
+  optional string campaign_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+// AccountAdminServiceListPendingRecertificationsResponse returns a page of
+// pending review rows.
+message AccountAdminServiceListPendingRecertificationsResponse {
+  repeated PendingRecertificationRow rows = 1;
+  string next_page_token = 2;
+}
+
+// AccountAdminServiceSubmitRecertificationDecisionRequest records the calling
+// admin's decision on a pending review. Reviewer is read from session context.
+message AccountAdminServiceSubmitRecertificationDecisionRequest {
+  string tenant_id = 1;
+  string review_id = 2;
+  // "approved" | "revoked" | "deferred".
+  string decision = 3;
+  string comment = 4;
+}
+
+// AccountAdminServiceSubmitRecertificationDecisionResponse is intentionally
+// empty. Reserved for forward-compat additions.
+message AccountAdminServiceSubmitRecertificationDecisionResponse {}
+
+// AccountAdminServiceGetRecertificationHistoryRequest paginates the history
+// for one account.
+message AccountAdminServiceGetRecertificationHistoryRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+// AccountAdminServiceGetRecertificationHistoryResponse returns a page of
+// history rows.
+message AccountAdminServiceGetRecertificationHistoryResponse {
+  repeated RecertificationHistoryRow rows = 1;
+  string next_page_token = 2;
+}
+
+// AccountAdminServiceClearAccountMFAFactorsRequest clears all MFA factors
+// for the named account. reason is required and emitted as the
+// auth.mfa.cleared_by_admin event's Details.reason.
+message AccountAdminServiceClearAccountMFAFactorsRequest {
+  string tenant_id = 1;
+  string account_id = 2;
+  string reason = 3;
+}
+
+// AccountAdminServiceClearAccountMFAFactorsResponse is intentionally empty.
+// Reserved for forward-compat additions (e.g. cleared_factor_count).
+message AccountAdminServiceClearAccountMFAFactorsResponse {}
