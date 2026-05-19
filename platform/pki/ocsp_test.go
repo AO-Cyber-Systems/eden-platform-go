@@ -3,6 +3,7 @@ package pki
 import (
 	"context"
 	"crypto"
+	"crypto/rand"
 	"crypto/x509"
 	"encoding/asn1"
 	"math/big"
@@ -47,15 +48,18 @@ func (s *fakeOCSPStore) GetRevocation(_ context.Context, serial *big.Int) (*Revo
 // added.
 func buildRequest(t *testing.T, issuer *x509.Certificate, serial *big.Int, nonce []byte) []byte {
 	t.Helper()
-	// We need a parsed leaf certificate to use ocsp.CreateRequest; the test
-	// signs a throw-away leaf to anchor the serial number.
+	// We need a parsed leaf cert to feed ocsp.CreateRequest. The OCSP
+	// request only needs the leaf's serial + the issuer's name/key hash —
+	// the actual signing chain of the leaf is irrelevant to the request
+	// shape. Self-sign the synthetic leaf so we don't need access to the
+	// real intermediate signer here.
 	leafKey := newP256Signer(t)
 	template := &x509.Certificate{
 		SerialNumber: serial,
 		NotBefore:    time.Now().Add(-1 * time.Minute),
 		NotAfter:     time.Now().Add(1 * time.Hour),
 	}
-	der, err := x509.CreateCertificate(nil, template, issuer, &leafKey.PublicKey, leafKey)
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &leafKey.PublicKey, leafKey)
 	require.NoError(t, err)
 	leaf, err := x509.ParseCertificate(der)
 	require.NoError(t, err)
