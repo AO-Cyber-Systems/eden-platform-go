@@ -5,7 +5,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 )
 
 func TestCache_GetMissing_ReturnsZeroAndFalse(t *testing.T) {
@@ -153,10 +152,11 @@ func TestCache_Concurrent_RaceFree(t *testing.T) {
 	wg.Wait()
 }
 
-// TestCache_Replace_ObservedAsAtomic asserts that a concurrent Get
+// TestCache_Replace_ObservedAsAtomic asserts that a concurrent Snapshot
 // observes EITHER the pre-Replace or post-Replace state, never a partial
-// map. We approximate this by Replace'ing between two disjoint snapshots
-// and verifying every Get returns the value-set of one snapshot.
+// map. We use Snapshot() (which holds the RLock across the full read) so
+// the test exercises Replace's atomicity, not the user's responsibility
+// to coordinate multiple Gets.
 func TestCache_Replace_ObservedAsAtomic(t *testing.T) {
 	c := New[string, int]()
 	pre := map[string]int{"a": 1, "b": 2, "c": 3}
@@ -164,6 +164,7 @@ func TestCache_Replace_ObservedAsAtomic(t *testing.T) {
 	c.Replace(pre)
 
 	done := make(chan struct{})
+	stop := make(chan struct{})
 	var observed atomic.Int64
 	var violations atomic.Int64
 
@@ -171,29 +172,28 @@ func TestCache_Replace_ObservedAsAtomic(t *testing.T) {
 		defer close(done)
 		for {
 			select {
-			case <-time.After(50 * time.Millisecond):
+			case <-stop:
 				return
 			default:
 			}
-			va, _ := c.Get("a")
-			vb, _ := c.Get("b")
-			vc, _ := c.Get("c")
+			snap := c.Snapshot()
 			observed.Add(1)
-			isPre := va == 1 && vb == 2 && vc == 3
-			isPost := va == 10 && vb == 20 && vc == 30
+			isPre := snap["a"] == 1 && snap["b"] == 2 && snap["c"] == 3
+			isPost := snap["a"] == 10 && snap["b"] == 20 && snap["c"] == 30
 			if !isPre && !isPost {
 				violations.Add(1)
 			}
 		}
 	}()
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		if i%2 == 0 {
 			c.Replace(post)
 		} else {
 			c.Replace(pre)
 		}
 	}
+	close(stop)
 	<-done
 
 	if observed.Load() == 0 {

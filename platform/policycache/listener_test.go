@@ -213,8 +213,16 @@ func TestListener_ContextCancel_ClosesCleanly(t *testing.T) {
 }
 
 func TestListener_ConnError_InvokesOnError(t *testing.T) {
-	lc, _, cleanup := listenerSetup(t)
+	lc, pool, cleanup := listenerSetup(t)
 	defer cleanup()
+
+	// Capture the listener conn's backend pid BEFORE handing it off to
+	// the listener goroutine. Closing lc from this goroutine while the
+	// listener owns it races with pgx's internal state; pg_terminate_backend
+	// kills the session from a SEPARATE connection (the pool) which is the
+	// realistic prod failure scenario (admin/network/pg restart).
+	var pid int32
+	require.NoError(t, lc.QueryRow(context.Background(), "SELECT pg_backend_pid()").Scan(&pid))
 
 	channel := uniqueChannel(t, "policycache_test_connerr")
 	l := policycache.NewListener(lc)
@@ -231,16 +239,18 @@ func TestListener_ConnError_InvokesOnError(t *testing.T) {
 	}()
 	time.Sleep(200 * time.Millisecond)
 
-	// Kill the connection underneath the listener.
-	_ = lc.Close(context.Background())
+	// Terminate the listener's session from a separate pool connection.
+	// The listener's WaitForNotification will return a non-nil error.
+	_, err := pool.Exec(context.Background(), "SELECT pg_terminate_backend($1)", pid)
+	require.NoError(t, err)
 
 	select {
 	case err := <-listenErr:
 		if err == nil {
-			t.Errorf("expected non-nil error after conn close, got nil")
+			t.Errorf("expected non-nil error after conn termination, got nil")
 		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("Listen did not return after conn close")
+	case <-time.After(5 * time.Second):
+		t.Fatal("Listen did not return after backend termination")
 	}
 
 	if onErrorCalls.Load() == 0 {
