@@ -102,7 +102,9 @@ func newSelfSignedECDSA(t *testing.T) (*ecdsa.PrivateKey, *x509.Certificate) {
 //   1. The factory returns a non-nil SigningContext.
 //   2. The context signs an enveloped XML element.
 //   3. The standard goxmldsig validator (using the cert's public key)
-//      accepts the resulting signature.
+//      accepts the resulting signature after a serialize → re-parse cycle
+//      (matches the upstream validate_test.go pattern: validate on a fresh
+//      document tree rather than on the in-memory etree the signer mutated).
 func TestNewSigningContextSigner_RSA_SignAndValidate(t *testing.T) {
 	priv, cert := newSelfSignedRSA(t)
 	signer := &rsaSigner{priv: priv}
@@ -115,11 +117,11 @@ func TestNewSigningContextSigner_RSA_SignAndValidate(t *testing.T) {
 		t.Fatal("returned nil SigningContext")
 	}
 
-	// Build a sample <root><payload Id="abc">hi</payload></root> document and
-	// sign the inner element.
+	// Build a single-root <payload ID="abc">hi</payload> document and sign it.
+	// goxmldsig's enveloped validator expects the Reference URI to resolve
+	// against the document root, so we sign the root element directly.
 	doc := etree.NewDocument()
-	root := doc.CreateElement("root")
-	payload := root.CreateElement("payload")
+	payload := doc.CreateElement("payload")
 	payload.CreateAttr("ID", "abc")
 	payload.SetText("hi")
 
@@ -128,11 +130,22 @@ func TestNewSigningContextSigner_RSA_SignAndValidate(t *testing.T) {
 		t.Fatalf("SignEnveloped: %v", err)
 	}
 
-	// Validate with a stock validator that trusts the cert chain.
+	signedDoc := etree.NewDocument()
+	signedDoc.SetRoot(signed)
+	bs, err := signedDoc.WriteToBytes()
+	if err != nil {
+		t.Fatalf("WriteToBytes: %v", err)
+	}
+
+	freshDoc := etree.NewDocument()
+	if err := freshDoc.ReadFromBytes(bs); err != nil {
+		t.Fatalf("ReadFromBytes: %v", err)
+	}
+
 	store := &dsig.MemoryX509CertificateStore{Roots: []*x509.Certificate{cert}}
 	validator := dsig.NewDefaultValidationContext(store)
 
-	if _, err := validator.Validate(signed); err != nil {
+	if _, err := validator.Validate(freshDoc.Root()); err != nil {
 		t.Fatalf("Validate signed element: %v", err)
 	}
 }
@@ -154,8 +167,7 @@ func TestNewSigningContextSigner_ECDSA_SignAndValidate(t *testing.T) {
 	}
 
 	doc := etree.NewDocument()
-	root := doc.CreateElement("root")
-	payload := root.CreateElement("payload")
+	payload := doc.CreateElement("payload")
 	payload.CreateAttr("ID", "ec-1")
 	payload.SetText("ec hi")
 
@@ -164,9 +176,20 @@ func TestNewSigningContextSigner_ECDSA_SignAndValidate(t *testing.T) {
 		t.Fatalf("SignEnveloped (ECDSA): %v", err)
 	}
 
+	signedDoc := etree.NewDocument()
+	signedDoc.SetRoot(signed)
+	bs, err := signedDoc.WriteToBytes()
+	if err != nil {
+		t.Fatalf("WriteToBytes: %v", err)
+	}
+	freshDoc := etree.NewDocument()
+	if err := freshDoc.ReadFromBytes(bs); err != nil {
+		t.Fatalf("ReadFromBytes: %v", err)
+	}
+
 	store := &dsig.MemoryX509CertificateStore{Roots: []*x509.Certificate{cert}}
 	validator := dsig.NewDefaultValidationContext(store)
-	if _, err := validator.Validate(signed); err != nil {
+	if _, err := validator.Validate(freshDoc.Root()); err != nil {
 		t.Fatalf("Validate ECDSA-signed element: %v", err)
 	}
 }
