@@ -27,6 +27,17 @@ service AOEdgeAdminService {
   // Used for compliance evidence (which build is enforcing the
   // boundary right now) and for cross-fleet drift detection.
   rpc GetBuildInfo(GetBuildInfoRequest) returns (GetBuildInfoResponse);
+
+  // ListRoutes returns the current active route table as seen by this instance.
+  // Used by operators and dashboards to inspect which hostnames and paths AOEdge
+  // is currently routing, and the health status of each route's backends.
+  // This reflects the live atomic.Pointer[RouteTable] — always consistent.
+  rpc ListRoutes(ListRoutesRequest) returns (ListRoutesResponse);
+
+  // GetBackendHealth returns the health state of all registered upstream backends.
+  // Exposes the circuit breaker state machine so operators can observe which backends
+  // are in rotation without needing direct access to the data plane.
+  rpc GetBackendHealth(GetBackendHealthRequest) returns (GetBackendHealthResponse);
 }
 
 message HealthCheckRequest {}
@@ -73,4 +84,65 @@ message GetBuildInfoResponse {
   // against. Lets operators detect drift between the AOEdge binary's
   // expected contracts and what AOID / AOCore / AOAudit are running.
   string eden_proto_schema_version = 6;
+}
+
+// BackendHealthState mirrors the gobreaker v2 circuit breaker states.
+// CLOSED = healthy, in rotation. OPEN = unhealthy, not in rotation.
+// HALF_OPEN = recovering, limited probe requests allowed.
+enum BackendHealthState {
+  BACKEND_HEALTH_STATE_UNSPECIFIED = 0;
+  BACKEND_HEALTH_STATE_CLOSED = 1;      // healthy
+  BACKEND_HEALTH_STATE_OPEN = 2;        // unhealthy
+  BACKEND_HEALTH_STATE_HALF_OPEN = 3;   // recovering
+}
+
+// BackendEntry is one upstream backend's runtime health snapshot,
+// reported by GetBackendHealth.
+message BackendEntry {
+  // Upstream backend URL, e.g. "https://backend-a:8443".
+  string url = 1;
+  // Configured SWRR weight for this backend.
+  int32 weight = 2;
+  // Current circuit breaker state.
+  BackendHealthState health_state = 3;
+  // Number of consecutive probe failures in the current window.
+  int32 consecutive_failures = 4;
+  // RFC 3339 timestamp of the last health probe attempt.
+  // Empty string if no probe has been run yet.
+  string last_probe_time = 5;
+}
+
+// RouteEntry is one (hostname, path_pattern) route, reported by ListRoutes.
+// Carries only observable operational data; Tenant / Identity / Policy
+// fields are intentionally absent (those are Obj 9 / Obj 10 concerns).
+message RouteEntry {
+  // The hostname this route is keyed on (e.g., "api.example.com").
+  string hostname = 1;
+  // The path pattern this route matches (e.g., "/v2/*", "/api/users").
+  string path_pattern = 2;
+  // Number of backends configured for this route.
+  int32 backend_count = 3;
+  // Number of backends currently healthy (circuit breaker CLOSED).
+  int32 healthy_backend_count = 4;
+}
+
+message ListRoutesRequest {}
+
+message ListRoutesResponse {
+  // Routes in the live route table, one entry per (hostname, path_pattern) pair.
+  repeated RouteEntry routes = 1;
+  // Total number of routes in the current table.
+  int32 total_routes = 2;
+}
+
+message GetBackendHealthRequest {
+  // Optional: filter to a specific hostname. Empty = return all backends.
+  string hostname_filter = 1;
+}
+
+message GetBackendHealthResponse {
+  // All backends across all routes (or filtered by hostname_filter).
+  repeated BackendEntry backends = 1;
+  // Timestamp when this snapshot was taken (RFC 3339).
+  string snapshot_time = 2;
 }

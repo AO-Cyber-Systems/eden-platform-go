@@ -21,6 +21,61 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// BackendHealthState mirrors the gobreaker v2 circuit breaker states.
+// CLOSED = healthy, in rotation. OPEN = unhealthy, not in rotation.
+// HALF_OPEN = recovering, limited probe requests allowed.
+type BackendHealthState int32
+
+const (
+	BackendHealthState_BACKEND_HEALTH_STATE_UNSPECIFIED BackendHealthState = 0
+	BackendHealthState_BACKEND_HEALTH_STATE_CLOSED      BackendHealthState = 1 // healthy
+	BackendHealthState_BACKEND_HEALTH_STATE_OPEN        BackendHealthState = 2 // unhealthy
+	BackendHealthState_BACKEND_HEALTH_STATE_HALF_OPEN   BackendHealthState = 3 // recovering
+)
+
+// Enum value maps for BackendHealthState.
+var (
+	BackendHealthState_name = map[int32]string{
+		0: "BACKEND_HEALTH_STATE_UNSPECIFIED",
+		1: "BACKEND_HEALTH_STATE_CLOSED",
+		2: "BACKEND_HEALTH_STATE_OPEN",
+		3: "BACKEND_HEALTH_STATE_HALF_OPEN",
+	}
+	BackendHealthState_value = map[string]int32{
+		"BACKEND_HEALTH_STATE_UNSPECIFIED": 0,
+		"BACKEND_HEALTH_STATE_CLOSED":      1,
+		"BACKEND_HEALTH_STATE_OPEN":        2,
+		"BACKEND_HEALTH_STATE_HALF_OPEN":   3,
+	}
+)
+
+func (x BackendHealthState) Enum() *BackendHealthState {
+	p := new(BackendHealthState)
+	*p = x
+	return p
+}
+
+func (x BackendHealthState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (BackendHealthState) Descriptor() protoreflect.EnumDescriptor {
+	return file_platform_v1_aoedge_proto_enumTypes[0].Descriptor()
+}
+
+func (BackendHealthState) Type() protoreflect.EnumType {
+	return &file_platform_v1_aoedge_proto_enumTypes[0]
+}
+
+func (x BackendHealthState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use BackendHealthState.Descriptor instead.
+func (BackendHealthState) EnumDescriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_proto_rawDescGZIP(), []int{0}
+}
+
 type HealthCheckRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -263,6 +318,354 @@ func (x *GetBuildInfoResponse) GetEdenProtoSchemaVersion() string {
 	return ""
 }
 
+// BackendEntry is one upstream backend's runtime health snapshot,
+// reported by GetBackendHealth.
+type BackendEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Upstream backend URL, e.g. "https://backend-a:8443".
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	// Configured SWRR weight for this backend.
+	Weight int32 `protobuf:"varint,2,opt,name=weight,proto3" json:"weight,omitempty"`
+	// Current circuit breaker state.
+	HealthState BackendHealthState `protobuf:"varint,3,opt,name=health_state,json=healthState,proto3,enum=platform.v1.BackendHealthState" json:"health_state,omitempty"`
+	// Number of consecutive probe failures in the current window.
+	ConsecutiveFailures int32 `protobuf:"varint,4,opt,name=consecutive_failures,json=consecutiveFailures,proto3" json:"consecutive_failures,omitempty"`
+	// RFC 3339 timestamp of the last health probe attempt.
+	// Empty string if no probe has been run yet.
+	LastProbeTime string `protobuf:"bytes,5,opt,name=last_probe_time,json=lastProbeTime,proto3" json:"last_probe_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BackendEntry) Reset() {
+	*x = BackendEntry{}
+	mi := &file_platform_v1_aoedge_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BackendEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BackendEntry) ProtoMessage() {}
+
+func (x *BackendEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BackendEntry.ProtoReflect.Descriptor instead.
+func (*BackendEntry) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *BackendEntry) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *BackendEntry) GetWeight() int32 {
+	if x != nil {
+		return x.Weight
+	}
+	return 0
+}
+
+func (x *BackendEntry) GetHealthState() BackendHealthState {
+	if x != nil {
+		return x.HealthState
+	}
+	return BackendHealthState_BACKEND_HEALTH_STATE_UNSPECIFIED
+}
+
+func (x *BackendEntry) GetConsecutiveFailures() int32 {
+	if x != nil {
+		return x.ConsecutiveFailures
+	}
+	return 0
+}
+
+func (x *BackendEntry) GetLastProbeTime() string {
+	if x != nil {
+		return x.LastProbeTime
+	}
+	return ""
+}
+
+// RouteEntry is one (hostname, path_pattern) route, reported by ListRoutes.
+// Carries only observable operational data; Tenant / Identity / Policy
+// fields are intentionally absent (those are Obj 9 / Obj 10 concerns).
+type RouteEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The hostname this route is keyed on (e.g., "api.example.com").
+	Hostname string `protobuf:"bytes,1,opt,name=hostname,proto3" json:"hostname,omitempty"`
+	// The path pattern this route matches (e.g., "/v2/*", "/api/users").
+	PathPattern string `protobuf:"bytes,2,opt,name=path_pattern,json=pathPattern,proto3" json:"path_pattern,omitempty"`
+	// Number of backends configured for this route.
+	BackendCount int32 `protobuf:"varint,3,opt,name=backend_count,json=backendCount,proto3" json:"backend_count,omitempty"`
+	// Number of backends currently healthy (circuit breaker CLOSED).
+	HealthyBackendCount int32 `protobuf:"varint,4,opt,name=healthy_backend_count,json=healthyBackendCount,proto3" json:"healthy_backend_count,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *RouteEntry) Reset() {
+	*x = RouteEntry{}
+	mi := &file_platform_v1_aoedge_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RouteEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RouteEntry) ProtoMessage() {}
+
+func (x *RouteEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RouteEntry.ProtoReflect.Descriptor instead.
+func (*RouteEntry) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *RouteEntry) GetHostname() string {
+	if x != nil {
+		return x.Hostname
+	}
+	return ""
+}
+
+func (x *RouteEntry) GetPathPattern() string {
+	if x != nil {
+		return x.PathPattern
+	}
+	return ""
+}
+
+func (x *RouteEntry) GetBackendCount() int32 {
+	if x != nil {
+		return x.BackendCount
+	}
+	return 0
+}
+
+func (x *RouteEntry) GetHealthyBackendCount() int32 {
+	if x != nil {
+		return x.HealthyBackendCount
+	}
+	return 0
+}
+
+type ListRoutesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRoutesRequest) Reset() {
+	*x = ListRoutesRequest{}
+	mi := &file_platform_v1_aoedge_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRoutesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRoutesRequest) ProtoMessage() {}
+
+func (x *ListRoutesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRoutesRequest.ProtoReflect.Descriptor instead.
+func (*ListRoutesRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_proto_rawDescGZIP(), []int{6}
+}
+
+type ListRoutesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Routes in the live route table, one entry per (hostname, path_pattern) pair.
+	Routes []*RouteEntry `protobuf:"bytes,1,rep,name=routes,proto3" json:"routes,omitempty"`
+	// Total number of routes in the current table.
+	TotalRoutes   int32 `protobuf:"varint,2,opt,name=total_routes,json=totalRoutes,proto3" json:"total_routes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListRoutesResponse) Reset() {
+	*x = ListRoutesResponse{}
+	mi := &file_platform_v1_aoedge_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListRoutesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListRoutesResponse) ProtoMessage() {}
+
+func (x *ListRoutesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListRoutesResponse.ProtoReflect.Descriptor instead.
+func (*ListRoutesResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListRoutesResponse) GetRoutes() []*RouteEntry {
+	if x != nil {
+		return x.Routes
+	}
+	return nil
+}
+
+func (x *ListRoutesResponse) GetTotalRoutes() int32 {
+	if x != nil {
+		return x.TotalRoutes
+	}
+	return 0
+}
+
+type GetBackendHealthRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Optional: filter to a specific hostname. Empty = return all backends.
+	HostnameFilter string `protobuf:"bytes,1,opt,name=hostname_filter,json=hostnameFilter,proto3" json:"hostname_filter,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *GetBackendHealthRequest) Reset() {
+	*x = GetBackendHealthRequest{}
+	mi := &file_platform_v1_aoedge_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBackendHealthRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBackendHealthRequest) ProtoMessage() {}
+
+func (x *GetBackendHealthRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBackendHealthRequest.ProtoReflect.Descriptor instead.
+func (*GetBackendHealthRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *GetBackendHealthRequest) GetHostnameFilter() string {
+	if x != nil {
+		return x.HostnameFilter
+	}
+	return ""
+}
+
+type GetBackendHealthResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// All backends across all routes (or filtered by hostname_filter).
+	Backends []*BackendEntry `protobuf:"bytes,1,rep,name=backends,proto3" json:"backends,omitempty"`
+	// Timestamp when this snapshot was taken (RFC 3339).
+	SnapshotTime  string `protobuf:"bytes,2,opt,name=snapshot_time,json=snapshotTime,proto3" json:"snapshot_time,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetBackendHealthResponse) Reset() {
+	*x = GetBackendHealthResponse{}
+	mi := &file_platform_v1_aoedge_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetBackendHealthResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetBackendHealthResponse) ProtoMessage() {}
+
+func (x *GetBackendHealthResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetBackendHealthResponse.ProtoReflect.Descriptor instead.
+func (*GetBackendHealthResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetBackendHealthResponse) GetBackends() []*BackendEntry {
+	if x != nil {
+		return x.Backends
+	}
+	return nil
+}
+
+func (x *GetBackendHealthResponse) GetSnapshotTime() string {
+	if x != nil {
+		return x.SnapshotTime
+	}
+	return ""
+}
+
 var File_platform_v1_aoedge_proto protoreflect.FileDescriptor
 
 const file_platform_v1_aoedge_proto_rawDesc = "" +
@@ -283,10 +686,39 @@ const file_platform_v1_aoedge_proto_rawDesc = "" +
 	"go_version\x18\x04 \x01(\tR\tgoVersion\x12\x1f\n" +
 	"\vfips_module\x18\x05 \x01(\tR\n" +
 	"fipsModule\x129\n" +
-	"\x19eden_proto_schema_version\x18\x06 \x01(\tR\x16edenProtoSchemaVersion2\xbb\x01\n" +
+	"\x19eden_proto_schema_version\x18\x06 \x01(\tR\x16edenProtoSchemaVersion\"\xd7\x01\n" +
+	"\fBackendEntry\x12\x10\n" +
+	"\x03url\x18\x01 \x01(\tR\x03url\x12\x16\n" +
+	"\x06weight\x18\x02 \x01(\x05R\x06weight\x12B\n" +
+	"\fhealth_state\x18\x03 \x01(\x0e2\x1f.platform.v1.BackendHealthStateR\vhealthState\x121\n" +
+	"\x14consecutive_failures\x18\x04 \x01(\x05R\x13consecutiveFailures\x12&\n" +
+	"\x0flast_probe_time\x18\x05 \x01(\tR\rlastProbeTime\"\xa4\x01\n" +
+	"\n" +
+	"RouteEntry\x12\x1a\n" +
+	"\bhostname\x18\x01 \x01(\tR\bhostname\x12!\n" +
+	"\fpath_pattern\x18\x02 \x01(\tR\vpathPattern\x12#\n" +
+	"\rbackend_count\x18\x03 \x01(\x05R\fbackendCount\x122\n" +
+	"\x15healthy_backend_count\x18\x04 \x01(\x05R\x13healthyBackendCount\"\x13\n" +
+	"\x11ListRoutesRequest\"h\n" +
+	"\x12ListRoutesResponse\x12/\n" +
+	"\x06routes\x18\x01 \x03(\v2\x17.platform.v1.RouteEntryR\x06routes\x12!\n" +
+	"\ftotal_routes\x18\x02 \x01(\x05R\vtotalRoutes\"B\n" +
+	"\x17GetBackendHealthRequest\x12'\n" +
+	"\x0fhostname_filter\x18\x01 \x01(\tR\x0ehostnameFilter\"v\n" +
+	"\x18GetBackendHealthResponse\x125\n" +
+	"\bbackends\x18\x01 \x03(\v2\x19.platform.v1.BackendEntryR\bbackends\x12#\n" +
+	"\rsnapshot_time\x18\x02 \x01(\tR\fsnapshotTime*\x9e\x01\n" +
+	"\x12BackendHealthState\x12$\n" +
+	" BACKEND_HEALTH_STATE_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bBACKEND_HEALTH_STATE_CLOSED\x10\x01\x12\x1d\n" +
+	"\x19BACKEND_HEALTH_STATE_OPEN\x10\x02\x12\"\n" +
+	"\x1eBACKEND_HEALTH_STATE_HALF_OPEN\x10\x032\xeb\x02\n" +
 	"\x12AOEdgeAdminService\x12P\n" +
 	"\vHealthCheck\x12\x1f.platform.v1.HealthCheckRequest\x1a .platform.v1.HealthCheckResponse\x12S\n" +
-	"\fGetBuildInfo\x12 .platform.v1.GetBuildInfoRequest\x1a!.platform.v1.GetBuildInfoResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\fGetBuildInfo\x12 .platform.v1.GetBuildInfoRequest\x1a!.platform.v1.GetBuildInfoResponse\x12M\n" +
+	"\n" +
+	"ListRoutes\x12\x1e.platform.v1.ListRoutesRequest\x1a\x1f.platform.v1.ListRoutesResponse\x12_\n" +
+	"\x10GetBackendHealth\x12$.platform.v1.GetBackendHealthRequest\x1a%.platform.v1.GetBackendHealthResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_aoedge_proto_rawDescOnce sync.Once
@@ -300,23 +732,38 @@ func file_platform_v1_aoedge_proto_rawDescGZIP() []byte {
 	return file_platform_v1_aoedge_proto_rawDescData
 }
 
-var file_platform_v1_aoedge_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_platform_v1_aoedge_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_platform_v1_aoedge_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_platform_v1_aoedge_proto_goTypes = []any{
-	(*HealthCheckRequest)(nil),   // 0: platform.v1.HealthCheckRequest
-	(*HealthCheckResponse)(nil),  // 1: platform.v1.HealthCheckResponse
-	(*GetBuildInfoRequest)(nil),  // 2: platform.v1.GetBuildInfoRequest
-	(*GetBuildInfoResponse)(nil), // 3: platform.v1.GetBuildInfoResponse
+	(BackendHealthState)(0),          // 0: platform.v1.BackendHealthState
+	(*HealthCheckRequest)(nil),       // 1: platform.v1.HealthCheckRequest
+	(*HealthCheckResponse)(nil),      // 2: platform.v1.HealthCheckResponse
+	(*GetBuildInfoRequest)(nil),      // 3: platform.v1.GetBuildInfoRequest
+	(*GetBuildInfoResponse)(nil),     // 4: platform.v1.GetBuildInfoResponse
+	(*BackendEntry)(nil),             // 5: platform.v1.BackendEntry
+	(*RouteEntry)(nil),               // 6: platform.v1.RouteEntry
+	(*ListRoutesRequest)(nil),        // 7: platform.v1.ListRoutesRequest
+	(*ListRoutesResponse)(nil),       // 8: platform.v1.ListRoutesResponse
+	(*GetBackendHealthRequest)(nil),  // 9: platform.v1.GetBackendHealthRequest
+	(*GetBackendHealthResponse)(nil), // 10: platform.v1.GetBackendHealthResponse
 }
 var file_platform_v1_aoedge_proto_depIdxs = []int32{
-	0, // 0: platform.v1.AOEdgeAdminService.HealthCheck:input_type -> platform.v1.HealthCheckRequest
-	2, // 1: platform.v1.AOEdgeAdminService.GetBuildInfo:input_type -> platform.v1.GetBuildInfoRequest
-	1, // 2: platform.v1.AOEdgeAdminService.HealthCheck:output_type -> platform.v1.HealthCheckResponse
-	3, // 3: platform.v1.AOEdgeAdminService.GetBuildInfo:output_type -> platform.v1.GetBuildInfoResponse
-	2, // [2:4] is the sub-list for method output_type
-	0, // [0:2] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	0,  // 0: platform.v1.BackendEntry.health_state:type_name -> platform.v1.BackendHealthState
+	6,  // 1: platform.v1.ListRoutesResponse.routes:type_name -> platform.v1.RouteEntry
+	5,  // 2: platform.v1.GetBackendHealthResponse.backends:type_name -> platform.v1.BackendEntry
+	1,  // 3: platform.v1.AOEdgeAdminService.HealthCheck:input_type -> platform.v1.HealthCheckRequest
+	3,  // 4: platform.v1.AOEdgeAdminService.GetBuildInfo:input_type -> platform.v1.GetBuildInfoRequest
+	7,  // 5: platform.v1.AOEdgeAdminService.ListRoutes:input_type -> platform.v1.ListRoutesRequest
+	9,  // 6: platform.v1.AOEdgeAdminService.GetBackendHealth:input_type -> platform.v1.GetBackendHealthRequest
+	2,  // 7: platform.v1.AOEdgeAdminService.HealthCheck:output_type -> platform.v1.HealthCheckResponse
+	4,  // 8: platform.v1.AOEdgeAdminService.GetBuildInfo:output_type -> platform.v1.GetBuildInfoResponse
+	8,  // 9: platform.v1.AOEdgeAdminService.ListRoutes:output_type -> platform.v1.ListRoutesResponse
+	10, // 10: platform.v1.AOEdgeAdminService.GetBackendHealth:output_type -> platform.v1.GetBackendHealthResponse
+	7,  // [7:11] is the sub-list for method output_type
+	3,  // [3:7] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_aoedge_proto_init() }
@@ -329,13 +776,14 @@ func file_platform_v1_aoedge_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_aoedge_proto_rawDesc), len(file_platform_v1_aoedge_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   4,
+			NumEnums:      1,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_platform_v1_aoedge_proto_goTypes,
 		DependencyIndexes: file_platform_v1_aoedge_proto_depIdxs,
+		EnumInfos:         file_platform_v1_aoedge_proto_enumTypes,
 		MessageInfos:      file_platform_v1_aoedge_proto_msgTypes,
 	}.Build()
 	File_platform_v1_aoedge_proto = out.File

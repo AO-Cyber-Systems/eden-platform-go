@@ -39,6 +39,12 @@ const (
 	// AOEdgeAdminServiceGetBuildInfoProcedure is the fully-qualified name of the AOEdgeAdminService's
 	// GetBuildInfo RPC.
 	AOEdgeAdminServiceGetBuildInfoProcedure = "/platform.v1.AOEdgeAdminService/GetBuildInfo"
+	// AOEdgeAdminServiceListRoutesProcedure is the fully-qualified name of the AOEdgeAdminService's
+	// ListRoutes RPC.
+	AOEdgeAdminServiceListRoutesProcedure = "/platform.v1.AOEdgeAdminService/ListRoutes"
+	// AOEdgeAdminServiceGetBackendHealthProcedure is the fully-qualified name of the
+	// AOEdgeAdminService's GetBackendHealth RPC.
+	AOEdgeAdminServiceGetBackendHealthProcedure = "/platform.v1.AOEdgeAdminService/GetBackendHealth"
 )
 
 // AOEdgeAdminServiceClient is a client for the platform.v1.AOEdgeAdminService service.
@@ -54,6 +60,15 @@ type AOEdgeAdminServiceClient interface {
 	// Used for compliance evidence (which build is enforcing the
 	// boundary right now) and for cross-fleet drift detection.
 	GetBuildInfo(context.Context, *connect.Request[v1.GetBuildInfoRequest]) (*connect.Response[v1.GetBuildInfoResponse], error)
+	// ListRoutes returns the current active route table as seen by this instance.
+	// Used by operators and dashboards to inspect which hostnames and paths AOEdge
+	// is currently routing, and the health status of each route's backends.
+	// This reflects the live atomic.Pointer[RouteTable] — always consistent.
+	ListRoutes(context.Context, *connect.Request[v1.ListRoutesRequest]) (*connect.Response[v1.ListRoutesResponse], error)
+	// GetBackendHealth returns the health state of all registered upstream backends.
+	// Exposes the circuit breaker state machine so operators can observe which backends
+	// are in rotation without needing direct access to the data plane.
+	GetBackendHealth(context.Context, *connect.Request[v1.GetBackendHealthRequest]) (*connect.Response[v1.GetBackendHealthResponse], error)
 }
 
 // NewAOEdgeAdminServiceClient constructs a client for the platform.v1.AOEdgeAdminService service.
@@ -79,13 +94,27 @@ func NewAOEdgeAdminServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(aOEdgeAdminServiceMethods.ByName("GetBuildInfo")),
 			connect.WithClientOptions(opts...),
 		),
+		listRoutes: connect.NewClient[v1.ListRoutesRequest, v1.ListRoutesResponse](
+			httpClient,
+			baseURL+AOEdgeAdminServiceListRoutesProcedure,
+			connect.WithSchema(aOEdgeAdminServiceMethods.ByName("ListRoutes")),
+			connect.WithClientOptions(opts...),
+		),
+		getBackendHealth: connect.NewClient[v1.GetBackendHealthRequest, v1.GetBackendHealthResponse](
+			httpClient,
+			baseURL+AOEdgeAdminServiceGetBackendHealthProcedure,
+			connect.WithSchema(aOEdgeAdminServiceMethods.ByName("GetBackendHealth")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // aOEdgeAdminServiceClient implements AOEdgeAdminServiceClient.
 type aOEdgeAdminServiceClient struct {
-	healthCheck  *connect.Client[v1.HealthCheckRequest, v1.HealthCheckResponse]
-	getBuildInfo *connect.Client[v1.GetBuildInfoRequest, v1.GetBuildInfoResponse]
+	healthCheck      *connect.Client[v1.HealthCheckRequest, v1.HealthCheckResponse]
+	getBuildInfo     *connect.Client[v1.GetBuildInfoRequest, v1.GetBuildInfoResponse]
+	listRoutes       *connect.Client[v1.ListRoutesRequest, v1.ListRoutesResponse]
+	getBackendHealth *connect.Client[v1.GetBackendHealthRequest, v1.GetBackendHealthResponse]
 }
 
 // HealthCheck calls platform.v1.AOEdgeAdminService.HealthCheck.
@@ -96,6 +125,16 @@ func (c *aOEdgeAdminServiceClient) HealthCheck(ctx context.Context, req *connect
 // GetBuildInfo calls platform.v1.AOEdgeAdminService.GetBuildInfo.
 func (c *aOEdgeAdminServiceClient) GetBuildInfo(ctx context.Context, req *connect.Request[v1.GetBuildInfoRequest]) (*connect.Response[v1.GetBuildInfoResponse], error) {
 	return c.getBuildInfo.CallUnary(ctx, req)
+}
+
+// ListRoutes calls platform.v1.AOEdgeAdminService.ListRoutes.
+func (c *aOEdgeAdminServiceClient) ListRoutes(ctx context.Context, req *connect.Request[v1.ListRoutesRequest]) (*connect.Response[v1.ListRoutesResponse], error) {
+	return c.listRoutes.CallUnary(ctx, req)
+}
+
+// GetBackendHealth calls platform.v1.AOEdgeAdminService.GetBackendHealth.
+func (c *aOEdgeAdminServiceClient) GetBackendHealth(ctx context.Context, req *connect.Request[v1.GetBackendHealthRequest]) (*connect.Response[v1.GetBackendHealthResponse], error) {
+	return c.getBackendHealth.CallUnary(ctx, req)
 }
 
 // AOEdgeAdminServiceHandler is an implementation of the platform.v1.AOEdgeAdminService service.
@@ -111,6 +150,15 @@ type AOEdgeAdminServiceHandler interface {
 	// Used for compliance evidence (which build is enforcing the
 	// boundary right now) and for cross-fleet drift detection.
 	GetBuildInfo(context.Context, *connect.Request[v1.GetBuildInfoRequest]) (*connect.Response[v1.GetBuildInfoResponse], error)
+	// ListRoutes returns the current active route table as seen by this instance.
+	// Used by operators and dashboards to inspect which hostnames and paths AOEdge
+	// is currently routing, and the health status of each route's backends.
+	// This reflects the live atomic.Pointer[RouteTable] — always consistent.
+	ListRoutes(context.Context, *connect.Request[v1.ListRoutesRequest]) (*connect.Response[v1.ListRoutesResponse], error)
+	// GetBackendHealth returns the health state of all registered upstream backends.
+	// Exposes the circuit breaker state machine so operators can observe which backends
+	// are in rotation without needing direct access to the data plane.
+	GetBackendHealth(context.Context, *connect.Request[v1.GetBackendHealthRequest]) (*connect.Response[v1.GetBackendHealthResponse], error)
 }
 
 // NewAOEdgeAdminServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -132,12 +180,28 @@ func NewAOEdgeAdminServiceHandler(svc AOEdgeAdminServiceHandler, opts ...connect
 		connect.WithSchema(aOEdgeAdminServiceMethods.ByName("GetBuildInfo")),
 		connect.WithHandlerOptions(opts...),
 	)
+	aOEdgeAdminServiceListRoutesHandler := connect.NewUnaryHandler(
+		AOEdgeAdminServiceListRoutesProcedure,
+		svc.ListRoutes,
+		connect.WithSchema(aOEdgeAdminServiceMethods.ByName("ListRoutes")),
+		connect.WithHandlerOptions(opts...),
+	)
+	aOEdgeAdminServiceGetBackendHealthHandler := connect.NewUnaryHandler(
+		AOEdgeAdminServiceGetBackendHealthProcedure,
+		svc.GetBackendHealth,
+		connect.WithSchema(aOEdgeAdminServiceMethods.ByName("GetBackendHealth")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/platform.v1.AOEdgeAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AOEdgeAdminServiceHealthCheckProcedure:
 			aOEdgeAdminServiceHealthCheckHandler.ServeHTTP(w, r)
 		case AOEdgeAdminServiceGetBuildInfoProcedure:
 			aOEdgeAdminServiceGetBuildInfoHandler.ServeHTTP(w, r)
+		case AOEdgeAdminServiceListRoutesProcedure:
+			aOEdgeAdminServiceListRoutesHandler.ServeHTTP(w, r)
+		case AOEdgeAdminServiceGetBackendHealthProcedure:
+			aOEdgeAdminServiceGetBackendHealthHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -153,4 +217,12 @@ func (UnimplementedAOEdgeAdminServiceHandler) HealthCheck(context.Context, *conn
 
 func (UnimplementedAOEdgeAdminServiceHandler) GetBuildInfo(context.Context, *connect.Request[v1.GetBuildInfoRequest]) (*connect.Response[v1.GetBuildInfoResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AOEdgeAdminService.GetBuildInfo is not implemented"))
+}
+
+func (UnimplementedAOEdgeAdminServiceHandler) ListRoutes(context.Context, *connect.Request[v1.ListRoutesRequest]) (*connect.Response[v1.ListRoutesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AOEdgeAdminService.ListRoutes is not implemented"))
+}
+
+func (UnimplementedAOEdgeAdminServiceHandler) GetBackendHealth(context.Context, *connect.Request[v1.GetBackendHealthRequest]) (*connect.Response[v1.GetBackendHealthResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AOEdgeAdminService.GetBackendHealth is not implemented"))
 }
