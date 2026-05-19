@@ -9,6 +9,7 @@ package platformv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -265,11 +266,192 @@ func (x *AuditLogEntry) GetCreatedAt() string {
 	return ""
 }
 
+// IngestBreakGlassEventRequest carries the contents of one JSONL line
+// from the aoidemergency replay file. The server uses these fields
+// verbatim (it does NOT recompute or override original_jti /
+// original_issued_at) — this is by design so the AOAudit timeline
+// reconstructs the outage window faithfully.
+type IngestBreakGlassEventRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// original_jti is the UUID minted at issuance time. Must be uuid-shaped.
+	// Server dedups on this field: re-replay is a no-op.
+	OriginalJti string `protobuf:"bytes,1,opt,name=original_jti,json=originalJti,proto3" json:"original_jti,omitempty"`
+	// original_issued_at is the timestamp the CLI recorded at JWT issuance.
+	// Server SETS the audit row's emitted_at to this value (NOT
+	// request-arrival time). Server rejects values older than 30 days
+	// (sanity bound — older replays are suspicious).
+	OriginalIssuedAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=original_issued_at,json=originalIssuedAt,proto3" json:"original_issued_at,omitempty"`
+	// subject is the JWT 'sub' claim — the principal the break-glass
+	// credential authenticated.
+	Subject string `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
+	// tenant is the tenant slug the credential was scoped to (or '*' for
+	// chassis-wide recovery operations).
+	Tenant string `protobuf:"bytes,4,opt,name=tenant,proto3" json:"tenant,omitempty"`
+	// scope is the manifest scope: 'admin.recovery' | 'service.recovery'.
+	Scope string `protobuf:"bytes,5,opt,name=scope,proto3" json:"scope,omitempty"`
+	// reason is the operator-provided human-readable reason from the
+	// authorization manifest (≥ 20 chars enforced at issuance time).
+	Reason string `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	// operator is the requested_by email from the manifest — the operator
+	// who drafted the request (NOT the ≥ 2 signers; see manifest_digest_b64
+	// to recover the full signer set offline).
+	Operator string `protobuf:"bytes,7,opt,name=operator,proto3" json:"operator,omitempty"`
+	// manifest_digest_b64 is the base64-std-encoded SHA-256 digest of the
+	// raw manifest bytes the CLI consumed. The replay tool can produce
+	// the manifest file alongside the replay log; downstream observers
+	// can recompute and confirm the manifest wasn't substituted post-hoc.
+	ManifestDigestB64 string `protobuf:"bytes,8,opt,name=manifest_digest_b64,json=manifestDigestB64,proto3" json:"manifest_digest_b64,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *IngestBreakGlassEventRequest) Reset() {
+	*x = IngestBreakGlassEventRequest{}
+	mi := &file_platform_v1_audit_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IngestBreakGlassEventRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IngestBreakGlassEventRequest) ProtoMessage() {}
+
+func (x *IngestBreakGlassEventRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_audit_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IngestBreakGlassEventRequest.ProtoReflect.Descriptor instead.
+func (*IngestBreakGlassEventRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_audit_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *IngestBreakGlassEventRequest) GetOriginalJti() string {
+	if x != nil {
+		return x.OriginalJti
+	}
+	return ""
+}
+
+func (x *IngestBreakGlassEventRequest) GetOriginalIssuedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.OriginalIssuedAt
+	}
+	return nil
+}
+
+func (x *IngestBreakGlassEventRequest) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *IngestBreakGlassEventRequest) GetTenant() string {
+	if x != nil {
+		return x.Tenant
+	}
+	return ""
+}
+
+func (x *IngestBreakGlassEventRequest) GetScope() string {
+	if x != nil {
+		return x.Scope
+	}
+	return ""
+}
+
+func (x *IngestBreakGlassEventRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *IngestBreakGlassEventRequest) GetOperator() string {
+	if x != nil {
+		return x.Operator
+	}
+	return ""
+}
+
+func (x *IngestBreakGlassEventRequest) GetManifestDigestB64() string {
+	if x != nil {
+		return x.ManifestDigestB64
+	}
+	return ""
+}
+
+type IngestBreakGlassEventResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// accepted is true if the event landed (or was idempotently de-duped).
+	// false (with a non-OK status) indicates a hard rejection.
+	Accepted bool `protobuf:"varint,1,opt,name=accepted,proto3" json:"accepted,omitempty"`
+	// event_id is the server-side UUID assigned to the audit row. Stable
+	// across replays — re-replay returns the original event_id.
+	EventId       string `protobuf:"bytes,2,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IngestBreakGlassEventResponse) Reset() {
+	*x = IngestBreakGlassEventResponse{}
+	mi := &file_platform_v1_audit_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IngestBreakGlassEventResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IngestBreakGlassEventResponse) ProtoMessage() {}
+
+func (x *IngestBreakGlassEventResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_audit_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IngestBreakGlassEventResponse.ProtoReflect.Descriptor instead.
+func (*IngestBreakGlassEventResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_audit_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *IngestBreakGlassEventResponse) GetAccepted() bool {
+	if x != nil {
+		return x.Accepted
+	}
+	return false
+}
+
+func (x *IngestBreakGlassEventResponse) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
 var File_platform_v1_audit_proto protoreflect.FileDescriptor
 
 const file_platform_v1_audit_proto_rawDesc = "" +
 	"\n" +
-	"\x17platform/v1/audit.proto\x12\vplatform.v1\"\xe6\x01\n" +
+	"\x17platform/v1/audit.proto\x12\vplatform.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe6\x01\n" +
 	"\x14ListAuditLogsRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12\x14\n" +
@@ -297,9 +479,22 @@ const file_platform_v1_audit_proto_rawDesc = "" +
 	"\n" +
 	"ip_address\x18\b \x01(\tR\tipAddress\x12\x1d\n" +
 	"\n" +
-	"created_at\x18\t \x01(\tR\tcreatedAt2f\n" +
+	"created_at\x18\t \x01(\tR\tcreatedAt\"\xb7\x02\n" +
+	"\x1cIngestBreakGlassEventRequest\x12!\n" +
+	"\foriginal_jti\x18\x01 \x01(\tR\voriginalJti\x12H\n" +
+	"\x12original_issued_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10originalIssuedAt\x12\x18\n" +
+	"\asubject\x18\x03 \x01(\tR\asubject\x12\x16\n" +
+	"\x06tenant\x18\x04 \x01(\tR\x06tenant\x12\x14\n" +
+	"\x05scope\x18\x05 \x01(\tR\x05scope\x12\x16\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\x12\x1a\n" +
+	"\boperator\x18\a \x01(\tR\boperator\x12.\n" +
+	"\x13manifest_digest_b64\x18\b \x01(\tR\x11manifestDigestB64\"V\n" +
+	"\x1dIngestBreakGlassEventResponse\x12\x1a\n" +
+	"\baccepted\x18\x01 \x01(\bR\baccepted\x12\x19\n" +
+	"\bevent_id\x18\x02 \x01(\tR\aeventId2\xd6\x01\n" +
 	"\fAuditService\x12V\n" +
-	"\rListAuditLogs\x12!.platform.v1.ListAuditLogsRequest\x1a\".platform.v1.ListAuditLogsResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\rListAuditLogs\x12!.platform.v1.ListAuditLogsRequest\x1a\".platform.v1.ListAuditLogsResponse\x12n\n" +
+	"\x15IngestBreakGlassEvent\x12).platform.v1.IngestBreakGlassEventRequest\x1a*.platform.v1.IngestBreakGlassEventResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_audit_proto_rawDescOnce sync.Once
@@ -313,21 +508,27 @@ func file_platform_v1_audit_proto_rawDescGZIP() []byte {
 	return file_platform_v1_audit_proto_rawDescData
 }
 
-var file_platform_v1_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_platform_v1_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_platform_v1_audit_proto_goTypes = []any{
-	(*ListAuditLogsRequest)(nil),  // 0: platform.v1.ListAuditLogsRequest
-	(*ListAuditLogsResponse)(nil), // 1: platform.v1.ListAuditLogsResponse
-	(*AuditLogEntry)(nil),         // 2: platform.v1.AuditLogEntry
+	(*ListAuditLogsRequest)(nil),          // 0: platform.v1.ListAuditLogsRequest
+	(*ListAuditLogsResponse)(nil),         // 1: platform.v1.ListAuditLogsResponse
+	(*AuditLogEntry)(nil),                 // 2: platform.v1.AuditLogEntry
+	(*IngestBreakGlassEventRequest)(nil),  // 3: platform.v1.IngestBreakGlassEventRequest
+	(*IngestBreakGlassEventResponse)(nil), // 4: platform.v1.IngestBreakGlassEventResponse
+	(*timestamppb.Timestamp)(nil),         // 5: google.protobuf.Timestamp
 }
 var file_platform_v1_audit_proto_depIdxs = []int32{
 	2, // 0: platform.v1.ListAuditLogsResponse.entries:type_name -> platform.v1.AuditLogEntry
-	0, // 1: platform.v1.AuditService.ListAuditLogs:input_type -> platform.v1.ListAuditLogsRequest
-	1, // 2: platform.v1.AuditService.ListAuditLogs:output_type -> platform.v1.ListAuditLogsResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
-	1, // [1:1] is the sub-list for extension type_name
-	1, // [1:1] is the sub-list for extension extendee
-	0, // [0:1] is the sub-list for field type_name
+	5, // 1: platform.v1.IngestBreakGlassEventRequest.original_issued_at:type_name -> google.protobuf.Timestamp
+	0, // 2: platform.v1.AuditService.ListAuditLogs:input_type -> platform.v1.ListAuditLogsRequest
+	3, // 3: platform.v1.AuditService.IngestBreakGlassEvent:input_type -> platform.v1.IngestBreakGlassEventRequest
+	1, // 4: platform.v1.AuditService.ListAuditLogs:output_type -> platform.v1.ListAuditLogsResponse
+	4, // 5: platform.v1.AuditService.IngestBreakGlassEvent:output_type -> platform.v1.IngestBreakGlassEventResponse
+	4, // [4:6] is the sub-list for method output_type
+	2, // [2:4] is the sub-list for method input_type
+	2, // [2:2] is the sub-list for extension type_name
+	2, // [2:2] is the sub-list for extension extendee
+	0, // [0:2] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_audit_proto_init() }
@@ -342,7 +543,7 @@ func file_platform_v1_audit_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_audit_proto_rawDesc), len(file_platform_v1_audit_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -2,11 +2,33 @@ syntax = "proto3";
 
 package platform.v1;
 
+import "google/protobuf/timestamp.proto";
+
 option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
 
-// AuditService provides audit log queries.
+// AuditService provides audit log queries + a break-glass replay endpoint
+// for the aoidemergency tool (AOID Obj 11 TRD 11-03).
 service AuditService {
   rpc ListAuditLogs(ListAuditLogsRequest) returns (ListAuditLogsResponse);
+
+  // IngestBreakGlassEvent receives a previously-issued break-glass
+  // credential event from the aoidemergency `replay` subcommand AFTER
+  // recovery completes. The server preserves the ORIGINAL issuance
+  // timestamp (from the request body) when inserting into the local
+  // audit buffer — incident-response timeline reconstruction depends on
+  // this fidelity. Idempotent by original_jti: replays of the same JSONL
+  // file return accepted=true without inserting duplicate rows.
+  //
+  // ACL (enforced by the host service interceptor chain): admin role
+  // required. Tenant-admin actors MAY replay events scoped to their
+  // tenant (original operator may not retain super-admin credentials
+  // post-recovery); super-admin actors may replay any tenant's events.
+  //
+  // Write-capability gating: this RPC is classified WRITE by the AOID
+  // write-capability interceptor (Obj 11 TRD 11-01), so replay against a
+  // replica region returns Unavailable — operators must direct replay
+  // at the post-recovery primary.
+  rpc IngestBreakGlassEvent(IngestBreakGlassEventRequest) returns (IngestBreakGlassEventResponse);
 }
 
 message ListAuditLogsRequest {
@@ -33,4 +55,57 @@ message AuditLogEntry {
   string details_json = 7;
   string ip_address = 8;
   string created_at = 9;
+}
+
+// IngestBreakGlassEventRequest carries the contents of one JSONL line
+// from the aoidemergency replay file. The server uses these fields
+// verbatim (it does NOT recompute or override original_jti /
+// original_issued_at) — this is by design so the AOAudit timeline
+// reconstructs the outage window faithfully.
+message IngestBreakGlassEventRequest {
+  // original_jti is the UUID minted at issuance time. Must be uuid-shaped.
+  // Server dedups on this field: re-replay is a no-op.
+  string original_jti = 1;
+
+  // original_issued_at is the timestamp the CLI recorded at JWT issuance.
+  // Server SETS the audit row's emitted_at to this value (NOT
+  // request-arrival time). Server rejects values older than 30 days
+  // (sanity bound — older replays are suspicious).
+  google.protobuf.Timestamp original_issued_at = 2;
+
+  // subject is the JWT 'sub' claim — the principal the break-glass
+  // credential authenticated.
+  string subject = 3;
+
+  // tenant is the tenant slug the credential was scoped to (or '*' for
+  // chassis-wide recovery operations).
+  string tenant = 4;
+
+  // scope is the manifest scope: 'admin.recovery' | 'service.recovery'.
+  string scope = 5;
+
+  // reason is the operator-provided human-readable reason from the
+  // authorization manifest (≥ 20 chars enforced at issuance time).
+  string reason = 6;
+
+  // operator is the requested_by email from the manifest — the operator
+  // who drafted the request (NOT the ≥ 2 signers; see manifest_digest_b64
+  // to recover the full signer set offline).
+  string operator = 7;
+
+  // manifest_digest_b64 is the base64-std-encoded SHA-256 digest of the
+  // raw manifest bytes the CLI consumed. The replay tool can produce
+  // the manifest file alongside the replay log; downstream observers
+  // can recompute and confirm the manifest wasn't substituted post-hoc.
+  string manifest_digest_b64 = 8;
+}
+
+message IngestBreakGlassEventResponse {
+  // accepted is true if the event landed (or was idempotently de-duped).
+  // false (with a non-OK status) indicates a hard rejection.
+  bool accepted = 1;
+
+  // event_id is the server-side UUID assigned to the audit row. Stable
+  // across replays — re-replay returns the original event_id.
+  string event_id = 2;
 }

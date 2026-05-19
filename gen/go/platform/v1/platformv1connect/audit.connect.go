@@ -36,11 +36,32 @@ const (
 	// AuditServiceListAuditLogsProcedure is the fully-qualified name of the AuditService's
 	// ListAuditLogs RPC.
 	AuditServiceListAuditLogsProcedure = "/platform.v1.AuditService/ListAuditLogs"
+	// AuditServiceIngestBreakGlassEventProcedure is the fully-qualified name of the AuditService's
+	// IngestBreakGlassEvent RPC.
+	AuditServiceIngestBreakGlassEventProcedure = "/platform.v1.AuditService/IngestBreakGlassEvent"
 )
 
 // AuditServiceClient is a client for the platform.v1.AuditService service.
 type AuditServiceClient interface {
 	ListAuditLogs(context.Context, *connect.Request[v1.ListAuditLogsRequest]) (*connect.Response[v1.ListAuditLogsResponse], error)
+	// IngestBreakGlassEvent receives a previously-issued break-glass
+	// credential event from the aoidemergency `replay` subcommand AFTER
+	// recovery completes. The server preserves the ORIGINAL issuance
+	// timestamp (from the request body) when inserting into the local
+	// audit buffer — incident-response timeline reconstruction depends on
+	// this fidelity. Idempotent by original_jti: replays of the same JSONL
+	// file return accepted=true without inserting duplicate rows.
+	//
+	// ACL (enforced by the host service interceptor chain): admin role
+	// required. Tenant-admin actors MAY replay events scoped to their
+	// tenant (original operator may not retain super-admin credentials
+	// post-recovery); super-admin actors may replay any tenant's events.
+	//
+	// Write-capability gating: this RPC is classified WRITE by the AOID
+	// write-capability interceptor (Obj 11 TRD 11-01), so replay against a
+	// replica region returns Unavailable — operators must direct replay
+	// at the post-recovery primary.
+	IngestBreakGlassEvent(context.Context, *connect.Request[v1.IngestBreakGlassEventRequest]) (*connect.Response[v1.IngestBreakGlassEventResponse], error)
 }
 
 // NewAuditServiceClient constructs a client for the platform.v1.AuditService service. By default,
@@ -60,12 +81,19 @@ func NewAuditServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(auditServiceMethods.ByName("ListAuditLogs")),
 			connect.WithClientOptions(opts...),
 		),
+		ingestBreakGlassEvent: connect.NewClient[v1.IngestBreakGlassEventRequest, v1.IngestBreakGlassEventResponse](
+			httpClient,
+			baseURL+AuditServiceIngestBreakGlassEventProcedure,
+			connect.WithSchema(auditServiceMethods.ByName("IngestBreakGlassEvent")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // auditServiceClient implements AuditServiceClient.
 type auditServiceClient struct {
-	listAuditLogs *connect.Client[v1.ListAuditLogsRequest, v1.ListAuditLogsResponse]
+	listAuditLogs         *connect.Client[v1.ListAuditLogsRequest, v1.ListAuditLogsResponse]
+	ingestBreakGlassEvent *connect.Client[v1.IngestBreakGlassEventRequest, v1.IngestBreakGlassEventResponse]
 }
 
 // ListAuditLogs calls platform.v1.AuditService.ListAuditLogs.
@@ -73,9 +101,32 @@ func (c *auditServiceClient) ListAuditLogs(ctx context.Context, req *connect.Req
 	return c.listAuditLogs.CallUnary(ctx, req)
 }
 
+// IngestBreakGlassEvent calls platform.v1.AuditService.IngestBreakGlassEvent.
+func (c *auditServiceClient) IngestBreakGlassEvent(ctx context.Context, req *connect.Request[v1.IngestBreakGlassEventRequest]) (*connect.Response[v1.IngestBreakGlassEventResponse], error) {
+	return c.ingestBreakGlassEvent.CallUnary(ctx, req)
+}
+
 // AuditServiceHandler is an implementation of the platform.v1.AuditService service.
 type AuditServiceHandler interface {
 	ListAuditLogs(context.Context, *connect.Request[v1.ListAuditLogsRequest]) (*connect.Response[v1.ListAuditLogsResponse], error)
+	// IngestBreakGlassEvent receives a previously-issued break-glass
+	// credential event from the aoidemergency `replay` subcommand AFTER
+	// recovery completes. The server preserves the ORIGINAL issuance
+	// timestamp (from the request body) when inserting into the local
+	// audit buffer — incident-response timeline reconstruction depends on
+	// this fidelity. Idempotent by original_jti: replays of the same JSONL
+	// file return accepted=true without inserting duplicate rows.
+	//
+	// ACL (enforced by the host service interceptor chain): admin role
+	// required. Tenant-admin actors MAY replay events scoped to their
+	// tenant (original operator may not retain super-admin credentials
+	// post-recovery); super-admin actors may replay any tenant's events.
+	//
+	// Write-capability gating: this RPC is classified WRITE by the AOID
+	// write-capability interceptor (Obj 11 TRD 11-01), so replay against a
+	// replica region returns Unavailable — operators must direct replay
+	// at the post-recovery primary.
+	IngestBreakGlassEvent(context.Context, *connect.Request[v1.IngestBreakGlassEventRequest]) (*connect.Response[v1.IngestBreakGlassEventResponse], error)
 }
 
 // NewAuditServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -91,10 +142,18 @@ func NewAuditServiceHandler(svc AuditServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(auditServiceMethods.ByName("ListAuditLogs")),
 		connect.WithHandlerOptions(opts...),
 	)
+	auditServiceIngestBreakGlassEventHandler := connect.NewUnaryHandler(
+		AuditServiceIngestBreakGlassEventProcedure,
+		svc.IngestBreakGlassEvent,
+		connect.WithSchema(auditServiceMethods.ByName("IngestBreakGlassEvent")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/platform.v1.AuditService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AuditServiceListAuditLogsProcedure:
 			auditServiceListAuditLogsHandler.ServeHTTP(w, r)
+		case AuditServiceIngestBreakGlassEventProcedure:
+			auditServiceIngestBreakGlassEventHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -106,4 +165,8 @@ type UnimplementedAuditServiceHandler struct{}
 
 func (UnimplementedAuditServiceHandler) ListAuditLogs(context.Context, *connect.Request[v1.ListAuditLogsRequest]) (*connect.Response[v1.ListAuditLogsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AuditService.ListAuditLogs is not implemented"))
+}
+
+func (UnimplementedAuditServiceHandler) IngestBreakGlassEvent(context.Context, *connect.Request[v1.IngestBreakGlassEventRequest]) (*connect.Response[v1.IngestBreakGlassEventResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AuditService.IngestBreakGlassEvent is not implemented"))
 }
