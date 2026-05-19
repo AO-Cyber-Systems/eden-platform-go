@@ -1,0 +1,67 @@
+syntax = "proto3";
+
+package platform.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// ApiKeyValidationService is the AOEdge-facing API-key validation
+// surface per VAL-03. It is a SEPARATE service from
+// CredentialAdminService because the Connect interceptor stack differs:
+//
+//   - CredentialAdminService: mTLS + adminauth + tenant-scope + audit
+//   - ApiKeyValidationService: mTLS + validation_api_consumers
+//     allow-list + audit
+//
+// Calls without mTLS or with an unknown mTLS peer-cert SPIFFE ID are
+// rejected by the interceptor BEFORE reaching the handler (per AOID's
+// success criterion #5 of Objective 5 + VAL-03 spec). The handler
+// itself enforces a defense-in-depth allow-list re-check.
+//
+// Wire shape is INTENTIONALLY narrow — only the raw_key and tenant_id
+// cross the boundary. The response distinguishes valid keys from
+// invalid ones with a coarse reason string (forward-compat: future
+// reasons can be added without breaking wire compat — adopters parse
+// on known string set + treat unknown as "invalid").
+service ApiKeyValidationService {
+  // ValidateApiKey validates a raw API key. Response.valid is true only
+  // when the key is well-formed, not revoked, not expired, and its
+  // stored hash matches the submitted raw key under
+  // platform/auth/secrethasher.Verify. The response does NOT leak
+  // revocation state — revoked keys return reason="unknown".
+  rpc ValidateApiKey(ApiKeyValidationServiceValidateApiKeyRequest) returns (ApiKeyValidationServiceValidateApiKeyResponse);
+}
+
+message ApiKeyValidationServiceValidateApiKeyRequest {
+  // Owning tenant UUID. AOEdge knows which tenant the request is for
+  // (from upstream OAuth context) and supplies it here; the AOID
+  // server uses it as the lookup parameter on the (tenant_id,
+  // key_prefix) index.
+  string tenant_id = 1;
+
+  // The raw API key under validation. Format: "aoid_<env>_<52-char-base32>".
+  string raw_key = 2;
+}
+
+message ApiKeyValidationServiceValidateApiKeyResponse {
+  // True only when the key passes every check.
+  bool valid = 1;
+
+  // Only set when valid=true.
+  string api_key_id = 2;
+
+  // Only set when valid=true.
+  string account_id = 3;
+
+  // Echoes the request tenant_id for caller-side consistency check.
+  string tenant_id = 4;
+
+  // Only set when valid=true.
+  repeated string scopes = 5;
+
+  // Coarse reason when valid=false. One of:
+  //   "unknown"        — prefix not found OR revoked OR hash mismatch
+  //   "expired"        — prefix found, hash matched, but past expires_at
+  //   "invalid_format" — raw_key doesn't start with "aoid_" or is too short
+  // Empty when valid=true.
+  string reason = 6;
+}

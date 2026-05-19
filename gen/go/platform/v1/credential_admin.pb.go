@@ -22,6 +22,720 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ApiKey is the canonical wire shape for an API key record. NO raw_key
+// field — that material is carried ONLY by MintApiKeyResponse.raw_key
+// and RotateApiKeyResponse.raw_key, each emitted EXACTLY ONCE.
+type ApiKey struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Internal database UUID (primary key).
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Owning tenant UUID.
+	TenantId string `protobuf:"bytes,2,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// Owner account UUID (the account this key acts on behalf of).
+	OwnerAccountId string `protobuf:"bytes,3,opt,name=owner_account_id,json=ownerAccountId,proto3" json:"owner_account_id,omitempty"`
+	// First 12 chars of the raw key (e.g. "aoid_prod_AB"). Indexed for
+	// O(1) lookup at validation time; safe to log + display.
+	KeyPrefix string `protobuf:"bytes,4,opt,name=key_prefix,json=keyPrefix,proto3" json:"key_prefix,omitempty"`
+	// Human-friendly label supplied at mint time. 1..255 chars; no
+	// control chars (server strips them via strings.Map at mint time).
+	Name string `protobuf:"bytes,5,opt,name=name,proto3" json:"name,omitempty"`
+	// Allowed OAuth-shaped scopes (e.g. "read", "admin:tenant").
+	Scopes []string `protobuf:"bytes,6,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	// Issuance timestamp.
+	IssuedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=issued_at,json=issuedAt,proto3" json:"issued_at,omitempty"`
+	// Optional expiry. Absent = never expires.
+	ExpiresAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	// Last successful validation timestamp. Updated cheaply on every
+	// ValidateApiKey hit; race-y is acceptable (audit hint, not a
+	// security boundary).
+	LastUsedAt *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
+	// Revocation timestamp. Absent = active.
+	RevokedAt *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=revoked_at,json=revokedAt,proto3" json:"revoked_at,omitempty"`
+	// Human-readable revocation reason. Empty when revoked_at is absent.
+	RevokedReason string `protobuf:"bytes,11,opt,name=revoked_reason,json=revokedReason,proto3" json:"revoked_reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ApiKey) Reset() {
+	*x = ApiKey{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ApiKey) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ApiKey) ProtoMessage() {}
+
+func (x *ApiKey) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ApiKey.ProtoReflect.Descriptor instead.
+func (*ApiKey) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ApiKey) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ApiKey) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *ApiKey) GetOwnerAccountId() string {
+	if x != nil {
+		return x.OwnerAccountId
+	}
+	return ""
+}
+
+func (x *ApiKey) GetKeyPrefix() string {
+	if x != nil {
+		return x.KeyPrefix
+	}
+	return ""
+}
+
+func (x *ApiKey) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ApiKey) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+func (x *ApiKey) GetIssuedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.IssuedAt
+	}
+	return nil
+}
+
+func (x *ApiKey) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *ApiKey) GetLastUsedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastUsedAt
+	}
+	return nil
+}
+
+func (x *ApiKey) GetRevokedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RevokedAt
+	}
+	return nil
+}
+
+func (x *ApiKey) GetRevokedReason() string {
+	if x != nil {
+		return x.RevokedReason
+	}
+	return ""
+}
+
+type CredentialAdminServiceMintApiKeyRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TenantId       string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	OwnerAccountId string                 `protobuf:"bytes,2,opt,name=owner_account_id,json=ownerAccountId,proto3" json:"owner_account_id,omitempty"`
+	Name           string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Scopes         []string               `protobuf:"bytes,4,rep,name=scopes,proto3" json:"scopes,omitempty"`
+	ExpiresAt      *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // optional
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceMintApiKeyRequest) Reset() {
+	*x = CredentialAdminServiceMintApiKeyRequest{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceMintApiKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceMintApiKeyRequest) ProtoMessage() {}
+
+func (x *CredentialAdminServiceMintApiKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceMintApiKeyRequest.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceMintApiKeyRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CredentialAdminServiceMintApiKeyRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceMintApiKeyRequest) GetOwnerAccountId() string {
+	if x != nil {
+		return x.OwnerAccountId
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceMintApiKeyRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceMintApiKeyRequest) GetScopes() []string {
+	if x != nil {
+		return x.Scopes
+	}
+	return nil
+}
+
+func (x *CredentialAdminServiceMintApiKeyRequest) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+type CredentialAdminServiceMintApiKeyResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	ApiKey *ApiKey                `protobuf:"bytes,1,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	// RAW key material. SHOWN EXACTLY ONCE.
+	RawKey        string `protobuf:"bytes,2,opt,name=raw_key,json=rawKey,proto3" json:"raw_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceMintApiKeyResponse) Reset() {
+	*x = CredentialAdminServiceMintApiKeyResponse{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceMintApiKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceMintApiKeyResponse) ProtoMessage() {}
+
+func (x *CredentialAdminServiceMintApiKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceMintApiKeyResponse.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceMintApiKeyResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CredentialAdminServiceMintApiKeyResponse) GetApiKey() *ApiKey {
+	if x != nil {
+		return x.ApiKey
+	}
+	return nil
+}
+
+func (x *CredentialAdminServiceMintApiKeyResponse) GetRawKey() string {
+	if x != nil {
+		return x.RawKey
+	}
+	return ""
+}
+
+type CredentialAdminServiceListApiKeysRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	TenantId       string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	OwnerAccountId string                 `protobuf:"bytes,2,opt,name=owner_account_id,json=ownerAccountId,proto3" json:"owner_account_id,omitempty"` // optional filter
+	PageSize       int32                  `protobuf:"varint,3,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken      string                 `protobuf:"bytes,4,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceListApiKeysRequest) Reset() {
+	*x = CredentialAdminServiceListApiKeysRequest{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceListApiKeysRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceListApiKeysRequest) ProtoMessage() {}
+
+func (x *CredentialAdminServiceListApiKeysRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceListApiKeysRequest.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceListApiKeysRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CredentialAdminServiceListApiKeysRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceListApiKeysRequest) GetOwnerAccountId() string {
+	if x != nil {
+		return x.OwnerAccountId
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceListApiKeysRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *CredentialAdminServiceListApiKeysRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type CredentialAdminServiceListApiKeysResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ApiKeys       []*ApiKey              `protobuf:"bytes,1,rep,name=api_keys,json=apiKeys,proto3" json:"api_keys,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceListApiKeysResponse) Reset() {
+	*x = CredentialAdminServiceListApiKeysResponse{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceListApiKeysResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceListApiKeysResponse) ProtoMessage() {}
+
+func (x *CredentialAdminServiceListApiKeysResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceListApiKeysResponse.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceListApiKeysResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *CredentialAdminServiceListApiKeysResponse) GetApiKeys() []*ApiKey {
+	if x != nil {
+		return x.ApiKeys
+	}
+	return nil
+}
+
+func (x *CredentialAdminServiceListApiKeysResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
+type CredentialAdminServiceGetApiKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ApiKeyId      string                 `protobuf:"bytes,2,opt,name=api_key_id,json=apiKeyId,proto3" json:"api_key_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceGetApiKeyRequest) Reset() {
+	*x = CredentialAdminServiceGetApiKeyRequest{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceGetApiKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceGetApiKeyRequest) ProtoMessage() {}
+
+func (x *CredentialAdminServiceGetApiKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceGetApiKeyRequest.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceGetApiKeyRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *CredentialAdminServiceGetApiKeyRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceGetApiKeyRequest) GetApiKeyId() string {
+	if x != nil {
+		return x.ApiKeyId
+	}
+	return ""
+}
+
+type CredentialAdminServiceGetApiKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ApiKey        *ApiKey                `protobuf:"bytes,1,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceGetApiKeyResponse) Reset() {
+	*x = CredentialAdminServiceGetApiKeyResponse{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceGetApiKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceGetApiKeyResponse) ProtoMessage() {}
+
+func (x *CredentialAdminServiceGetApiKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceGetApiKeyResponse.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceGetApiKeyResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *CredentialAdminServiceGetApiKeyResponse) GetApiKey() *ApiKey {
+	if x != nil {
+		return x.ApiKey
+	}
+	return nil
+}
+
+type CredentialAdminServiceRevokeApiKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ApiKeyId      string                 `protobuf:"bytes,2,opt,name=api_key_id,json=apiKeyId,proto3" json:"api_key_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"` // human-readable; recorded on the row
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceRevokeApiKeyRequest) Reset() {
+	*x = CredentialAdminServiceRevokeApiKeyRequest{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceRevokeApiKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceRevokeApiKeyRequest) ProtoMessage() {}
+
+func (x *CredentialAdminServiceRevokeApiKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceRevokeApiKeyRequest.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceRevokeApiKeyRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *CredentialAdminServiceRevokeApiKeyRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceRevokeApiKeyRequest) GetApiKeyId() string {
+	if x != nil {
+		return x.ApiKeyId
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceRevokeApiKeyRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type CredentialAdminServiceRevokeApiKeyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ApiKey        *ApiKey                `protobuf:"bytes,1,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceRevokeApiKeyResponse) Reset() {
+	*x = CredentialAdminServiceRevokeApiKeyResponse{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceRevokeApiKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceRevokeApiKeyResponse) ProtoMessage() {}
+
+func (x *CredentialAdminServiceRevokeApiKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceRevokeApiKeyResponse.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceRevokeApiKeyResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *CredentialAdminServiceRevokeApiKeyResponse) GetApiKey() *ApiKey {
+	if x != nil {
+		return x.ApiKey
+	}
+	return nil
+}
+
+type CredentialAdminServiceRotateApiKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	ApiKeyId      string                 `protobuf:"bytes,2,opt,name=api_key_id,json=apiKeyId,proto3" json:"api_key_id,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceRotateApiKeyRequest) Reset() {
+	*x = CredentialAdminServiceRotateApiKeyRequest{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceRotateApiKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceRotateApiKeyRequest) ProtoMessage() {}
+
+func (x *CredentialAdminServiceRotateApiKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceRotateApiKeyRequest.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceRotateApiKeyRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CredentialAdminServiceRotateApiKeyRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceRotateApiKeyRequest) GetApiKeyId() string {
+	if x != nil {
+		return x.ApiKeyId
+	}
+	return ""
+}
+
+func (x *CredentialAdminServiceRotateApiKeyRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type CredentialAdminServiceRotateApiKeyResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Revoked predecessor record.
+	Revoked *ApiKey `protobuf:"bytes,1,opt,name=revoked,proto3" json:"revoked,omitempty"`
+	// Newly minted replacement record.
+	ApiKey *ApiKey `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	// RAW replacement key. SHOWN EXACTLY ONCE.
+	RawKey        string `protobuf:"bytes,3,opt,name=raw_key,json=rawKey,proto3" json:"raw_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CredentialAdminServiceRotateApiKeyResponse) Reset() {
+	*x = CredentialAdminServiceRotateApiKeyResponse{}
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialAdminServiceRotateApiKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialAdminServiceRotateApiKeyResponse) ProtoMessage() {}
+
+func (x *CredentialAdminServiceRotateApiKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialAdminServiceRotateApiKeyResponse.ProtoReflect.Descriptor instead.
+func (*CredentialAdminServiceRotateApiKeyResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *CredentialAdminServiceRotateApiKeyResponse) GetRevoked() *ApiKey {
+	if x != nil {
+		return x.Revoked
+	}
+	return nil
+}
+
+func (x *CredentialAdminServiceRotateApiKeyResponse) GetApiKey() *ApiKey {
+	if x != nil {
+		return x.ApiKey
+	}
+	return nil
+}
+
+func (x *CredentialAdminServiceRotateApiKeyResponse) GetRawKey() string {
+	if x != nil {
+		return x.RawKey
+	}
+	return ""
+}
+
 // IssueCertificateRequest carries the admin-controlled inputs for
 // IssueCertificate. CSR is PEM-encoded (PKCS#10); the server parses to
 // DER, verifies the self-signature, then applies any override fields
@@ -42,7 +756,7 @@ type IssueCertificateRequest struct {
 
 func (x *IssueCertificateRequest) Reset() {
 	*x = IssueCertificateRequest{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[0]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -54,7 +768,7 @@ func (x *IssueCertificateRequest) String() string {
 func (*IssueCertificateRequest) ProtoMessage() {}
 
 func (x *IssueCertificateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[0]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -67,7 +781,7 @@ func (x *IssueCertificateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IssueCertificateRequest.ProtoReflect.Descriptor instead.
 func (*IssueCertificateRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{0}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *IssueCertificateRequest) GetTenantId() string {
@@ -136,7 +850,7 @@ type IssueCertificateResponse struct {
 
 func (x *IssueCertificateResponse) Reset() {
 	*x = IssueCertificateResponse{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[1]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -148,7 +862,7 @@ func (x *IssueCertificateResponse) String() string {
 func (*IssueCertificateResponse) ProtoMessage() {}
 
 func (x *IssueCertificateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[1]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -161,7 +875,7 @@ func (x *IssueCertificateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use IssueCertificateResponse.ProtoReflect.Descriptor instead.
 func (*IssueCertificateResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{1}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *IssueCertificateResponse) GetCert() *CertificateSummary {
@@ -204,7 +918,7 @@ type CertificateSummary struct {
 
 func (x *CertificateSummary) Reset() {
 	*x = CertificateSummary{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[2]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -216,7 +930,7 @@ func (x *CertificateSummary) String() string {
 func (*CertificateSummary) ProtoMessage() {}
 
 func (x *CertificateSummary) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[2]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -229,7 +943,7 @@ func (x *CertificateSummary) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CertificateSummary.ProtoReflect.Descriptor instead.
 func (*CertificateSummary) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{2}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *CertificateSummary) GetCertId() string {
@@ -342,7 +1056,7 @@ type RenewCertificateRequest struct {
 
 func (x *RenewCertificateRequest) Reset() {
 	*x = RenewCertificateRequest{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[3]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -354,7 +1068,7 @@ func (x *RenewCertificateRequest) String() string {
 func (*RenewCertificateRequest) ProtoMessage() {}
 
 func (x *RenewCertificateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[3]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -367,7 +1081,7 @@ func (x *RenewCertificateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenewCertificateRequest.ProtoReflect.Descriptor instead.
 func (*RenewCertificateRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{3}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *RenewCertificateRequest) GetTenantId() string {
@@ -408,7 +1122,7 @@ type RenewCertificateResponse struct {
 
 func (x *RenewCertificateResponse) Reset() {
 	*x = RenewCertificateResponse{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[4]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -420,7 +1134,7 @@ func (x *RenewCertificateResponse) String() string {
 func (*RenewCertificateResponse) ProtoMessage() {}
 
 func (x *RenewCertificateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[4]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -433,7 +1147,7 @@ func (x *RenewCertificateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RenewCertificateResponse.ProtoReflect.Descriptor instead.
 func (*RenewCertificateResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{4}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *RenewCertificateResponse) GetCert() *CertificateSummary {
@@ -461,7 +1175,7 @@ type RevokeCertificateRequest struct {
 
 func (x *RevokeCertificateRequest) Reset() {
 	*x = RevokeCertificateRequest{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[5]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -473,7 +1187,7 @@ func (x *RevokeCertificateRequest) String() string {
 func (*RevokeCertificateRequest) ProtoMessage() {}
 
 func (x *RevokeCertificateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[5]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -486,7 +1200,7 @@ func (x *RevokeCertificateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeCertificateRequest.ProtoReflect.Descriptor instead.
 func (*RevokeCertificateRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{5}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *RevokeCertificateRequest) GetTenantId() string {
@@ -519,7 +1233,7 @@ type RevokeCertificateResponse struct {
 
 func (x *RevokeCertificateResponse) Reset() {
 	*x = RevokeCertificateResponse{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[6]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -531,7 +1245,7 @@ func (x *RevokeCertificateResponse) String() string {
 func (*RevokeCertificateResponse) ProtoMessage() {}
 
 func (x *RevokeCertificateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[6]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -544,7 +1258,7 @@ func (x *RevokeCertificateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeCertificateResponse.ProtoReflect.Descriptor instead.
 func (*RevokeCertificateResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{6}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *RevokeCertificateResponse) GetCert() *CertificateSummary {
@@ -564,7 +1278,7 @@ type GetCertificateRequest struct {
 
 func (x *GetCertificateRequest) Reset() {
 	*x = GetCertificateRequest{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[7]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -576,7 +1290,7 @@ func (x *GetCertificateRequest) String() string {
 func (*GetCertificateRequest) ProtoMessage() {}
 
 func (x *GetCertificateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[7]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -589,7 +1303,7 @@ func (x *GetCertificateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCertificateRequest.ProtoReflect.Descriptor instead.
 func (*GetCertificateRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{7}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetCertificateRequest) GetTenantId() string {
@@ -615,7 +1329,7 @@ type GetCertificateResponse struct {
 
 func (x *GetCertificateResponse) Reset() {
 	*x = GetCertificateResponse{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[8]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -627,7 +1341,7 @@ func (x *GetCertificateResponse) String() string {
 func (*GetCertificateResponse) ProtoMessage() {}
 
 func (x *GetCertificateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[8]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -640,7 +1354,7 @@ func (x *GetCertificateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCertificateResponse.ProtoReflect.Descriptor instead.
 func (*GetCertificateResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{8}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GetCertificateResponse) GetCert() *CertificateSummary {
@@ -661,7 +1375,7 @@ type ListCertificatesRequest struct {
 
 func (x *ListCertificatesRequest) Reset() {
 	*x = ListCertificatesRequest{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[9]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -673,7 +1387,7 @@ func (x *ListCertificatesRequest) String() string {
 func (*ListCertificatesRequest) ProtoMessage() {}
 
 func (x *ListCertificatesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[9]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -686,7 +1400,7 @@ func (x *ListCertificatesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCertificatesRequest.ProtoReflect.Descriptor instead.
 func (*ListCertificatesRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{9}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *ListCertificatesRequest) GetTenantId() string {
@@ -720,7 +1434,7 @@ type ListCertificatesResponse struct {
 
 func (x *ListCertificatesResponse) Reset() {
 	*x = ListCertificatesResponse{}
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[10]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -732,7 +1446,7 @@ func (x *ListCertificatesResponse) String() string {
 func (*ListCertificatesResponse) ProtoMessage() {}
 
 func (x *ListCertificatesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_credential_admin_proto_msgTypes[10]
+	mi := &file_platform_v1_credential_admin_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -745,7 +1459,7 @@ func (x *ListCertificatesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCertificatesResponse.ProtoReflect.Descriptor instead.
 func (*ListCertificatesResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{10}
+	return file_platform_v1_credential_admin_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ListCertificatesResponse) GetCerts() []*CertificateSummary {
@@ -766,7 +1480,65 @@ var File_platform_v1_credential_admin_proto protoreflect.FileDescriptor
 
 const file_platform_v1_credential_admin_proto_rawDesc = "" +
 	"\n" +
-	"\"platform/v1/credential_admin.proto\x12\vplatform.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb1\x02\n" +
+	"\"platform/v1/credential_admin.proto\x12\vplatform.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xbe\x03\n" +
+	"\x06ApiKey\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12(\n" +
+	"\x10owner_account_id\x18\x03 \x01(\tR\x0eownerAccountId\x12\x1d\n" +
+	"\n" +
+	"key_prefix\x18\x04 \x01(\tR\tkeyPrefix\x12\x12\n" +
+	"\x04name\x18\x05 \x01(\tR\x04name\x12\x16\n" +
+	"\x06scopes\x18\x06 \x03(\tR\x06scopes\x127\n" +
+	"\tissued_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\bissuedAt\x129\n" +
+	"\n" +
+	"expires_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12<\n" +
+	"\flast_used_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"lastUsedAt\x129\n" +
+	"\n" +
+	"revoked_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\trevokedAt\x12%\n" +
+	"\x0erevoked_reason\x18\v \x01(\tR\rrevokedReason\"\xd7\x01\n" +
+	"'CredentialAdminServiceMintApiKeyRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12(\n" +
+	"\x10owner_account_id\x18\x02 \x01(\tR\x0eownerAccountId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12\x16\n" +
+	"\x06scopes\x18\x04 \x03(\tR\x06scopes\x129\n" +
+	"\n" +
+	"expires_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"q\n" +
+	"(CredentialAdminServiceMintApiKeyResponse\x12,\n" +
+	"\aapi_key\x18\x01 \x01(\v2\x13.platform.v1.ApiKeyR\x06apiKey\x12\x17\n" +
+	"\araw_key\x18\x02 \x01(\tR\x06rawKey\"\xad\x01\n" +
+	"(CredentialAdminServiceListApiKeysRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12(\n" +
+	"\x10owner_account_id\x18\x02 \x01(\tR\x0eownerAccountId\x12\x1b\n" +
+	"\tpage_size\x18\x03 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x04 \x01(\tR\tpageToken\"\x83\x01\n" +
+	")CredentialAdminServiceListApiKeysResponse\x12.\n" +
+	"\bapi_keys\x18\x01 \x03(\v2\x13.platform.v1.ApiKeyR\aapiKeys\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken\"c\n" +
+	"&CredentialAdminServiceGetApiKeyRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1c\n" +
+	"\n" +
+	"api_key_id\x18\x02 \x01(\tR\bapiKeyId\"W\n" +
+	"'CredentialAdminServiceGetApiKeyResponse\x12,\n" +
+	"\aapi_key\x18\x01 \x01(\v2\x13.platform.v1.ApiKeyR\x06apiKey\"~\n" +
+	")CredentialAdminServiceRevokeApiKeyRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1c\n" +
+	"\n" +
+	"api_key_id\x18\x02 \x01(\tR\bapiKeyId\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"Z\n" +
+	"*CredentialAdminServiceRevokeApiKeyResponse\x12,\n" +
+	"\aapi_key\x18\x01 \x01(\v2\x13.platform.v1.ApiKeyR\x06apiKey\"~\n" +
+	")CredentialAdminServiceRotateApiKeyRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1c\n" +
+	"\n" +
+	"api_key_id\x18\x02 \x01(\tR\bapiKeyId\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"\xa2\x01\n" +
+	"*CredentialAdminServiceRotateApiKeyResponse\x12-\n" +
+	"\arevoked\x18\x01 \x01(\v2\x13.platform.v1.ApiKeyR\arevoked\x12,\n" +
+	"\aapi_key\x18\x02 \x01(\v2\x13.platform.v1.ApiKeyR\x06apiKey\x12\x17\n" +
+	"\araw_key\x18\x03 \x01(\tR\x06rawKey\"\xb1\x02\n" +
 	"\x17IssueCertificateRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12(\n" +
 	"\x10owner_account_id\x18\x02 \x01(\tR\x0eownerAccountId\x12\x17\n" +
@@ -824,13 +1596,19 @@ const file_platform_v1_credential_admin_proto_rawDesc = "" +
 	"page_token\x18\x03 \x01(\tR\tpageToken\"y\n" +
 	"\x18ListCertificatesResponse\x125\n" +
 	"\x05certs\x18\x01 \x03(\v2\x1f.platform.v1.CertificateSummaryR\x05certs\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken2\xfa\x03\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken2\xed\b\n" +
 	"\x16CredentialAdminService\x12_\n" +
 	"\x10IssueCertificate\x12$.platform.v1.IssueCertificateRequest\x1a%.platform.v1.IssueCertificateResponse\x12_\n" +
 	"\x10RenewCertificate\x12$.platform.v1.RenewCertificateRequest\x1a%.platform.v1.RenewCertificateResponse\x12b\n" +
 	"\x11RevokeCertificate\x12%.platform.v1.RevokeCertificateRequest\x1a&.platform.v1.RevokeCertificateResponse\x12Y\n" +
 	"\x0eGetCertificate\x12\".platform.v1.GetCertificateRequest\x1a#.platform.v1.GetCertificateResponse\x12_\n" +
-	"\x10ListCertificates\x12$.platform.v1.ListCertificatesRequest\x1a%.platform.v1.ListCertificatesResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x10ListCertificates\x12$.platform.v1.ListCertificatesRequest\x1a%.platform.v1.ListCertificatesResponse\x12y\n" +
+	"\n" +
+	"MintApiKey\x124.platform.v1.CredentialAdminServiceMintApiKeyRequest\x1a5.platform.v1.CredentialAdminServiceMintApiKeyResponse\x12|\n" +
+	"\vListApiKeys\x125.platform.v1.CredentialAdminServiceListApiKeysRequest\x1a6.platform.v1.CredentialAdminServiceListApiKeysResponse\x12v\n" +
+	"\tGetApiKey\x123.platform.v1.CredentialAdminServiceGetApiKeyRequest\x1a4.platform.v1.CredentialAdminServiceGetApiKeyResponse\x12\x7f\n" +
+	"\fRevokeApiKey\x126.platform.v1.CredentialAdminServiceRevokeApiKeyRequest\x1a7.platform.v1.CredentialAdminServiceRevokeApiKeyResponse\x12\x7f\n" +
+	"\fRotateApiKey\x126.platform.v1.CredentialAdminServiceRotateApiKeyRequest\x1a7.platform.v1.CredentialAdminServiceRotateApiKeyResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_credential_admin_proto_rawDescOnce sync.Once
@@ -844,45 +1622,77 @@ func file_platform_v1_credential_admin_proto_rawDescGZIP() []byte {
 	return file_platform_v1_credential_admin_proto_rawDescData
 }
 
-var file_platform_v1_credential_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_platform_v1_credential_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_platform_v1_credential_admin_proto_goTypes = []any{
-	(*IssueCertificateRequest)(nil),   // 0: platform.v1.IssueCertificateRequest
-	(*IssueCertificateResponse)(nil),  // 1: platform.v1.IssueCertificateResponse
-	(*CertificateSummary)(nil),        // 2: platform.v1.CertificateSummary
-	(*RenewCertificateRequest)(nil),   // 3: platform.v1.RenewCertificateRequest
-	(*RenewCertificateResponse)(nil),  // 4: platform.v1.RenewCertificateResponse
-	(*RevokeCertificateRequest)(nil),  // 5: platform.v1.RevokeCertificateRequest
-	(*RevokeCertificateResponse)(nil), // 6: platform.v1.RevokeCertificateResponse
-	(*GetCertificateRequest)(nil),     // 7: platform.v1.GetCertificateRequest
-	(*GetCertificateResponse)(nil),    // 8: platform.v1.GetCertificateResponse
-	(*ListCertificatesRequest)(nil),   // 9: platform.v1.ListCertificatesRequest
-	(*ListCertificatesResponse)(nil),  // 10: platform.v1.ListCertificatesResponse
-	(*timestamppb.Timestamp)(nil),     // 11: google.protobuf.Timestamp
+	(*ApiKey)(nil), // 0: platform.v1.ApiKey
+	(*CredentialAdminServiceMintApiKeyRequest)(nil),    // 1: platform.v1.CredentialAdminServiceMintApiKeyRequest
+	(*CredentialAdminServiceMintApiKeyResponse)(nil),   // 2: platform.v1.CredentialAdminServiceMintApiKeyResponse
+	(*CredentialAdminServiceListApiKeysRequest)(nil),   // 3: platform.v1.CredentialAdminServiceListApiKeysRequest
+	(*CredentialAdminServiceListApiKeysResponse)(nil),  // 4: platform.v1.CredentialAdminServiceListApiKeysResponse
+	(*CredentialAdminServiceGetApiKeyRequest)(nil),     // 5: platform.v1.CredentialAdminServiceGetApiKeyRequest
+	(*CredentialAdminServiceGetApiKeyResponse)(nil),    // 6: platform.v1.CredentialAdminServiceGetApiKeyResponse
+	(*CredentialAdminServiceRevokeApiKeyRequest)(nil),  // 7: platform.v1.CredentialAdminServiceRevokeApiKeyRequest
+	(*CredentialAdminServiceRevokeApiKeyResponse)(nil), // 8: platform.v1.CredentialAdminServiceRevokeApiKeyResponse
+	(*CredentialAdminServiceRotateApiKeyRequest)(nil),  // 9: platform.v1.CredentialAdminServiceRotateApiKeyRequest
+	(*CredentialAdminServiceRotateApiKeyResponse)(nil), // 10: platform.v1.CredentialAdminServiceRotateApiKeyResponse
+	(*IssueCertificateRequest)(nil),                    // 11: platform.v1.IssueCertificateRequest
+	(*IssueCertificateResponse)(nil),                   // 12: platform.v1.IssueCertificateResponse
+	(*CertificateSummary)(nil),                         // 13: platform.v1.CertificateSummary
+	(*RenewCertificateRequest)(nil),                    // 14: platform.v1.RenewCertificateRequest
+	(*RenewCertificateResponse)(nil),                   // 15: platform.v1.RenewCertificateResponse
+	(*RevokeCertificateRequest)(nil),                   // 16: platform.v1.RevokeCertificateRequest
+	(*RevokeCertificateResponse)(nil),                  // 17: platform.v1.RevokeCertificateResponse
+	(*GetCertificateRequest)(nil),                      // 18: platform.v1.GetCertificateRequest
+	(*GetCertificateResponse)(nil),                     // 19: platform.v1.GetCertificateResponse
+	(*ListCertificatesRequest)(nil),                    // 20: platform.v1.ListCertificatesRequest
+	(*ListCertificatesResponse)(nil),                   // 21: platform.v1.ListCertificatesResponse
+	(*timestamppb.Timestamp)(nil),                      // 22: google.protobuf.Timestamp
 }
 var file_platform_v1_credential_admin_proto_depIdxs = []int32{
-	2,  // 0: platform.v1.IssueCertificateResponse.cert:type_name -> platform.v1.CertificateSummary
-	11, // 1: platform.v1.CertificateSummary.issued_at:type_name -> google.protobuf.Timestamp
-	11, // 2: platform.v1.CertificateSummary.expires_at:type_name -> google.protobuf.Timestamp
-	11, // 3: platform.v1.CertificateSummary.revoked_at:type_name -> google.protobuf.Timestamp
-	2,  // 4: platform.v1.RenewCertificateResponse.cert:type_name -> platform.v1.CertificateSummary
-	2,  // 5: platform.v1.RevokeCertificateResponse.cert:type_name -> platform.v1.CertificateSummary
-	2,  // 6: platform.v1.GetCertificateResponse.cert:type_name -> platform.v1.CertificateSummary
-	2,  // 7: platform.v1.ListCertificatesResponse.certs:type_name -> platform.v1.CertificateSummary
-	0,  // 8: platform.v1.CredentialAdminService.IssueCertificate:input_type -> platform.v1.IssueCertificateRequest
-	3,  // 9: platform.v1.CredentialAdminService.RenewCertificate:input_type -> platform.v1.RenewCertificateRequest
-	5,  // 10: platform.v1.CredentialAdminService.RevokeCertificate:input_type -> platform.v1.RevokeCertificateRequest
-	7,  // 11: platform.v1.CredentialAdminService.GetCertificate:input_type -> platform.v1.GetCertificateRequest
-	9,  // 12: platform.v1.CredentialAdminService.ListCertificates:input_type -> platform.v1.ListCertificatesRequest
-	1,  // 13: platform.v1.CredentialAdminService.IssueCertificate:output_type -> platform.v1.IssueCertificateResponse
-	4,  // 14: platform.v1.CredentialAdminService.RenewCertificate:output_type -> platform.v1.RenewCertificateResponse
-	6,  // 15: platform.v1.CredentialAdminService.RevokeCertificate:output_type -> platform.v1.RevokeCertificateResponse
-	8,  // 16: platform.v1.CredentialAdminService.GetCertificate:output_type -> platform.v1.GetCertificateResponse
-	10, // 17: platform.v1.CredentialAdminService.ListCertificates:output_type -> platform.v1.ListCertificatesResponse
-	13, // [13:18] is the sub-list for method output_type
-	8,  // [8:13] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	22, // 0: platform.v1.ApiKey.issued_at:type_name -> google.protobuf.Timestamp
+	22, // 1: platform.v1.ApiKey.expires_at:type_name -> google.protobuf.Timestamp
+	22, // 2: platform.v1.ApiKey.last_used_at:type_name -> google.protobuf.Timestamp
+	22, // 3: platform.v1.ApiKey.revoked_at:type_name -> google.protobuf.Timestamp
+	22, // 4: platform.v1.CredentialAdminServiceMintApiKeyRequest.expires_at:type_name -> google.protobuf.Timestamp
+	0,  // 5: platform.v1.CredentialAdminServiceMintApiKeyResponse.api_key:type_name -> platform.v1.ApiKey
+	0,  // 6: platform.v1.CredentialAdminServiceListApiKeysResponse.api_keys:type_name -> platform.v1.ApiKey
+	0,  // 7: platform.v1.CredentialAdminServiceGetApiKeyResponse.api_key:type_name -> platform.v1.ApiKey
+	0,  // 8: platform.v1.CredentialAdminServiceRevokeApiKeyResponse.api_key:type_name -> platform.v1.ApiKey
+	0,  // 9: platform.v1.CredentialAdminServiceRotateApiKeyResponse.revoked:type_name -> platform.v1.ApiKey
+	0,  // 10: platform.v1.CredentialAdminServiceRotateApiKeyResponse.api_key:type_name -> platform.v1.ApiKey
+	13, // 11: platform.v1.IssueCertificateResponse.cert:type_name -> platform.v1.CertificateSummary
+	22, // 12: platform.v1.CertificateSummary.issued_at:type_name -> google.protobuf.Timestamp
+	22, // 13: platform.v1.CertificateSummary.expires_at:type_name -> google.protobuf.Timestamp
+	22, // 14: platform.v1.CertificateSummary.revoked_at:type_name -> google.protobuf.Timestamp
+	13, // 15: platform.v1.RenewCertificateResponse.cert:type_name -> platform.v1.CertificateSummary
+	13, // 16: platform.v1.RevokeCertificateResponse.cert:type_name -> platform.v1.CertificateSummary
+	13, // 17: platform.v1.GetCertificateResponse.cert:type_name -> platform.v1.CertificateSummary
+	13, // 18: platform.v1.ListCertificatesResponse.certs:type_name -> platform.v1.CertificateSummary
+	11, // 19: platform.v1.CredentialAdminService.IssueCertificate:input_type -> platform.v1.IssueCertificateRequest
+	14, // 20: platform.v1.CredentialAdminService.RenewCertificate:input_type -> platform.v1.RenewCertificateRequest
+	16, // 21: platform.v1.CredentialAdminService.RevokeCertificate:input_type -> platform.v1.RevokeCertificateRequest
+	18, // 22: platform.v1.CredentialAdminService.GetCertificate:input_type -> platform.v1.GetCertificateRequest
+	20, // 23: platform.v1.CredentialAdminService.ListCertificates:input_type -> platform.v1.ListCertificatesRequest
+	1,  // 24: platform.v1.CredentialAdminService.MintApiKey:input_type -> platform.v1.CredentialAdminServiceMintApiKeyRequest
+	3,  // 25: platform.v1.CredentialAdminService.ListApiKeys:input_type -> platform.v1.CredentialAdminServiceListApiKeysRequest
+	5,  // 26: platform.v1.CredentialAdminService.GetApiKey:input_type -> platform.v1.CredentialAdminServiceGetApiKeyRequest
+	7,  // 27: platform.v1.CredentialAdminService.RevokeApiKey:input_type -> platform.v1.CredentialAdminServiceRevokeApiKeyRequest
+	9,  // 28: platform.v1.CredentialAdminService.RotateApiKey:input_type -> platform.v1.CredentialAdminServiceRotateApiKeyRequest
+	12, // 29: platform.v1.CredentialAdminService.IssueCertificate:output_type -> platform.v1.IssueCertificateResponse
+	15, // 30: platform.v1.CredentialAdminService.RenewCertificate:output_type -> platform.v1.RenewCertificateResponse
+	17, // 31: platform.v1.CredentialAdminService.RevokeCertificate:output_type -> platform.v1.RevokeCertificateResponse
+	19, // 32: platform.v1.CredentialAdminService.GetCertificate:output_type -> platform.v1.GetCertificateResponse
+	21, // 33: platform.v1.CredentialAdminService.ListCertificates:output_type -> platform.v1.ListCertificatesResponse
+	2,  // 34: platform.v1.CredentialAdminService.MintApiKey:output_type -> platform.v1.CredentialAdminServiceMintApiKeyResponse
+	4,  // 35: platform.v1.CredentialAdminService.ListApiKeys:output_type -> platform.v1.CredentialAdminServiceListApiKeysResponse
+	6,  // 36: platform.v1.CredentialAdminService.GetApiKey:output_type -> platform.v1.CredentialAdminServiceGetApiKeyResponse
+	8,  // 37: platform.v1.CredentialAdminService.RevokeApiKey:output_type -> platform.v1.CredentialAdminServiceRevokeApiKeyResponse
+	10, // 38: platform.v1.CredentialAdminService.RotateApiKey:output_type -> platform.v1.CredentialAdminServiceRotateApiKeyResponse
+	29, // [29:39] is the sub-list for method output_type
+	19, // [19:29] is the sub-list for method input_type
+	19, // [19:19] is the sub-list for extension type_name
+	19, // [19:19] is the sub-list for extension extendee
+	0,  // [0:19] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_credential_admin_proto_init() }
@@ -896,7 +1706,7 @@ func file_platform_v1_credential_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_credential_admin_proto_rawDesc), len(file_platform_v1_credential_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

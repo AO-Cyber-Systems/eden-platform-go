@@ -48,6 +48,21 @@ const (
 	// CredentialAdminServiceListCertificatesProcedure is the fully-qualified name of the
 	// CredentialAdminService's ListCertificates RPC.
 	CredentialAdminServiceListCertificatesProcedure = "/platform.v1.CredentialAdminService/ListCertificates"
+	// CredentialAdminServiceMintApiKeyProcedure is the fully-qualified name of the
+	// CredentialAdminService's MintApiKey RPC.
+	CredentialAdminServiceMintApiKeyProcedure = "/platform.v1.CredentialAdminService/MintApiKey"
+	// CredentialAdminServiceListApiKeysProcedure is the fully-qualified name of the
+	// CredentialAdminService's ListApiKeys RPC.
+	CredentialAdminServiceListApiKeysProcedure = "/platform.v1.CredentialAdminService/ListApiKeys"
+	// CredentialAdminServiceGetApiKeyProcedure is the fully-qualified name of the
+	// CredentialAdminService's GetApiKey RPC.
+	CredentialAdminServiceGetApiKeyProcedure = "/platform.v1.CredentialAdminService/GetApiKey"
+	// CredentialAdminServiceRevokeApiKeyProcedure is the fully-qualified name of the
+	// CredentialAdminService's RevokeApiKey RPC.
+	CredentialAdminServiceRevokeApiKeyProcedure = "/platform.v1.CredentialAdminService/RevokeApiKey"
+	// CredentialAdminServiceRotateApiKeyProcedure is the fully-qualified name of the
+	// CredentialAdminService's RotateApiKey RPC.
+	CredentialAdminServiceRotateApiKeyProcedure = "/platform.v1.CredentialAdminService/RotateApiKey"
 )
 
 // CredentialAdminServiceClient is a client for the platform.v1.CredentialAdminService service.
@@ -67,6 +82,26 @@ type CredentialAdminServiceClient interface {
 	GetCertificate(context.Context, *connect.Request[v1.GetCertificateRequest]) (*connect.Response[v1.GetCertificateResponse], error)
 	// ListCertificates returns certs in a tenant.
 	ListCertificates(context.Context, *connect.Request[v1.ListCertificatesRequest]) (*connect.Response[v1.ListCertificatesResponse], error)
+	// MintApiKey creates a new API key. The raw key is returned EXACTLY
+	// ONCE in the response and is never persisted in plaintext. The
+	// server generates a 32-byte CSPRNG suffix, encodes as Crockford
+	// base32, prepends "aoid_<env>_", hashes via
+	// platform/auth/secrethasher, and stores the prefix + hash.
+	MintApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceMintApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceMintApiKeyResponse], error)
+	// ListApiKeys returns API keys in the given tenant (admin scope) or
+	// optionally narrows to a single owner.
+	ListApiKeys(context.Context, *connect.Request[v1.CredentialAdminServiceListApiKeysRequest]) (*connect.Response[v1.CredentialAdminServiceListApiKeysResponse], error)
+	// GetApiKey returns metadata for one API key (NOT the raw key — that
+	// is only available in the MintApiKey / RotateApiKey responses).
+	GetApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceGetApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceGetApiKeyResponse], error)
+	// RevokeApiKey marks an API key as revoked. Subsequent validation
+	// calls for the same prefix return reason="unknown" (we do not leak
+	// revocation state to validation callers).
+	RevokeApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceRevokeApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceRevokeApiKeyResponse], error)
+	// RotateApiKey is a convenience composition: revoke the supplied key
+	// and mint a fresh one in the same tenant + owner, preserving the
+	// scopes + name. The new raw_key appears EXACTLY ONCE in the response.
+	RotateApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceRotateApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceRotateApiKeyResponse], error)
 }
 
 // NewCredentialAdminServiceClient constructs a client for the platform.v1.CredentialAdminService
@@ -110,6 +145,36 @@ func NewCredentialAdminServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(credentialAdminServiceMethods.ByName("ListCertificates")),
 			connect.WithClientOptions(opts...),
 		),
+		mintApiKey: connect.NewClient[v1.CredentialAdminServiceMintApiKeyRequest, v1.CredentialAdminServiceMintApiKeyResponse](
+			httpClient,
+			baseURL+CredentialAdminServiceMintApiKeyProcedure,
+			connect.WithSchema(credentialAdminServiceMethods.ByName("MintApiKey")),
+			connect.WithClientOptions(opts...),
+		),
+		listApiKeys: connect.NewClient[v1.CredentialAdminServiceListApiKeysRequest, v1.CredentialAdminServiceListApiKeysResponse](
+			httpClient,
+			baseURL+CredentialAdminServiceListApiKeysProcedure,
+			connect.WithSchema(credentialAdminServiceMethods.ByName("ListApiKeys")),
+			connect.WithClientOptions(opts...),
+		),
+		getApiKey: connect.NewClient[v1.CredentialAdminServiceGetApiKeyRequest, v1.CredentialAdminServiceGetApiKeyResponse](
+			httpClient,
+			baseURL+CredentialAdminServiceGetApiKeyProcedure,
+			connect.WithSchema(credentialAdminServiceMethods.ByName("GetApiKey")),
+			connect.WithClientOptions(opts...),
+		),
+		revokeApiKey: connect.NewClient[v1.CredentialAdminServiceRevokeApiKeyRequest, v1.CredentialAdminServiceRevokeApiKeyResponse](
+			httpClient,
+			baseURL+CredentialAdminServiceRevokeApiKeyProcedure,
+			connect.WithSchema(credentialAdminServiceMethods.ByName("RevokeApiKey")),
+			connect.WithClientOptions(opts...),
+		),
+		rotateApiKey: connect.NewClient[v1.CredentialAdminServiceRotateApiKeyRequest, v1.CredentialAdminServiceRotateApiKeyResponse](
+			httpClient,
+			baseURL+CredentialAdminServiceRotateApiKeyProcedure,
+			connect.WithSchema(credentialAdminServiceMethods.ByName("RotateApiKey")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -120,6 +185,11 @@ type credentialAdminServiceClient struct {
 	revokeCertificate *connect.Client[v1.RevokeCertificateRequest, v1.RevokeCertificateResponse]
 	getCertificate    *connect.Client[v1.GetCertificateRequest, v1.GetCertificateResponse]
 	listCertificates  *connect.Client[v1.ListCertificatesRequest, v1.ListCertificatesResponse]
+	mintApiKey        *connect.Client[v1.CredentialAdminServiceMintApiKeyRequest, v1.CredentialAdminServiceMintApiKeyResponse]
+	listApiKeys       *connect.Client[v1.CredentialAdminServiceListApiKeysRequest, v1.CredentialAdminServiceListApiKeysResponse]
+	getApiKey         *connect.Client[v1.CredentialAdminServiceGetApiKeyRequest, v1.CredentialAdminServiceGetApiKeyResponse]
+	revokeApiKey      *connect.Client[v1.CredentialAdminServiceRevokeApiKeyRequest, v1.CredentialAdminServiceRevokeApiKeyResponse]
+	rotateApiKey      *connect.Client[v1.CredentialAdminServiceRotateApiKeyRequest, v1.CredentialAdminServiceRotateApiKeyResponse]
 }
 
 // IssueCertificate calls platform.v1.CredentialAdminService.IssueCertificate.
@@ -147,6 +217,31 @@ func (c *credentialAdminServiceClient) ListCertificates(ctx context.Context, req
 	return c.listCertificates.CallUnary(ctx, req)
 }
 
+// MintApiKey calls platform.v1.CredentialAdminService.MintApiKey.
+func (c *credentialAdminServiceClient) MintApiKey(ctx context.Context, req *connect.Request[v1.CredentialAdminServiceMintApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceMintApiKeyResponse], error) {
+	return c.mintApiKey.CallUnary(ctx, req)
+}
+
+// ListApiKeys calls platform.v1.CredentialAdminService.ListApiKeys.
+func (c *credentialAdminServiceClient) ListApiKeys(ctx context.Context, req *connect.Request[v1.CredentialAdminServiceListApiKeysRequest]) (*connect.Response[v1.CredentialAdminServiceListApiKeysResponse], error) {
+	return c.listApiKeys.CallUnary(ctx, req)
+}
+
+// GetApiKey calls platform.v1.CredentialAdminService.GetApiKey.
+func (c *credentialAdminServiceClient) GetApiKey(ctx context.Context, req *connect.Request[v1.CredentialAdminServiceGetApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceGetApiKeyResponse], error) {
+	return c.getApiKey.CallUnary(ctx, req)
+}
+
+// RevokeApiKey calls platform.v1.CredentialAdminService.RevokeApiKey.
+func (c *credentialAdminServiceClient) RevokeApiKey(ctx context.Context, req *connect.Request[v1.CredentialAdminServiceRevokeApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceRevokeApiKeyResponse], error) {
+	return c.revokeApiKey.CallUnary(ctx, req)
+}
+
+// RotateApiKey calls platform.v1.CredentialAdminService.RotateApiKey.
+func (c *credentialAdminServiceClient) RotateApiKey(ctx context.Context, req *connect.Request[v1.CredentialAdminServiceRotateApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceRotateApiKeyResponse], error) {
+	return c.rotateApiKey.CallUnary(ctx, req)
+}
+
 // CredentialAdminServiceHandler is an implementation of the platform.v1.CredentialAdminService
 // service.
 type CredentialAdminServiceHandler interface {
@@ -165,6 +260,26 @@ type CredentialAdminServiceHandler interface {
 	GetCertificate(context.Context, *connect.Request[v1.GetCertificateRequest]) (*connect.Response[v1.GetCertificateResponse], error)
 	// ListCertificates returns certs in a tenant.
 	ListCertificates(context.Context, *connect.Request[v1.ListCertificatesRequest]) (*connect.Response[v1.ListCertificatesResponse], error)
+	// MintApiKey creates a new API key. The raw key is returned EXACTLY
+	// ONCE in the response and is never persisted in plaintext. The
+	// server generates a 32-byte CSPRNG suffix, encodes as Crockford
+	// base32, prepends "aoid_<env>_", hashes via
+	// platform/auth/secrethasher, and stores the prefix + hash.
+	MintApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceMintApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceMintApiKeyResponse], error)
+	// ListApiKeys returns API keys in the given tenant (admin scope) or
+	// optionally narrows to a single owner.
+	ListApiKeys(context.Context, *connect.Request[v1.CredentialAdminServiceListApiKeysRequest]) (*connect.Response[v1.CredentialAdminServiceListApiKeysResponse], error)
+	// GetApiKey returns metadata for one API key (NOT the raw key — that
+	// is only available in the MintApiKey / RotateApiKey responses).
+	GetApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceGetApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceGetApiKeyResponse], error)
+	// RevokeApiKey marks an API key as revoked. Subsequent validation
+	// calls for the same prefix return reason="unknown" (we do not leak
+	// revocation state to validation callers).
+	RevokeApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceRevokeApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceRevokeApiKeyResponse], error)
+	// RotateApiKey is a convenience composition: revoke the supplied key
+	// and mint a fresh one in the same tenant + owner, preserving the
+	// scopes + name. The new raw_key appears EXACTLY ONCE in the response.
+	RotateApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceRotateApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceRotateApiKeyResponse], error)
 }
 
 // NewCredentialAdminServiceHandler builds an HTTP handler from the service implementation. It
@@ -204,6 +319,36 @@ func NewCredentialAdminServiceHandler(svc CredentialAdminServiceHandler, opts ..
 		connect.WithSchema(credentialAdminServiceMethods.ByName("ListCertificates")),
 		connect.WithHandlerOptions(opts...),
 	)
+	credentialAdminServiceMintApiKeyHandler := connect.NewUnaryHandler(
+		CredentialAdminServiceMintApiKeyProcedure,
+		svc.MintApiKey,
+		connect.WithSchema(credentialAdminServiceMethods.ByName("MintApiKey")),
+		connect.WithHandlerOptions(opts...),
+	)
+	credentialAdminServiceListApiKeysHandler := connect.NewUnaryHandler(
+		CredentialAdminServiceListApiKeysProcedure,
+		svc.ListApiKeys,
+		connect.WithSchema(credentialAdminServiceMethods.ByName("ListApiKeys")),
+		connect.WithHandlerOptions(opts...),
+	)
+	credentialAdminServiceGetApiKeyHandler := connect.NewUnaryHandler(
+		CredentialAdminServiceGetApiKeyProcedure,
+		svc.GetApiKey,
+		connect.WithSchema(credentialAdminServiceMethods.ByName("GetApiKey")),
+		connect.WithHandlerOptions(opts...),
+	)
+	credentialAdminServiceRevokeApiKeyHandler := connect.NewUnaryHandler(
+		CredentialAdminServiceRevokeApiKeyProcedure,
+		svc.RevokeApiKey,
+		connect.WithSchema(credentialAdminServiceMethods.ByName("RevokeApiKey")),
+		connect.WithHandlerOptions(opts...),
+	)
+	credentialAdminServiceRotateApiKeyHandler := connect.NewUnaryHandler(
+		CredentialAdminServiceRotateApiKeyProcedure,
+		svc.RotateApiKey,
+		connect.WithSchema(credentialAdminServiceMethods.ByName("RotateApiKey")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/platform.v1.CredentialAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CredentialAdminServiceIssueCertificateProcedure:
@@ -216,6 +361,16 @@ func NewCredentialAdminServiceHandler(svc CredentialAdminServiceHandler, opts ..
 			credentialAdminServiceGetCertificateHandler.ServeHTTP(w, r)
 		case CredentialAdminServiceListCertificatesProcedure:
 			credentialAdminServiceListCertificatesHandler.ServeHTTP(w, r)
+		case CredentialAdminServiceMintApiKeyProcedure:
+			credentialAdminServiceMintApiKeyHandler.ServeHTTP(w, r)
+		case CredentialAdminServiceListApiKeysProcedure:
+			credentialAdminServiceListApiKeysHandler.ServeHTTP(w, r)
+		case CredentialAdminServiceGetApiKeyProcedure:
+			credentialAdminServiceGetApiKeyHandler.ServeHTTP(w, r)
+		case CredentialAdminServiceRevokeApiKeyProcedure:
+			credentialAdminServiceRevokeApiKeyHandler.ServeHTTP(w, r)
+		case CredentialAdminServiceRotateApiKeyProcedure:
+			credentialAdminServiceRotateApiKeyHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -243,4 +398,24 @@ func (UnimplementedCredentialAdminServiceHandler) GetCertificate(context.Context
 
 func (UnimplementedCredentialAdminServiceHandler) ListCertificates(context.Context, *connect.Request[v1.ListCertificatesRequest]) (*connect.Response[v1.ListCertificatesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CredentialAdminService.ListCertificates is not implemented"))
+}
+
+func (UnimplementedCredentialAdminServiceHandler) MintApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceMintApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceMintApiKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CredentialAdminService.MintApiKey is not implemented"))
+}
+
+func (UnimplementedCredentialAdminServiceHandler) ListApiKeys(context.Context, *connect.Request[v1.CredentialAdminServiceListApiKeysRequest]) (*connect.Response[v1.CredentialAdminServiceListApiKeysResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CredentialAdminService.ListApiKeys is not implemented"))
+}
+
+func (UnimplementedCredentialAdminServiceHandler) GetApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceGetApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceGetApiKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CredentialAdminService.GetApiKey is not implemented"))
+}
+
+func (UnimplementedCredentialAdminServiceHandler) RevokeApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceRevokeApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceRevokeApiKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CredentialAdminService.RevokeApiKey is not implemented"))
+}
+
+func (UnimplementedCredentialAdminServiceHandler) RotateApiKey(context.Context, *connect.Request[v1.CredentialAdminServiceRotateApiKeyRequest]) (*connect.Response[v1.CredentialAdminServiceRotateApiKeyResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.CredentialAdminService.RotateApiKey is not implemented"))
 }
