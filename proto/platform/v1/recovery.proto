@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// SelfRecoveryService is the public (unauthenticated) self-service account
+// recovery surface. Two endpoints:
+//
+//  1. RequestRecovery — initiates an email-verified recovery flow. Returns
+//     success even for unknown accounts (defense against email enumeration —
+//     see AOID runbook §H.3).
+//  2. ConsumeRecoveryToken — validates the token + sets a new password,
+//     then returns a one-time login session token so the portal can log the
+//     user in immediately.
+//
+// LIFE-04. Single-use tokens, default 30-minute TTL. Per-tenant policy
+// configurable. The mTLS / admin-session interceptor stack is NOT applied
+// to this service; it's reachable by anonymous traffic from the Obj 8 portal.
+service SelfRecoveryService {
+  // RequestRecovery starts the recovery flow. Always returns success.
+  rpc RequestRecovery(SelfRecoveryServiceRequestRecoveryRequest) returns (SelfRecoveryServiceRequestRecoveryResponse);
+
+  // ConsumeRecoveryToken validates the token + sets a new password.
+  rpc ConsumeRecoveryToken(SelfRecoveryServiceConsumeRecoveryTokenRequest) returns (SelfRecoveryServiceConsumeRecoveryTokenResponse);
+}
+
+// SelfRecoveryServiceRequestRecoveryRequest carries the tenant slug + the
+// email entered by the user. Email enumeration defense: the server returns
+// success regardless of whether the account exists.
+message SelfRecoveryServiceRequestRecoveryRequest {
+  string tenant_slug = 1;
+  string email = 2;
+}
+
+// SelfRecoveryServiceRequestRecoveryResponse is intentionally empty for v1.
+// Reserved for future rate-limit hints.
+message SelfRecoveryServiceRequestRecoveryResponse {}
+
+// SelfRecoveryServiceConsumeRecoveryTokenRequest validates the URL-safe
+// 64-char hex token from the email link + sets the new password. The server
+// validates new_password per NIST SP 800-63B (TRD 03-N policy).
+message SelfRecoveryServiceConsumeRecoveryTokenRequest {
+  string token = 1;
+  string new_password = 2;
+}
+
+// SelfRecoveryServiceConsumeRecoveryTokenResponse returns success + a
+// one-time login session cookie value the portal sets to log the user in
+// immediately after recovery. login_session_token is empty on failure.
+message SelfRecoveryServiceConsumeRecoveryTokenResponse {
+  bool success = 1;
+  string login_session_token = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
