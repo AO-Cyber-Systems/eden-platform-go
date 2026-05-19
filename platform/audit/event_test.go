@@ -2,8 +2,10 @@ package audit
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -294,22 +296,22 @@ func TestIdentityActions_StringValuesExact(t *testing.T) {
 	// consumers (AOAudit, Obj 9 pipeline) treat these strings as a stable
 	// contract — renaming requires a coordinated cross-repo change.
 	want := map[Action]string{
-		ActionAccountCreate:       "identity.account.create",
-		ActionAccountUpdate:       "identity.account.update",
-		ActionAccountSuspend:      "identity.account.suspend",
-		ActionAccountRecover:      "identity.account.recover",
-		ActionAccountDelete:       "identity.account.delete",
-		ActionAccountExpire:       "identity.account.expire",
-		ActionGroupCreate:         "identity.group.create",
-		ActionGroupDelete:         "identity.group.delete",
-		ActionGroupMemberAdd:      "identity.group.member.add",
-		ActionGroupMemberRemove:   "identity.group.member.remove",
-		ActionIdentityRoleCreate:  "identity.role.create",
-		ActionIdentityRoleAssign:  "identity.role.assign",
-		ActionIdentityRoleRevoke:  "identity.role.revoke",
-		ActionEntitlementSet:      "identity.entitlement.set",
-		ActionEntitlementDelete:   "identity.entitlement.delete",
-		ActionTenantCreate:        "identity.tenant.create",
+		ActionAccountCreate:      "identity.account.create",
+		ActionAccountUpdate:      "identity.account.update",
+		ActionAccountSuspend:     "identity.account.suspend",
+		ActionAccountRecover:     "identity.account.recover",
+		ActionAccountDelete:      "identity.account.delete",
+		ActionAccountExpire:      "identity.account.expire",
+		ActionGroupCreate:        "identity.group.create",
+		ActionGroupDelete:        "identity.group.delete",
+		ActionGroupMemberAdd:     "identity.group.member.add",
+		ActionGroupMemberRemove:  "identity.group.member.remove",
+		ActionIdentityRoleCreate: "identity.role.create",
+		ActionIdentityRoleAssign: "identity.role.assign",
+		ActionIdentityRoleRevoke: "identity.role.revoke",
+		ActionEntitlementSet:     "identity.entitlement.set",
+		ActionEntitlementDelete:  "identity.entitlement.delete",
+		ActionTenantCreate:       "identity.tenant.create",
 	}
 	if len(want) != 16 {
 		t.Fatalf("test table out of sync: expected 16 entries, got %d", len(want))
@@ -318,5 +320,137 @@ func TestIdentityActions_StringValuesExact(t *testing.T) {
 		if got := a.String(); got != expected {
 			t.Errorf("Action %q = %q, want %q", expected, got, expected)
 		}
+	}
+}
+
+// ============================================================================
+// TRD 09-01 — backward-compat + Obj 9 Event/Action coverage.
+//
+// These tests lock the AUD-* + LIFE-* contract so a future refactor cannot
+// silently rename a wire-string value, drop a struct field, or break
+// existing Obj 2 emitters by adding the Obj 9 fields.
+// ============================================================================
+
+// TestEvent_BackwardCompat_EmptyEventMarshals confirms that an Event{}
+// zero-value (no Obj 9 fields populated) still flows cleanly through
+// Logger.LogSync, matching the Obj 2 baseline. AOID's pre-Obj-9 emitters
+// rely on this: they fill only the original CompanyID/ActorID/Action/...
+// fields and trust the new fields to be nil-safe.
+func TestEvent_BackwardCompat_EmptyEventMarshals(t *testing.T) {
+	companyID := uuid.New()
+	actorID := uuid.New()
+	e := Event{
+		CompanyID:  companyID.String(),
+		ActorID:    actorID.String(),
+		Action:     ActionAccountCreate.String(),
+		Resource:   "aoid.account",
+		ResourceID: uuid.New().String(),
+	}
+	// New Obj 9 fields default to zero / nil.
+	if e.Decision != "" {
+		t.Errorf("Decision should default empty, got %q", e.Decision)
+	}
+	if e.ActorKind != "" {
+		t.Errorf("ActorKind should default empty, got %q", e.ActorKind)
+	}
+	if e.MFA != nil || e.Federation != nil || e.Risk != nil {
+		t.Errorf("MFA/Federation/Risk should default nil; got MFA=%v Federation=%v Risk=%v", e.MFA, e.Federation, e.Risk)
+	}
+
+	store := &mockAuditStore{}
+	logger := NewLogger(store)
+	if err := logger.LogSync(context.Background(), e); err != nil {
+		t.Fatalf("LogSync error = %v, want nil", err)
+	}
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if len(store.events) != 1 {
+		t.Fatalf("store events = %d, want 1", len(store.events))
+	}
+	if store.events[0].Action != "identity.account.create" {
+		t.Errorf("action = %q, want identity.account.create", store.events[0].Action)
+	}
+}
+
+// TestEvent_Obj9Fields_PopulateInDetails confirms the new Event fields
+// (MFA, Federation, Risk, Decision, ActorKind, SubjectID, SubjectKind)
+// JSON-marshal cleanly. The SignedStore in TRD 09-02 does the canonical
+// encoding; this test is a smoke check that the types serialize at all.
+func TestEvent_Obj9Fields_PopulateInDetails(t *testing.T) {
+	e := Event{
+		CompanyID:   uuid.New().String(),
+		ActorID:     uuid.New().String(),
+		Action:      ActionAuthAttempt.String(),
+		Decision:    "allow",
+		ActorKind:   "human",
+		SubjectID:   uuid.New().String(),
+		SubjectKind: "account",
+		MFA: &MFAAttestation{
+			Presented:       []string{"totp"},
+			Verified:        []string{"totp"},
+			StepUpSatisfied: true,
+			AALAchieved:     "AAL2",
+		},
+		Federation: []FederationLink{{IDP: "logingov", Level: "IAL2", TrustLink: "oidc"}},
+		Risk: &RiskAttestation{
+			Score:   12,
+			Signals: []RiskSignal{{Signal: "new_geo_country", Weight: 12}},
+		},
+	}
+	b, err := json.Marshal(e)
+	if err != nil {
+		t.Fatalf("json.Marshal error = %v", err)
+	}
+	s := string(b)
+	for _, want := range []string{
+		`"aal_achieved":"AAL2"`,
+		`"score":12`,
+		`"signal":"new_geo_country"`,
+		`"idp":"logingov"`,
+		`"Decision":"allow"`,
+		`"ActorKind":"human"`,
+		`"SubjectKind":"account"`,
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("marshalled event missing %q\nfull JSON: %s", want, s)
+		}
+	}
+}
+
+// TestAction_Obj9Constants_HaveStableValues locks the string values of the
+// 17 new Action constants so a future PR cannot accidentally rename them.
+// Downstream consumers (AOAudit, Obj 9 dashboards, OPA rules) parse on
+// the wire strings — renaming is a coordinated cross-repo event.
+func TestAction_Obj9Constants_HaveStableValues(t *testing.T) {
+	cases := map[Action]string{
+		ActionAuthAttempt:                 "auth.attempt",
+		ActionAuthAttemptFailed:           "auth.attempt.failed",
+		ActionFederationAssertionAccepted: "federation.assertion.accepted",
+		ActionFederationAssertionRejected: "federation.assertion.rejected",
+		ActionFederationJITUserCreated:    "federation.jit.user_created",
+		ActionRecoveryRequested:           "identity.account.recovery.requested",
+		ActionRecoveryCompleted:           "identity.account.recovery.completed",
+		ActionRecoveryRefused:             "identity.account.recovery.refused",
+		ActionRecertReviewCreated:         "identity.recertification.review_created",
+		ActionRecertDecision:              "identity.recertification.decision",
+		ActionRecertExpired:               "identity.recertification.expired",
+		ActionDormantWarning:              "identity.account.dormant_warning_sent",
+		ActionDormantAutoSuspend:          "identity.account.dormant_auto_suspend",
+		ActionMFAClearedByAdmin:           "auth.mfa.cleared_by_admin",
+		ActionAC2ReportRead:               "identity.ac2_evidence.read",
+		ActionAuditQueryRead:              "identity.audit_query.read",
+		ActionCredentialIssued:            "auth.credential.issued",
+	}
+	if len(cases) != 17 {
+		t.Fatalf("TRD 09-01 ships exactly 17 new Action constants; got %d", len(cases))
+	}
+	for got, want := range cases {
+		if got.String() != want {
+			t.Errorf("constant value drifted: %q != %q", got.String(), want)
+		}
+	}
+	// Stable cross-objective: ActionEventResigned (added in TRD 09-02 const block) stays.
+	if ActionEventResigned.String() != "aoid.audit.event_resigned" {
+		t.Errorf("ActionEventResigned drifted: %q", ActionEventResigned.String())
 	}
 }
