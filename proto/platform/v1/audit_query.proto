@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// AuditQueryService surfaces tenant-scoped audit events to admins (MGMT-06).
+// Reads from the local aoid.audit_buffer; events older than the buffer
+// retention window MUST be queried via AOAudit directly (this service returns
+// what's available locally and includes a `retention_horizon` hint).
+//
+// Every successful call emits a self-audit event (identity.audit_query.read).
+service AuditQueryService {
+  // QueryAuditEvents returns a page of audit events matching the supplied
+  // filter. All filter fields are optional except tenant_id.
+  rpc QueryAuditEvents(AuditQueryServiceQueryAuditEventsRequest) returns (AuditQueryServiceQueryAuditEventsResponse);
+
+  // GetAuditEvent returns a single audit event by event_id (jti).
+  rpc GetAuditEvent(AuditQueryServiceGetAuditEventRequest) returns (AuditQueryServiceGetAuditEventResponse);
+}
+
+// AuditEvent is the admin-facing projection of a single audit-buffer row.
+// `jws_signature` is the full JWS Compact string for downstream replay +
+// verify; the raw signed payload bytes are NOT surfaced (the verifier
+// reconstructs the payload from the typed fields).
+message AuditEvent {
+  string event_id = 1;
+  google.protobuf.Timestamp emitted_at = 2;
+  string tenant_id = 3;
+  string actor_id = 4;
+  string actor_kind = 5;
+  string subject_id = 6;
+  string subject_kind = 7;
+  string action = 8;
+  string resource = 9;
+  string resource_id = 10;
+  string source_ip = 11;
+  string decision = 12;
+  int32 risk_score = 13;
+  string details_json = 14;
+  string jws_signature = 15;
+}
+
+// AuditQueryServiceQueryAuditEventsRequest filters the local audit buffer.
+// All filters are AND-combined. Empty filters match everything.
+message AuditQueryServiceQueryAuditEventsRequest {
+  string tenant_id = 1;
+  optional google.protobuf.Timestamp start_at = 2;
+  optional google.protobuf.Timestamp end_at = 3;
+  // Match any action with one of these prefixes, e.g. "auth." or
+  // "identity.account.".
+  repeated string action_prefix = 4;
+  optional string actor_id = 5;
+  optional string subject_id = 6;
+  // CIDR string, e.g. "203.0.113.0/24".
+  optional string source_ip_cidr = 7;
+  // "allow" | "deny" | "partial".
+  optional string decision = 8;
+  optional int32 min_risk_score = 9;
+  int32 page_size = 10;
+  string page_token = 11;
+}
+
+// AuditQueryServiceQueryAuditEventsResponse returns a page of events plus the
+// earliest timestamp still in the local buffer.
+message AuditQueryServiceQueryAuditEventsResponse {
+  repeated AuditEvent events = 1;
+  string next_page_token = 2;
+  // Earliest emitted_at the local buffer still retains. Events older than
+  // this require AOAudit-side lookup.
+  google.protobuf.Timestamp retention_horizon = 3;
+}
+
+// AuditQueryServiceGetAuditEventRequest fetches one event by jti.
+message AuditQueryServiceGetAuditEventRequest {
+  string tenant_id = 1;
+  string event_id = 2;
+}
+
+// AuditQueryServiceGetAuditEventResponse wraps the requested event.
+message AuditQueryServiceGetAuditEventResponse {
+  AuditEvent event = 1;
+}
