@@ -99,6 +99,18 @@ const (
 	// AccountAdminServiceListTenantsProcedure is the fully-qualified name of the AccountAdminService's
 	// ListTenants RPC.
 	AccountAdminServiceListTenantsProcedure = "/platform.v1.AccountAdminService/ListTenants"
+	// AccountAdminServiceListPendingRecertificationsProcedure is the fully-qualified name of the
+	// AccountAdminService's ListPendingRecertifications RPC.
+	AccountAdminServiceListPendingRecertificationsProcedure = "/platform.v1.AccountAdminService/ListPendingRecertifications"
+	// AccountAdminServiceSubmitRecertificationDecisionProcedure is the fully-qualified name of the
+	// AccountAdminService's SubmitRecertificationDecision RPC.
+	AccountAdminServiceSubmitRecertificationDecisionProcedure = "/platform.v1.AccountAdminService/SubmitRecertificationDecision"
+	// AccountAdminServiceGetRecertificationHistoryProcedure is the fully-qualified name of the
+	// AccountAdminService's GetRecertificationHistory RPC.
+	AccountAdminServiceGetRecertificationHistoryProcedure = "/platform.v1.AccountAdminService/GetRecertificationHistory"
+	// AccountAdminServiceClearAccountMFAFactorsProcedure is the fully-qualified name of the
+	// AccountAdminService's ClearAccountMFAFactors RPC.
+	AccountAdminServiceClearAccountMFAFactorsProcedure = "/platform.v1.AccountAdminService/ClearAccountMFAFactors"
 )
 
 // AccountAdminServiceClient is a client for the platform.v1.AccountAdminService service.
@@ -150,6 +162,19 @@ type AccountAdminServiceClient interface {
 	GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error)
 	// ListTenants enumerates all tenants. Super-admin only (AC-2 evidence).
 	ListTenants(context.Context, *connect.Request[v1.ListTenantsRequest]) (*connect.Response[v1.ListTenantsResponse], error)
+	// ListPendingRecertifications returns reviews awaiting an admin decision.
+	ListPendingRecertifications(context.Context, *connect.Request[v1.AccountAdminServiceListPendingRecertificationsRequest]) (*connect.Response[v1.AccountAdminServiceListPendingRecertificationsResponse], error)
+	// SubmitRecertificationDecision records the calling admin's decision on a
+	// pending review (approved | revoked | deferred). Reviewer is read from
+	// the session context (no field).
+	SubmitRecertificationDecision(context.Context, *connect.Request[v1.AccountAdminServiceSubmitRecertificationDecisionRequest]) (*connect.Response[v1.AccountAdminServiceSubmitRecertificationDecisionResponse], error)
+	// GetRecertificationHistory returns the historical decision log for one
+	// account.
+	GetRecertificationHistory(context.Context, *connect.Request[v1.AccountAdminServiceGetRecertificationHistoryRequest]) (*connect.Response[v1.AccountAdminServiceGetRecertificationHistoryResponse], error)
+	// ClearAccountMFAFactors removes all MFA factors for an account (e.g.
+	// lost YubiKey path — LIFE-04 admin assist). reason is required + emitted
+	// as auth.mfa.cleared_by_admin Details.
+	ClearAccountMFAFactors(context.Context, *connect.Request[v1.AccountAdminServiceClearAccountMFAFactorsRequest]) (*connect.Response[v1.AccountAdminServiceClearAccountMFAFactorsResponse], error)
 }
 
 // NewAccountAdminServiceClient constructs a client for the platform.v1.AccountAdminService service.
@@ -295,33 +320,61 @@ func NewAccountAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(accountAdminServiceMethods.ByName("ListTenants")),
 			connect.WithClientOptions(opts...),
 		),
+		listPendingRecertifications: connect.NewClient[v1.AccountAdminServiceListPendingRecertificationsRequest, v1.AccountAdminServiceListPendingRecertificationsResponse](
+			httpClient,
+			baseURL+AccountAdminServiceListPendingRecertificationsProcedure,
+			connect.WithSchema(accountAdminServiceMethods.ByName("ListPendingRecertifications")),
+			connect.WithClientOptions(opts...),
+		),
+		submitRecertificationDecision: connect.NewClient[v1.AccountAdminServiceSubmitRecertificationDecisionRequest, v1.AccountAdminServiceSubmitRecertificationDecisionResponse](
+			httpClient,
+			baseURL+AccountAdminServiceSubmitRecertificationDecisionProcedure,
+			connect.WithSchema(accountAdminServiceMethods.ByName("SubmitRecertificationDecision")),
+			connect.WithClientOptions(opts...),
+		),
+		getRecertificationHistory: connect.NewClient[v1.AccountAdminServiceGetRecertificationHistoryRequest, v1.AccountAdminServiceGetRecertificationHistoryResponse](
+			httpClient,
+			baseURL+AccountAdminServiceGetRecertificationHistoryProcedure,
+			connect.WithSchema(accountAdminServiceMethods.ByName("GetRecertificationHistory")),
+			connect.WithClientOptions(opts...),
+		),
+		clearAccountMFAFactors: connect.NewClient[v1.AccountAdminServiceClearAccountMFAFactorsRequest, v1.AccountAdminServiceClearAccountMFAFactorsResponse](
+			httpClient,
+			baseURL+AccountAdminServiceClearAccountMFAFactorsProcedure,
+			connect.WithSchema(accountAdminServiceMethods.ByName("ClearAccountMFAFactors")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // accountAdminServiceClient implements AccountAdminServiceClient.
 type accountAdminServiceClient struct {
-	provisionAccount        *connect.Client[v1.ProvisionAccountRequest, v1.ProvisionAccountResponse]
-	provisionServiceAccount *connect.Client[v1.ProvisionServiceAccountRequest, v1.ProvisionServiceAccountResponse]
-	getAccount              *connect.Client[v1.GetAccountRequest, v1.GetAccountResponse]
-	listAccounts            *connect.Client[v1.ListAccountsRequest, v1.ListAccountsResponse]
-	updateAccount           *connect.Client[v1.UpdateAccountRequest, v1.UpdateAccountResponse]
-	suspendAccount          *connect.Client[v1.SuspendAccountRequest, v1.SuspendAccountResponse]
-	recoverAccount          *connect.Client[v1.RecoverAccountRequest, v1.RecoverAccountResponse]
-	deprovisionAccount      *connect.Client[v1.DeprovisionAccountRequest, v1.DeprovisionAccountResponse]
-	defineGroup             *connect.Client[v1.DefineGroupRequest, v1.DefineGroupResponse]
-	listGroups              *connect.Client[v1.ListGroupsRequest, v1.ListGroupsResponse]
-	addAccountToGroup       *connect.Client[v1.AddAccountToGroupRequest, v1.AddAccountToGroupResponse]
-	removeAccountFromGroup  *connect.Client[v1.RemoveAccountFromGroupRequest, v1.RemoveAccountFromGroupResponse]
-	defineRole              *connect.Client[v1.DefineRoleRequest, v1.DefineRoleResponse]
-	listRoles               *connect.Client[v1.AccountAdminServiceListRolesRequest, v1.AccountAdminServiceListRolesResponse]
-	assignRole              *connect.Client[v1.AccountAdminServiceAssignRoleRequest, v1.AccountAdminServiceAssignRoleResponse]
-	revokeRole              *connect.Client[v1.RevokeRoleRequest, v1.RevokeRoleResponse]
-	setEntitlement          *connect.Client[v1.SetEntitlementRequest, v1.SetEntitlementResponse]
-	deleteEntitlement       *connect.Client[v1.DeleteEntitlementRequest, v1.DeleteEntitlementResponse]
-	listEntitlements        *connect.Client[v1.ListEntitlementsRequest, v1.ListEntitlementsResponse]
-	createTenant            *connect.Client[v1.CreateTenantRequest, v1.CreateTenantResponse]
-	getTenant               *connect.Client[v1.GetTenantRequest, v1.GetTenantResponse]
-	listTenants             *connect.Client[v1.ListTenantsRequest, v1.ListTenantsResponse]
+	provisionAccount              *connect.Client[v1.ProvisionAccountRequest, v1.ProvisionAccountResponse]
+	provisionServiceAccount       *connect.Client[v1.ProvisionServiceAccountRequest, v1.ProvisionServiceAccountResponse]
+	getAccount                    *connect.Client[v1.GetAccountRequest, v1.GetAccountResponse]
+	listAccounts                  *connect.Client[v1.ListAccountsRequest, v1.ListAccountsResponse]
+	updateAccount                 *connect.Client[v1.UpdateAccountRequest, v1.UpdateAccountResponse]
+	suspendAccount                *connect.Client[v1.SuspendAccountRequest, v1.SuspendAccountResponse]
+	recoverAccount                *connect.Client[v1.RecoverAccountRequest, v1.RecoverAccountResponse]
+	deprovisionAccount            *connect.Client[v1.DeprovisionAccountRequest, v1.DeprovisionAccountResponse]
+	defineGroup                   *connect.Client[v1.DefineGroupRequest, v1.DefineGroupResponse]
+	listGroups                    *connect.Client[v1.ListGroupsRequest, v1.ListGroupsResponse]
+	addAccountToGroup             *connect.Client[v1.AddAccountToGroupRequest, v1.AddAccountToGroupResponse]
+	removeAccountFromGroup        *connect.Client[v1.RemoveAccountFromGroupRequest, v1.RemoveAccountFromGroupResponse]
+	defineRole                    *connect.Client[v1.DefineRoleRequest, v1.DefineRoleResponse]
+	listRoles                     *connect.Client[v1.AccountAdminServiceListRolesRequest, v1.AccountAdminServiceListRolesResponse]
+	assignRole                    *connect.Client[v1.AccountAdminServiceAssignRoleRequest, v1.AccountAdminServiceAssignRoleResponse]
+	revokeRole                    *connect.Client[v1.RevokeRoleRequest, v1.RevokeRoleResponse]
+	setEntitlement                *connect.Client[v1.SetEntitlementRequest, v1.SetEntitlementResponse]
+	deleteEntitlement             *connect.Client[v1.DeleteEntitlementRequest, v1.DeleteEntitlementResponse]
+	listEntitlements              *connect.Client[v1.ListEntitlementsRequest, v1.ListEntitlementsResponse]
+	createTenant                  *connect.Client[v1.CreateTenantRequest, v1.CreateTenantResponse]
+	getTenant                     *connect.Client[v1.GetTenantRequest, v1.GetTenantResponse]
+	listTenants                   *connect.Client[v1.ListTenantsRequest, v1.ListTenantsResponse]
+	listPendingRecertifications   *connect.Client[v1.AccountAdminServiceListPendingRecertificationsRequest, v1.AccountAdminServiceListPendingRecertificationsResponse]
+	submitRecertificationDecision *connect.Client[v1.AccountAdminServiceSubmitRecertificationDecisionRequest, v1.AccountAdminServiceSubmitRecertificationDecisionResponse]
+	getRecertificationHistory     *connect.Client[v1.AccountAdminServiceGetRecertificationHistoryRequest, v1.AccountAdminServiceGetRecertificationHistoryResponse]
+	clearAccountMFAFactors        *connect.Client[v1.AccountAdminServiceClearAccountMFAFactorsRequest, v1.AccountAdminServiceClearAccountMFAFactorsResponse]
 }
 
 // ProvisionAccount calls platform.v1.AccountAdminService.ProvisionAccount.
@@ -434,6 +487,27 @@ func (c *accountAdminServiceClient) ListTenants(ctx context.Context, req *connec
 	return c.listTenants.CallUnary(ctx, req)
 }
 
+// ListPendingRecertifications calls platform.v1.AccountAdminService.ListPendingRecertifications.
+func (c *accountAdminServiceClient) ListPendingRecertifications(ctx context.Context, req *connect.Request[v1.AccountAdminServiceListPendingRecertificationsRequest]) (*connect.Response[v1.AccountAdminServiceListPendingRecertificationsResponse], error) {
+	return c.listPendingRecertifications.CallUnary(ctx, req)
+}
+
+// SubmitRecertificationDecision calls
+// platform.v1.AccountAdminService.SubmitRecertificationDecision.
+func (c *accountAdminServiceClient) SubmitRecertificationDecision(ctx context.Context, req *connect.Request[v1.AccountAdminServiceSubmitRecertificationDecisionRequest]) (*connect.Response[v1.AccountAdminServiceSubmitRecertificationDecisionResponse], error) {
+	return c.submitRecertificationDecision.CallUnary(ctx, req)
+}
+
+// GetRecertificationHistory calls platform.v1.AccountAdminService.GetRecertificationHistory.
+func (c *accountAdminServiceClient) GetRecertificationHistory(ctx context.Context, req *connect.Request[v1.AccountAdminServiceGetRecertificationHistoryRequest]) (*connect.Response[v1.AccountAdminServiceGetRecertificationHistoryResponse], error) {
+	return c.getRecertificationHistory.CallUnary(ctx, req)
+}
+
+// ClearAccountMFAFactors calls platform.v1.AccountAdminService.ClearAccountMFAFactors.
+func (c *accountAdminServiceClient) ClearAccountMFAFactors(ctx context.Context, req *connect.Request[v1.AccountAdminServiceClearAccountMFAFactorsRequest]) (*connect.Response[v1.AccountAdminServiceClearAccountMFAFactorsResponse], error) {
+	return c.clearAccountMFAFactors.CallUnary(ctx, req)
+}
+
 // AccountAdminServiceHandler is an implementation of the platform.v1.AccountAdminService service.
 type AccountAdminServiceHandler interface {
 	// ProvisionAccount creates a human user account.
@@ -483,6 +557,19 @@ type AccountAdminServiceHandler interface {
 	GetTenant(context.Context, *connect.Request[v1.GetTenantRequest]) (*connect.Response[v1.GetTenantResponse], error)
 	// ListTenants enumerates all tenants. Super-admin only (AC-2 evidence).
 	ListTenants(context.Context, *connect.Request[v1.ListTenantsRequest]) (*connect.Response[v1.ListTenantsResponse], error)
+	// ListPendingRecertifications returns reviews awaiting an admin decision.
+	ListPendingRecertifications(context.Context, *connect.Request[v1.AccountAdminServiceListPendingRecertificationsRequest]) (*connect.Response[v1.AccountAdminServiceListPendingRecertificationsResponse], error)
+	// SubmitRecertificationDecision records the calling admin's decision on a
+	// pending review (approved | revoked | deferred). Reviewer is read from
+	// the session context (no field).
+	SubmitRecertificationDecision(context.Context, *connect.Request[v1.AccountAdminServiceSubmitRecertificationDecisionRequest]) (*connect.Response[v1.AccountAdminServiceSubmitRecertificationDecisionResponse], error)
+	// GetRecertificationHistory returns the historical decision log for one
+	// account.
+	GetRecertificationHistory(context.Context, *connect.Request[v1.AccountAdminServiceGetRecertificationHistoryRequest]) (*connect.Response[v1.AccountAdminServiceGetRecertificationHistoryResponse], error)
+	// ClearAccountMFAFactors removes all MFA factors for an account (e.g.
+	// lost YubiKey path — LIFE-04 admin assist). reason is required + emitted
+	// as auth.mfa.cleared_by_admin Details.
+	ClearAccountMFAFactors(context.Context, *connect.Request[v1.AccountAdminServiceClearAccountMFAFactorsRequest]) (*connect.Response[v1.AccountAdminServiceClearAccountMFAFactorsResponse], error)
 }
 
 // NewAccountAdminServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -624,6 +711,30 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 		connect.WithSchema(accountAdminServiceMethods.ByName("ListTenants")),
 		connect.WithHandlerOptions(opts...),
 	)
+	accountAdminServiceListPendingRecertificationsHandler := connect.NewUnaryHandler(
+		AccountAdminServiceListPendingRecertificationsProcedure,
+		svc.ListPendingRecertifications,
+		connect.WithSchema(accountAdminServiceMethods.ByName("ListPendingRecertifications")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountAdminServiceSubmitRecertificationDecisionHandler := connect.NewUnaryHandler(
+		AccountAdminServiceSubmitRecertificationDecisionProcedure,
+		svc.SubmitRecertificationDecision,
+		connect.WithSchema(accountAdminServiceMethods.ByName("SubmitRecertificationDecision")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountAdminServiceGetRecertificationHistoryHandler := connect.NewUnaryHandler(
+		AccountAdminServiceGetRecertificationHistoryProcedure,
+		svc.GetRecertificationHistory,
+		connect.WithSchema(accountAdminServiceMethods.ByName("GetRecertificationHistory")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountAdminServiceClearAccountMFAFactorsHandler := connect.NewUnaryHandler(
+		AccountAdminServiceClearAccountMFAFactorsProcedure,
+		svc.ClearAccountMFAFactors,
+		connect.WithSchema(accountAdminServiceMethods.ByName("ClearAccountMFAFactors")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/platform.v1.AccountAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AccountAdminServiceProvisionAccountProcedure:
@@ -670,6 +781,14 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 			accountAdminServiceGetTenantHandler.ServeHTTP(w, r)
 		case AccountAdminServiceListTenantsProcedure:
 			accountAdminServiceListTenantsHandler.ServeHTTP(w, r)
+		case AccountAdminServiceListPendingRecertificationsProcedure:
+			accountAdminServiceListPendingRecertificationsHandler.ServeHTTP(w, r)
+		case AccountAdminServiceSubmitRecertificationDecisionProcedure:
+			accountAdminServiceSubmitRecertificationDecisionHandler.ServeHTTP(w, r)
+		case AccountAdminServiceGetRecertificationHistoryProcedure:
+			accountAdminServiceGetRecertificationHistoryHandler.ServeHTTP(w, r)
+		case AccountAdminServiceClearAccountMFAFactorsProcedure:
+			accountAdminServiceClearAccountMFAFactorsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -765,4 +884,20 @@ func (UnimplementedAccountAdminServiceHandler) GetTenant(context.Context, *conne
 
 func (UnimplementedAccountAdminServiceHandler) ListTenants(context.Context, *connect.Request[v1.ListTenantsRequest]) (*connect.Response[v1.ListTenantsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.ListTenants is not implemented"))
+}
+
+func (UnimplementedAccountAdminServiceHandler) ListPendingRecertifications(context.Context, *connect.Request[v1.AccountAdminServiceListPendingRecertificationsRequest]) (*connect.Response[v1.AccountAdminServiceListPendingRecertificationsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.ListPendingRecertifications is not implemented"))
+}
+
+func (UnimplementedAccountAdminServiceHandler) SubmitRecertificationDecision(context.Context, *connect.Request[v1.AccountAdminServiceSubmitRecertificationDecisionRequest]) (*connect.Response[v1.AccountAdminServiceSubmitRecertificationDecisionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.SubmitRecertificationDecision is not implemented"))
+}
+
+func (UnimplementedAccountAdminServiceHandler) GetRecertificationHistory(context.Context, *connect.Request[v1.AccountAdminServiceGetRecertificationHistoryRequest]) (*connect.Response[v1.AccountAdminServiceGetRecertificationHistoryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.GetRecertificationHistory is not implemented"))
+}
+
+func (UnimplementedAccountAdminServiceHandler) ClearAccountMFAFactors(context.Context, *connect.Request[v1.AccountAdminServiceClearAccountMFAFactorsRequest]) (*connect.Response[v1.AccountAdminServiceClearAccountMFAFactorsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.ClearAccountMFAFactors is not implemented"))
 }
