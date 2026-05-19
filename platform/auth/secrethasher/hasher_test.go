@@ -283,9 +283,15 @@ func TestArgon2idEncodedFormat(t *testing.T) {
 	if !argon2idRegex.MatchString(encoded) {
 		t.Fatalf("Argon2id encoded format mismatch:\n  got: %q\n  want regex: %s", encoded, argon2idRegex)
 	}
-	// Reject base64 padding.
-	if strings.Contains(encoded, "=") {
-		t.Fatalf("encoded string must not contain '=' padding: %q", encoded)
+	// Reject base64 padding in the salt + hash fields specifically.
+	// (The '=' character also appears in v=, m=, t=, p= parameter labels —
+	// the regex above already constrains those to RawStdEncoding alphabets.)
+	parts := strings.Split(encoded, "$")
+	if len(parts) != 6 {
+		t.Fatalf("expected 6 '$'-separated parts, got %d: %q", len(parts), encoded)
+	}
+	if strings.Contains(parts[4], "=") || strings.Contains(parts[5], "=") {
+		t.Fatalf("salt/hash fields must not contain '=' padding: salt=%q hash=%q", parts[4], parts[5])
 	}
 }
 
@@ -299,8 +305,12 @@ func TestPBKDF2EncodedFormat(t *testing.T) {
 	if !pbkdf2Regex.MatchString(encoded) {
 		t.Fatalf("PBKDF2 encoded format mismatch:\n  got: %q\n  want regex: %s", encoded, pbkdf2Regex)
 	}
-	if strings.Contains(encoded, "=") {
-		t.Fatalf("encoded string must not contain '=' padding: %q", encoded)
+	parts := strings.Split(encoded, "$")
+	if len(parts) != 5 {
+		t.Fatalf("expected 5 '$'-separated parts, got %d: %q", len(parts), encoded)
+	}
+	if strings.Contains(parts[3], "=") || strings.Contains(parts[4], "=") {
+		t.Fatalf("salt/hash fields must not contain '=' padding: salt=%q hash=%q", parts[3], parts[4])
 	}
 }
 
