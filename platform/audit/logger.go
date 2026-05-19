@@ -10,6 +10,13 @@ import (
 )
 
 // Event represents an audit log event to be written asynchronously.
+//
+// AC-2 / AUD-* extensions (Obj 9, TRD 09-02): the optional fields below
+// (Decision/ActorKind/SubjectID/SubjectKind/MFA/Federation/Risk) carry the
+// non-repudiation + recertification context that the signed audit pipeline
+// (SignedStore + PostgresBufferStore + Forwarder) marshals into the canonical
+// JWS payload. Existing emitters that leave them zero-valued are unaffected;
+// the canonical encoder omits empty fields.
 type Event struct {
 	CompanyID  string
 	ActorID    string
@@ -18,6 +25,69 @@ type Event struct {
 	ResourceID string
 	Details    map[string]any
 	IPAddress  string
+
+	// Decision attaches an "allow" | "deny" | "partial" string to
+	// security-relevant events (auth attempts, RBAC checks, recertification
+	// outcomes). Empty for events without a decision semantic.
+	Decision string
+
+	// ActorKind disambiguates the actor: "human" | "service" | "admin" |
+	// "system". Required for AC-2 evidence to separate human vs automated
+	// changes.
+	ActorKind string
+
+	// SubjectID is the entity the event is ABOUT (vs ActorID, who triggered
+	// it). For account suspension, ActorID is the admin and SubjectID is the
+	// suspended account.
+	SubjectID string
+
+	// SubjectKind disambiguates the subject domain: "account" | "group" |
+	// "role" | "tenant" | etc.
+	SubjectKind string
+
+	// MFA captures factors presented + verified for the session that
+	// produced the event. Populated by AUTH-* events.
+	MFA *MFAAttestation
+
+	// Federation records the federation chain for federated logins.
+	// Populated by AUD-04 federation.assertion.* events.
+	Federation []FederationLink
+
+	// Risk captures the risk evaluator's output (score + signals) for the
+	// session/event. Populated by AUTH-07 evaluations.
+	Risk *RiskAttestation
+}
+
+// MFAAttestation captures what MFA factors a session presented and verified.
+// Populated by AUTH-* events; serialized into the canonical audit JSON as the
+// "mfa" object.
+type MFAAttestation struct {
+	Presented       []string `json:"presented,omitempty"`
+	Verified        []string `json:"verified,omitempty"`
+	StepUpSatisfied bool     `json:"step_up_satisfied,omitempty"`
+	AALAchieved     string   `json:"aal_achieved,omitempty"`
+}
+
+// FederationLink records one hop in a federation chain. AUD-04 events emit a
+// slice of FederationLink to preserve the full IdP path (e.g., Login.gov →
+// AOID for civilian agencies).
+type FederationLink struct {
+	IDP       string `json:"idp,omitempty"`
+	Level     string `json:"level,omitempty"`
+	TrustLink string `json:"trust_link,omitempty"`
+}
+
+// RiskAttestation captures the AUTH-07 risk evaluator output: total score and
+// the signals that contributed to it.
+type RiskAttestation struct {
+	Score   int32        `json:"score,omitempty"`
+	Signals []RiskSignal `json:"signals,omitempty"`
+}
+
+// RiskSignal is one triggered risk indicator + its contribution to the score.
+type RiskSignal struct {
+	Signal string `json:"signal,omitempty"`
+	Weight int32  `json:"weight,omitempty"`
 }
 
 // Logger provides async buffered audit log writing.

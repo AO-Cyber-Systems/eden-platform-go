@@ -79,6 +79,16 @@ const (
 
 	// Tenants (super-admin only).
 	ActionTenantCreate Action = "identity.tenant.create"
+
+	// -------------------------------------------------------------------
+	// Audit / signing infrastructure (AOID Obj 9 — TRD 09-02).
+	//
+	// ActionEventResigned is emitted (via slog, not the buffer — to avoid
+	// loops) when the Forwarder's re-signer pump successfully signs an
+	// event that originally landed in the buffer unsigned (KMS transient
+	// failure during initial Log call).
+	// -------------------------------------------------------------------
+	ActionEventResigned Action = "aoid.audit.event_resigned"
 )
 
 // Standard detail keys. Use these so cross-product queries on audit details
