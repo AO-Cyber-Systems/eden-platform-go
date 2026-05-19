@@ -267,12 +267,9 @@ func (s *PostgresBufferStore) makeReleaseResign(tx pgx.Tx, out []BufferedEvent) 
 		var upd string
 		var args []any
 		if success {
-			// Note: the caller (forwarder.resignOnce) already called SetJWS
-			// to persist the new jws_compact value via a separate
-			// transaction. release(true) only needs to clear signing_error
-			// (already cleared by SetJWS) and commit the lock.
-			// We still issue a touch-no-op update so the row is observably
-			// "processed" in the transaction's view.
+			// SetJWSInTx already applied the per-row jws_compact updates
+			// inside this transaction. We finalize by clearing signing_error
+			// for the entire batch and committing.
 			upd = fmt.Sprintf(`UPDATE %s SET signing_error = NULL WHERE id = ANY($1)`, s.tableName)
 			args = []any{ids}
 		} else {
@@ -289,6 +286,64 @@ func (s *PostgresBufferStore) makeReleaseResign(tx pgx.Tx, out []BufferedEvent) 
 		}
 		return tx.Commit(rctx)
 	}
+}
+
+// DequeueUnsignedForResigningWithTx mirrors DequeueUnsignedForResigning but
+// also returns a sentinel handle the caller passes to SetJWSInTx so the
+// per-row UPDATE happens inside the dequeue transaction. Tests + production
+// forwarder use this path.
+//
+// Returns the same (events, release, err) shape; events carry an extra
+// hidden tx-handle that SetJWSInTx looks up.
+func (s *PostgresBufferStore) DequeueUnsignedForResigningWithTx(ctx context.Context, batchSize int) ([]BufferedEvent, ReleaseFunc, *ResignTx, error) {
+	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("audit: begin resign tx: %w", err)
+	}
+	q := fmt.Sprintf(`
+		SELECT id, jti, tenant_id, emitted_at, COALESCE(jws_compact, ''),
+		       payload_canonical, attempts, last_attempt_at,
+		       COALESCE(last_error, ''), COALESCE(signing_error, '')
+		FROM %s
+		WHERE sent_at IS NULL
+		  AND (jws_compact IS NULL OR jws_compact = '')
+		  AND signing_error IS NOT NULL
+		ORDER BY emitted_at ASC
+		FOR UPDATE SKIP LOCKED
+		LIMIT $1
+	`, s.tableName)
+	out, err := scanBufferedRows(ctx, tx, q, batchSize)
+	if err != nil {
+		_ = tx.Rollback(ctx)
+		return nil, nil, nil, err
+	}
+	handle := &ResignTx{tx: tx, table: s.tableName}
+	release := s.makeReleaseResign(tx, out)
+	return out, release, handle, nil
+}
+
+// ResignTx is an opaque handle the forwarder uses with SetJWSInTx so the
+// per-row JWS UPDATE happens inside the dequeue transaction (avoiding the
+// SetJWS-via-pool vs FOR UPDATE-tx deadlock).
+type ResignTx struct {
+	tx    pgx.Tx
+	table string
+}
+
+// SetJWSInTx persists a re-signed JWS for one row inside the dequeue tx.
+// Called by the forwarder between DequeueUnsignedForResigningWithTx and
+// ReleaseFunc(true). All per-row SetJWSInTx calls happen before the single
+// ReleaseFunc call commits.
+func (s *PostgresBufferStore) SetJWSInTx(ctx context.Context, handle *ResignTx, id int64, jwsCompact string) error {
+	if handle == nil || handle.tx == nil {
+		return errors.New("audit: SetJWSInTx: nil handle")
+	}
+	q := fmt.Sprintf(`UPDATE %s SET jws_compact = $2 WHERE id = $1`, handle.table)
+	_, err := handle.tx.Exec(ctx, q, id, jwsCompact)
+	if err != nil {
+		return fmt.Errorf("audit: SetJWSInTx id=%d: %w", id, err)
+	}
+	return nil
 }
 
 // SetJWS persists a re-signed JWS for a buffered row. Called by the forwarder
