@@ -26,10 +26,10 @@ import (
 // discovery doc, JWKS, and a token endpoint that issues an RS256-signed ID
 // token. Override knobs let tests inject nonce-mismatch / missing-id-token.
 type fakeOP struct {
-	t       *testing.T
-	srv     *httptest.Server
-	rsaKey  *rsa.PrivateKey
-	kid     string
+	t        *testing.T
+	srv      *httptest.Server
+	rsaKey   *rsa.PrivateKey
+	kid      string
 	clientID string
 
 	// Per-test injection:
@@ -361,4 +361,3 @@ func TestExchangeAndVerify_ExchangeFails(t *testing.T) {
 		t.Fatal("expected error on Exchange failure, got nil")
 	}
 }
-

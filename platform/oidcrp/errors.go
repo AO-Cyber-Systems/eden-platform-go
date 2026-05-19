@@ -22,12 +22,12 @@ import "errors"
 // ErrMissingRequiredClaim: ApplyClaimMap could not resolve a REQUIRED
 // claim (email or sub). The error message names the missing field.
 var (
-	ErrNonceMismatch         = errors.New("oidcrp: nonce mismatch")
-	ErrIssuerMismatch        = errors.New("oidcrp: issuer mismatch")
-	ErrMissingIDToken        = errors.New("oidcrp: missing id_token in token response")
-	ErrInFlightNotFound      = errors.New("oidcrp: in-flight record not found")
-	ErrInFlightExpired       = errors.New("oidcrp: in-flight record expired")
-	ErrMissingRequiredClaim  = errors.New("oidcrp: required claim missing")
-	ErrStateInvalid          = errors.New("oidcrp: signed state invalid")
-	ErrStateExpired          = errors.New("oidcrp: signed state expired")
+	ErrNonceMismatch        = errors.New("oidcrp: nonce mismatch")
+	ErrIssuerMismatch       = errors.New("oidcrp: issuer mismatch")
+	ErrMissingIDToken       = errors.New("oidcrp: missing id_token in token response")
+	ErrInFlightNotFound     = errors.New("oidcrp: in-flight record not found")
+	ErrInFlightExpired      = errors.New("oidcrp: in-flight record expired")
+	ErrMissingRequiredClaim = errors.New("oidcrp: required claim missing")
+	ErrStateInvalid         = errors.New("oidcrp: signed state invalid")
+	ErrStateExpired         = errors.New("oidcrp: signed state expired")
 )
