@@ -157,6 +157,60 @@ func TestEvaluator_TriggeredDetailsCarried(t *testing.T) {
 	}
 }
 
+func TestEvaluator_AccessorsExposeConstruction(t *testing.T) {
+	t.Parallel()
+	signals := []Signal{
+		&fakeSignal{name: "x", weight: 7},
+		&fakeSignal{name: "y", weight: 9},
+	}
+	e := NewEvaluator(signals, WithClip(33))
+	if got := e.ClipAt(); got != 33 {
+		t.Fatalf("ClipAt: want 33, got %d", got)
+	}
+	if got := e.Signals(); len(got) != 2 {
+		t.Fatalf("Signals(): want 2 entries, got %d", len(got))
+	}
+	if got := e.Signals()[0].Name(); got != "x" {
+		t.Fatalf("Signals()[0]: want x, got %s", got)
+	}
+}
+
+func TestEvaluator_WithClipZero_Unclipped(t *testing.T) {
+	t.Parallel()
+	// WithClip(0) disables the upper bound — surfaces an additive raw score
+	// for diagnostic / tuning scenarios. Lower-bound clamp at 0 still applies.
+	signals := []Signal{
+		&fakeSignal{name: "a", triggered: true, weight: 80},
+		&fakeSignal{name: "b", triggered: true, weight: 80},
+	}
+	e := NewEvaluator(signals, WithClip(0))
+	res := e.Eval(context.Background(), Request{})
+	if res.Score != 160 {
+		t.Fatalf("WithClip(0) should be unclipped: want 160, got %d", res.Score)
+	}
+}
+
+func TestEvaluator_TriggeredOrderMatchesSignalOrder(t *testing.T) {
+	t.Parallel()
+	signals := []Signal{
+		&fakeSignal{name: "first", triggered: true, weight: 1},
+		&fakeSignal{name: "skipped", triggered: false, weight: 9},
+		&fakeSignal{name: "third", triggered: true, weight: 2},
+		&fakeSignal{name: "fourth", triggered: true, weight: 3},
+	}
+	e := NewEvaluator(signals)
+	res := e.Eval(context.Background(), Request{})
+	if len(res.Triggered) != 3 {
+		t.Fatalf("want 3 triggered, got %d", len(res.Triggered))
+	}
+	wantNames := []string{"first", "third", "fourth"}
+	for i, w := range wantNames {
+		if res.Triggered[i].Signal != w {
+			t.Fatalf("Triggered[%d]: want %s, got %s", i, w, res.Triggered[i].Signal)
+		}
+	}
+}
+
 func BenchmarkEvaluator_Eval_EightSignals(b *testing.B) {
 	signals := []Signal{
 		&fakeSignal{name: "s1", triggered: false, weight: 25},
