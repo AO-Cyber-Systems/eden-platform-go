@@ -1,0 +1,297 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// AuthnService provides end-user authentication primitives — password,
+// TOTP, WebAuthn (registration + login + passwordless discoverable login),
+// PIV/CAC mTLS login, credential management, and step-up assurance flows.
+//
+// Tenant scope: login-initiating RPCs (PasswordLoginStart, LoginWith*)
+// require tenant_id in the request body because no session exists yet.
+// Once a session is established, tenant is read from the session cookie
+// by the Connect interceptor and is NOT accepted as a body field.
+//
+// Step-up: when a downstream service decides the current AAL is
+// insufficient, it returns a CodePermissionDenied error with a "stepup_token"
+// header. The client calls BeginStepUp(stepup_token), completes the
+// challenge, calls FinishStepUp, then retries the original RPC.
+service AuthnService {
+  // === Password flow ===
+  rpc PasswordLoginStart(PasswordLoginStartRequest) returns (PasswordLoginStartResponse);
+  rpc PasswordLoginComplete(PasswordLoginCompleteRequest) returns (PasswordLoginCompleteResponse);
+  rpc ChangePassword(ChangePasswordRequest) returns (ChangePasswordResponse);
+
+  // === TOTP flow ===
+  rpc EnrollTOTP(EnrollTOTPRequest) returns (EnrollTOTPResponse);
+  rpc CompleteTOTPEnroll(CompleteTOTPEnrollRequest) returns (CompleteTOTPEnrollResponse);
+  rpc LoginWithTOTP(LoginWithTOTPRequest) returns (LoginWithTOTPResponse);
+
+  // === WebAuthn flow ===
+  rpc BeginWebAuthnRegistration(BeginWebAuthnRegistrationRequest) returns (BeginWebAuthnRegistrationResponse);
+  rpc FinishWebAuthnRegistration(FinishWebAuthnRegistrationRequest) returns (FinishWebAuthnRegistrationResponse);
+  rpc BeginWebAuthnLogin(BeginWebAuthnLoginRequest) returns (BeginWebAuthnLoginResponse);
+  rpc FinishWebAuthnLogin(FinishWebAuthnLoginRequest) returns (FinishWebAuthnLoginResponse);
+  rpc BeginDiscoverableWebAuthnLogin(BeginDiscoverableWebAuthnLoginRequest) returns (BeginDiscoverableWebAuthnLoginResponse);
+  rpc FinishDiscoverableWebAuthnLogin(FinishDiscoverableWebAuthnLoginRequest) returns (FinishDiscoverableWebAuthnLoginResponse);
+
+  // === PIV/CAC flow ===
+  // The actual mTLS handshake happens at the transport layer; this RPC
+  // tells the server "I'm here on mTLS — please establish my session."
+  rpc LoginWithPIV(LoginWithPIVRequest) returns (LoginWithPIVResponse);
+
+  // === Step-up flow ===
+  rpc BeginStepUp(BeginStepUpRequest) returns (BeginStepUpResponse);
+  rpc FinishStepUp(FinishStepUpRequest) returns (FinishStepUpResponse);
+
+  // === Logout + credential mgmt ===
+  // Logout uses service-prefixed message names to avoid collision with the
+  // existing auth.proto's LogoutRequest/LogoutResponse in the same package.
+  rpc Logout(AuthnServiceLogoutRequest) returns (AuthnServiceLogoutResponse);
+  rpc ListMyCredentials(ListMyCredentialsRequest) returns (ListMyCredentialsResponse);
+  rpc RevokeMyCredential(RevokeMyCredentialRequest) returns (RevokeMyCredentialResponse);
+}
+
+// EndUserSessionService provides introspection over the current session.
+service EndUserSessionService {
+  rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse);
+  rpc ListMySessions(ListMySessionsRequest) returns (ListMySessionsResponse);
+  rpc RevokeMySession(RevokeMySessionRequest) returns (RevokeMySessionResponse);
+}
+
+// ===== Common data messages =====
+
+// LoginNextStep tells the client what authentication step is required next.
+message LoginNextStep {
+  string kind = 1; // "mfa_required" | "session_established" | "stepup_required"
+  repeated string available_methods = 2; // "totp", "webauthn", "backup_code"
+  string current_aal = 3; // "AAL1", "AAL2", "AAL3"
+  string required_aal = 4; // for stepup
+}
+
+message CredentialSummary {
+  string id = 1;
+  string kind = 2; // "password", "totp", "webauthn", "piv"
+  string label = 3;
+  google.protobuf.Timestamp enrolled_at = 4;
+  google.protobuf.Timestamp last_used_at = 5;
+}
+
+message SessionSummary {
+  string token_prefix = 1; // first 8 chars of session token for display
+  string ip = 2;
+  string user_agent = 3;
+  string aal = 4;
+  repeated string auth_methods = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp last_active_at = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  bool is_current = 9;
+}
+
+// ===== Password flow =====
+
+message PasswordLoginStartRequest {
+  string tenant_id = 1;
+  string email = 2;
+  string password = 3;
+}
+
+message PasswordLoginStartResponse {
+  LoginNextStep next_step = 1;
+}
+
+message PasswordLoginCompleteRequest {
+  // No body — session-bound. Returned only when no MFA is required AND
+  // policy permits password-only login (rare; AAL1 only).
+}
+
+message PasswordLoginCompleteResponse {
+  LoginNextStep next_step = 1;
+}
+
+message ChangePasswordRequest {
+  string current_password = 1;
+  string new_password = 2;
+}
+
+message ChangePasswordResponse {}
+
+// ===== TOTP flow =====
+
+message EnrollTOTPRequest {
+  string label = 1;
+}
+
+message EnrollTOTPResponse {
+  string credential_id = 1;
+  string provisioning_uri = 2; // otpauth://... — client QR-renders
+  string secret = 3; // raw base32 (for manual entry)
+  // Backup codes are returned ONLY on completion (after first code verifies)
+}
+
+message CompleteTOTPEnrollRequest {
+  string credential_id = 1;
+  string verification_code = 2;
+}
+
+message CompleteTOTPEnrollResponse {
+  repeated string backup_codes = 1; // plaintext — shown ONCE, never re-fetchable
+}
+
+message LoginWithTOTPRequest {
+  string code = 1;
+  // Implicit: requires PasswordLoginStart() to have set two_factor_user_id
+  // (cookie session-bound).
+}
+
+message LoginWithTOTPResponse {
+  LoginNextStep next_step = 1;
+}
+
+// ===== WebAuthn flow =====
+
+message BeginWebAuthnRegistrationRequest {
+  string label = 1;
+}
+
+message BeginWebAuthnRegistrationResponse {
+  // CredentialCreationOptions as raw JSON (browser-direct).
+  bytes options_json = 1;
+}
+
+message FinishWebAuthnRegistrationRequest {
+  // CredentialCreationResponse from browser (raw JSON).
+  bytes attestation_response_json = 1;
+}
+
+message FinishWebAuthnRegistrationResponse {
+  string credential_id = 1;
+  string label = 2;
+}
+
+message BeginWebAuthnLoginRequest {
+  string tenant_id = 1;
+  string email = 2;
+}
+
+message BeginWebAuthnLoginResponse {
+  bytes options_json = 1;
+}
+
+message FinishWebAuthnLoginRequest {
+  bytes assertion_response_json = 1;
+}
+
+message FinishWebAuthnLoginResponse {
+  LoginNextStep next_step = 1;
+}
+
+message BeginDiscoverableWebAuthnLoginRequest {
+  string tenant_id = 1;
+  // No email — passwordless username-less flow.
+}
+
+message BeginDiscoverableWebAuthnLoginResponse {
+  bytes options_json = 1;
+}
+
+message FinishDiscoverableWebAuthnLoginRequest {
+  bytes assertion_response_json = 1;
+}
+
+message FinishDiscoverableWebAuthnLoginResponse {
+  LoginNextStep next_step = 1;
+}
+
+// ===== PIV/CAC flow =====
+
+message LoginWithPIVRequest {
+  string tenant_id = 1;
+  // No additional fields — UPN extracted from mTLS client cert at the
+  // transport layer by TRD 03-07's PIV interceptor.
+}
+
+message LoginWithPIVResponse {
+  LoginNextStep next_step = 1;
+}
+
+// ===== Step-up flow =====
+
+message BeginStepUpRequest {
+  string stepup_token = 1; // continuation token from the original error
+}
+
+message BeginStepUpResponse {
+  repeated string available_methods = 1; // "webauthn", "piv"
+  string required_aal = 2;
+}
+
+message FinishStepUpRequest {
+  string stepup_token = 1;
+  // Method-specific assertion follows in oneof:
+  oneof assertion {
+    bytes webauthn_assertion_json = 2;
+    // PIV requires the mTLS handshake — no inline assertion bytes needed
+    bool piv = 3;
+  }
+}
+
+message FinishStepUpResponse {
+  string new_aal = 1;
+  // Server side-effect: marks stepup_token as consumed; the original RPC
+  // is re-callable by the client with normal session credentials.
+}
+
+// ===== Logout =====
+
+// AuthnServiceLogoutRequest is service-prefixed to avoid collision with
+// auth.proto's LogoutRequest in the same package.
+message AuthnServiceLogoutRequest {}
+
+// AuthnServiceLogoutResponse is service-prefixed to avoid collision with
+// auth.proto's LogoutResponse in the same package.
+message AuthnServiceLogoutResponse {}
+
+// ===== Credential listing =====
+
+message ListMyCredentialsRequest {}
+
+message ListMyCredentialsResponse {
+  repeated CredentialSummary credentials = 1;
+}
+
+message RevokeMyCredentialRequest {
+  string credential_id = 1;
+}
+
+message RevokeMyCredentialResponse {}
+
+// ===== EndUserSessionService =====
+
+message WhoAmIRequest {}
+
+message WhoAmIResponse {
+  string user_id = 1;
+  string tenant_id = 2;
+  string email = 3;
+  string display_name = 4;
+  string aal = 5;
+  repeated string auth_methods = 6;
+  google.protobuf.Timestamp session_expires_at = 7;
+}
+
+message ListMySessionsRequest {}
+
+message ListMySessionsResponse {
+  repeated SessionSummary sessions = 1;
+}
+
+message RevokeMySessionRequest {
+  string token_prefix = 1; // matched via prefix; current session cannot self-revoke
+}
+
+message RevokeMySessionResponse {}
