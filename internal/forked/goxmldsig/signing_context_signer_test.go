@@ -32,7 +32,7 @@ type rsaSigner struct {
 	priv *rsa.PrivateKey
 }
 
-func (s *rsaSigner) Public() crypto.PublicKey                  { return &s.priv.PublicKey }
+func (s *rsaSigner) Public() crypto.PublicKey { return &s.priv.PublicKey }
 func (s *rsaSigner) Sign(r io.Reader, d []byte, o crypto.SignerOpts) ([]byte, error) {
 	return s.priv.Sign(r, d, o)
 }
@@ -99,12 +99,12 @@ func newSelfSignedECDSA(t *testing.T) (*ecdsa.PrivateKey, *x509.Certificate) {
 }
 
 // TestNewSigningContextSigner_RSA_SignAndValidate proves that:
-//   1. The factory returns a non-nil SigningContext.
-//   2. The context signs an enveloped XML element.
-//   3. The standard goxmldsig validator (using the cert's public key)
-//      accepts the resulting signature after a serialize → re-parse cycle
-//      (matches the upstream validate_test.go pattern: validate on a fresh
-//      document tree rather than on the in-memory etree the signer mutated).
+//  1. The factory returns a non-nil SigningContext.
+//  2. The context signs an enveloped XML element.
+//  3. The standard goxmldsig validator (using the cert's public key)
+//     accepts the resulting signature after a serialize → re-parse cycle
+//     (matches the upstream validate_test.go pattern: validate on a fresh
+//     document tree rather than on the in-memory etree the signer mutated).
 func TestNewSigningContextSigner_RSA_SignAndValidate(t *testing.T) {
 	priv, cert := newSelfSignedRSA(t)
 	signer := &rsaSigner{priv: priv}

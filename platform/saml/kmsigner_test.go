@@ -31,9 +31,9 @@ type fakeRSAKMSBackend struct {
 	lastError error // injected error
 }
 
-func (b *fakeRSAKMSBackend) Public() crypto.PublicKey  { return &b.priv.PublicKey }
-func (b *fakeRSAKMSBackend) KeyID() string             { return b.keyID }
-func (b *fakeRSAKMSBackend) SigningAlgorithm() string  { return b.alg }
+func (b *fakeRSAKMSBackend) Public() crypto.PublicKey        { return &b.priv.PublicKey }
+func (b *fakeRSAKMSBackend) KeyID() string                   { return b.keyID }
+func (b *fakeRSAKMSBackend) SigningAlgorithm() string        { return b.alg }
 func (b *fakeRSAKMSBackend) HealthCheck(_ interface{}) error { return nil }
 
 func (b *fakeRSAKMSBackend) Sign(r io.Reader, digest []byte, opts crypto.SignerOpts) ([]byte, error) {
@@ -52,9 +52,9 @@ type fakeECDSAKMSBackend struct {
 	keyID string
 }
 
-func (b *fakeECDSAKMSBackend) Public() crypto.PublicKey { return &b.priv.PublicKey }
-func (b *fakeECDSAKMSBackend) KeyID() string            { return b.keyID }
-func (b *fakeECDSAKMSBackend) SigningAlgorithm() string { return "ES256" }
+func (b *fakeECDSAKMSBackend) Public() crypto.PublicKey        { return &b.priv.PublicKey }
+func (b *fakeECDSAKMSBackend) KeyID() string                   { return b.keyID }
+func (b *fakeECDSAKMSBackend) SigningAlgorithm() string        { return "ES256" }
 func (b *fakeECDSAKMSBackend) HealthCheck(_ interface{}) error { return nil }
 
 func (b *fakeECDSAKMSBackend) Sign(r io.Reader, digest []byte, _ crypto.SignerOpts) ([]byte, error) {

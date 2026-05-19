@@ -41,17 +41,17 @@ var (
 // running two complementary checks before AOID's SAML handlers attempt
 // signature validation:
 //
-//   1. mattermost/xml-roundtrip-validator — ensures the bytes survive a
-//      parse-and-re-emit cycle without mutation. CVE-class attacks that
-//      exploit Go's encoding/xml tolerance for whitespace, attribute
-//      ordering, and namespace handling are caught here.
+//  1. mattermost/xml-roundtrip-validator — ensures the bytes survive a
+//     parse-and-re-emit cycle without mutation. CVE-class attacks that
+//     exploit Go's encoding/xml tolerance for whitespace, attribute
+//     ordering, and namespace handling are caught here.
 //
-//   2. Single-Assertion check — counts SAML Assertion elements in the
-//      protocol's assertion namespace
-//      (urn:oasis:names:tc:SAML:2.0:assertion). Greater than one signals
-//      a wrapping attack: the attacker embeds an extra Assertion that
-//      the signature verifier ignores but the consuming application
-//      reads.
+//  2. Single-Assertion check — counts SAML Assertion elements in the
+//     protocol's assertion namespace
+//     (urn:oasis:names:tc:SAML:2.0:assertion). Greater than one signals
+//     a wrapping attack: the attacker embeds an extra Assertion that
+//     the signature verifier ignores but the consuming application
+//     reads.
 //
 // XSWGuard is a PURE function — no audit emission, no logging. AOID's
 // federation handler is responsible for audit-event emission on

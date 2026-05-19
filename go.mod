@@ -24,6 +24,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.1
 	github.com/livekit/protocol v1.45.8
 	github.com/livekit/server-sdk-go/v2 v2.16.3
+	github.com/mattermost/xml-roundtrip-validator v0.1.0
 	github.com/minio/minio-go/v7 v7.0.99
 	github.com/nats-io/nats.go v1.49.0
 	github.com/pquerna/otp v1.5.0
@@ -111,7 +112,6 @@ require (
 	github.com/livekit/mediatransportutil v0.0.0-20251128105421-19c7a7b81c22 // indirect
 	github.com/livekit/psrpc v0.7.1 // indirect
 	github.com/magefile/mage v1.17.0 // indirect
-	github.com/mattermost/xml-roundtrip-validator v0.1.0 // indirect
 	github.com/miekg/pkcs11 v1.1.1 // indirect
 	github.com/minio/crc64nvme v1.1.1 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect

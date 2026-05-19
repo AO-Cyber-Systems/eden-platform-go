@@ -84,12 +84,12 @@ type SPOptions struct {
 //
 // Validation order (each returns its own sentinel error so the federation
 // admin RPC can map to a precise operator-facing message):
-//   1. IDPMetadata non-empty
-//   2. SPSigner non-nil
-//   3. SPCert non-nil
-//   4. EntityID non-empty
-//   5. AcsURL non-nil
-//   6. IDPMetadata parses successfully via ParseAndCacheMetadata
+//  1. IDPMetadata non-empty
+//  2. SPSigner non-nil
+//  3. SPCert non-nil
+//  4. EntityID non-empty
+//  5. AcsURL non-nil
+//  6. IDPMetadata parses successfully via ParseAndCacheMetadata
 func NewSP(opts SPOptions) (*samlsp.Middleware, error) {
 	if len(opts.IDPMetadata) == 0 {
 		return nil, ErrSPMissingMetadata
