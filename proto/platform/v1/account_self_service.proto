@@ -1,0 +1,150 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// AccountSelfService provides end-user self-service surfaces for an authenticated
+// session subject. All RPCs derive the actor's account_id + tenant_id from the
+// session context (set by the AOID Connect interceptor stack — TRD 08-04); no
+// RPC accepts account_id or tenant_id as an input field. The portal (TRD 08-06+)
+// is the canonical client.
+//
+// MFA enrollment continues to use AuthnService (Obj 3, TRD 03-05). MFA REMOVAL
+// is here because the last-factor policy gate (MGMT-02) is service-layer logic
+// that doesn't naturally belong on AuthnService. Session listing + revoke is on
+// EndUserSessionService (Obj 3, TRD 03-05) and is NOT duplicated here.
+service AccountSelfService {
+  // MGMT-01 — Profile management. Both Get and Update return MyProfile (the
+  // canonical projection of the caller's account). Lint exceptions disable
+  // RPC_RESPONSE_STANDARD_NAME / RPC_REQUEST_RESPONSE_UNIQUE for these two
+  // because UpdateMyProfile is semantically an upsert that returns the same
+  // shape as Get; introducing wrapper Response messages would force the
+  // portal (Dart) to unwrap on every call for no contract benefit.
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  rpc GetMyProfile(AccountSelfServiceGetMyProfileRequest) returns (MyProfile);
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  rpc UpdateMyProfile(AccountSelfServiceUpdateMyProfileRequest) returns (MyProfile);
+
+  // MGMT-02 — MFA factor listing + removal (with last-factor policy gate)
+  rpc ListMyMFAFactors(AccountSelfServiceListMyMFAFactorsRequest) returns (ListMyMFAFactorsResponse);
+  rpc RemoveMyMFA(AccountSelfServiceRemoveMyMFARequest) returns (AccountSelfServiceRemoveMyMFAResponse);
+
+  // MGMT-04 — OAuth grant listing + revoke (one row per (account, client) pair)
+  rpc ListMyOAuthGrants(AccountSelfServiceListMyOAuthGrantsRequest) returns (ListMyOAuthGrantsResponse);
+  rpc RevokeMyOAuthGrant(AccountSelfServiceRevokeMyOAuthGrantRequest) returns (AccountSelfServiceRevokeMyOAuthGrantResponse);
+
+  // MGMT-04 — API key listing + self-revoke
+  rpc ListMyApiKeys(AccountSelfServiceListMyApiKeysRequest) returns (ListMyApiKeysResponse);
+  rpc RevokeMyApiKey(AccountSelfServiceRevokeMyApiKeyRequest) returns (AccountSelfServiceRevokeMyApiKeyResponse);
+}
+
+// ===== Data shapes =====
+
+message MyProfile {
+  string account_id = 1;
+  string tenant_id = 2;
+  // Resolved display name from aoid.tenants.display_name — avoids the portal
+  // needing a separate GetMyTenantSummary RPC.
+  string tenant_display_name = 3;
+  string display_name = 4;
+  string contact_email = 5;
+  CommunicationPrefs communication_prefs = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// CommunicationPrefs. security_alerts is documented as "always-on by policy" —
+// the backend ignores attempts to set false (returns OK but persists true).
+// product_updates + marketing honor the user's setting.
+message CommunicationPrefs {
+  bool security_alerts = 1;
+  bool product_updates = 2;
+  bool marketing = 3;
+}
+
+message MFAFactor {
+  string credential_id = 1;
+  // "totp" | "webauthn" | "piv"
+  string kind = 2;
+  // User-supplied label (e.g., "iPhone YubiKey")
+  string label = 3;
+  google.protobuf.Timestamp enrolled_at = 4;
+  google.protobuf.Timestamp last_used_at = 5;
+  // Server-computed UX hint: if true, removing this factor would leave the user
+  // with zero MFA factors. The portal disables the "Remove" button when this is
+  // true and the tenant requires MFA. Service-layer enforcement is the source
+  // of truth (TRD 08-03 — MGMT-02).
+  bool is_last_factor = 6;
+}
+
+message OAuthGrant {
+  string client_id = 1;
+  string client_name = 2;
+  // UNION of scopes across non-revoked refresh_tokens for this (account, client) pair.
+  repeated string scopes = 3;
+  google.protobuf.Timestamp first_granted_at = 4;
+  google.protobuf.Timestamp last_used_at = 5;
+  int32 active_token_count = 6;
+}
+
+message ApiKeySummary {
+  string key_id = 1;
+  string name = 2;
+  // First 12 chars only — safe to display. Full secret is never returned.
+  string key_prefix = 3;
+  repeated string scopes = 4;
+  google.protobuf.Timestamp issued_at = 5;
+  google.protobuf.Timestamp expires_at = 6;
+  google.protobuf.Timestamp last_used_at = 7;
+}
+
+// ===== Request / Response =====
+
+message AccountSelfServiceGetMyProfileRequest {}
+
+// PATCH semantics: only set (present) fields are updated.
+message AccountSelfServiceUpdateMyProfileRequest {
+  optional string display_name = 1;
+  optional string contact_email = 2;
+  optional CommunicationPrefs communication_prefs = 3;
+}
+
+message AccountSelfServiceListMyMFAFactorsRequest {}
+
+message ListMyMFAFactorsResponse {
+  repeated MFAFactor factors = 1;
+}
+
+message AccountSelfServiceRemoveMyMFARequest {
+  string credential_id = 1;
+}
+
+message AccountSelfServiceRemoveMyMFAResponse {}
+
+message AccountSelfServiceListMyOAuthGrantsRequest {}
+
+message ListMyOAuthGrantsResponse {
+  repeated OAuthGrant grants = 1;
+}
+
+message AccountSelfServiceRevokeMyOAuthGrantRequest {
+  string client_id = 1;
+}
+
+message AccountSelfServiceRevokeMyOAuthGrantResponse {}
+
+message AccountSelfServiceListMyApiKeysRequest {}
+
+message ListMyApiKeysResponse {
+  repeated ApiKeySummary keys = 1;
+}
+
+message AccountSelfServiceRevokeMyApiKeyRequest {
+  string key_id = 1;
+}
+
+message AccountSelfServiceRevokeMyApiKeyResponse {}
