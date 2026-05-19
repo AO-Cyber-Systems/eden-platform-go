@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// SvidService issues SPIFFE X.509-SVIDs to workloads already attested via
+// mTLS. This is a SEPARATE service from CredentialAdminService because the
+// interceptor stack differs:
+//
+//   - CredentialAdminService: mTLS + adminauth + tenant-scope
+//   - SvidService:            mTLS + spiffe-id-extraction (no admin RBAC)
+//
+// The caller's CURRENT valid mTLS cert (which carries a spiffe:// URI SAN)
+// IS the attestation in v1. The handler trusts the Connect interceptor to
+// have validated the chain + extracted the SPIFFE ID into the request
+// context. A revoked SVID would fail the mTLS handshake before reaching
+// this handler.
+//
+// Re-attestation flow: a workload re-issues its SVID by re-handshaking
+// (mTLS) with its CURRENT still-valid SVID; the renewal request uses the
+// OLD SVID as the attestation cert. If the old SVID is revoked or
+// expired, the mTLS handshake fails BEFORE the IssueSVID handler runs --
+// the handler never sees the request. This is by design and means the
+// handler does not implement an attestation re-check.
+service SvidService {
+  // IssueSVID mints a short-lived (<=24h) X.509-SVID for the caller's
+  // requested workload path within the chassis trust domain. The path
+  // MUST start with /sa/ or /workload/ (admin/system paths rejected).
+  rpc IssueSVID(IssueSVIDRequest) returns (IssueSVIDResponse);
+
+  // ListMySVIDs returns SVIDs issued to the caller's underlying mTLS cert.
+  // Lets a workload audit which credentials were minted from its
+  // current attestation. Scoped by caller's mTLS cert serial (extracted
+  // by the interceptor) -- callers may not enumerate other workloads'
+  // SVIDs.
+  rpc ListMySVIDs(ListMySVIDsRequest) returns (ListMySVIDsResponse);
+
+  // RevokeSVID marks a previously-issued SVID revoked. Append-only on
+  // the revocations table; the CRL refresh loop picks up the change
+  // within one refresh interval.
+  rpc RevokeSVID(RevokeSVIDRequest) returns (RevokeSVIDResponse);
+}
+
+message IssueSVIDRequest {
+  // Workload path component of the target SPIFFE ID. MUST start with
+  // /sa/ (service account) or /workload/. Rejected when empty, /, or
+  // beginning with /admin/.
+  string requested_path = 1;
+
+  // EC P-256 CSR PEM (BEGIN/END CERTIFICATE REQUEST). The CA verifies
+  // the self-signature before binding the public key.
+  bytes csr_pem = 2;
+
+  // Optional caller-suggested TTL in seconds. Server clamps to
+  // [1, 86400]. 0 = use spiffe.DefaultSVIDTTL (1h).
+  int32 requested_ttl_seconds = 3;
+}
+
+message IssueSVIDResponse {
+  // Persistent UUID for the SVID row (used by RevokeSVID).
+  string svid_id = 1;
+
+  // Canonical spiffe://<trust-domain>/<path> URI.
+  string spiffe_id = 2;
+
+  // Decimal serial-number string (matches aoid.svids.serial_number).
+  string serial = 3;
+
+  // Leaf cert in PEM form.
+  bytes cert_pem = 4;
+
+  // Leaf cert in DER form (saves callers a parse step).
+  bytes cert_der = 5;
+
+  // Effective NotBefore.
+  google.protobuf.Timestamp issued_at = 6;
+
+  // Effective NotAfter (post-clamp).
+  google.protobuf.Timestamp expires_at = 7;
+}
+
+message ListMySVIDsRequest {
+  // Optional page size. Defaults to 100, capped at 500 server-side.
+  int32 page_size = 1;
+
+  // Opaque continuation token; empty = first page.
+  string page_token = 2;
+}
+
+message ListMySVIDsResponse {
+  // Page of SVIDs, newest first.
+  repeated SVIDSummary svids = 1;
+
+  // Opaque token to fetch the next page; empty when done.
+  string next_page_token = 2;
+}
+
+// SVIDSummary is the wire view of one aoid.svids row.
+message SVIDSummary {
+  string svid_id = 1;
+  string spiffe_id = 2;
+  string serial = 3;
+  google.protobuf.Timestamp issued_at = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  // Absent = active; present = revoked.
+  google.protobuf.Timestamp revoked_at = 6;
+}
+
+message RevokeSVIDRequest {
+  // UUID of the SVID row to revoke.
+  string svid_id = 1;
+}
+
+message RevokeSVIDResponse {
+  // Returns the updated row so the caller can observe revoked_at.
+  SVIDSummary svid = 1;
+}
