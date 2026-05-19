@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion" ID="_response1" Version="2.0" IssueInstant="2026-05-19T00:00:00Z" Destination="https://aoid.example.com/acs">
+  <saml:Issuer>https://attacker.example.com/idp</saml:Issuer>
+  <samlp:Status><samlp:StatusCode Value="urn:oasis:names:tc:SAML:2.0:status:Success"/></samlp:Status>
+  <saml:Assertion ID="_attacker_assert" Version="2.0" IssueInstant="2026-05-19T00:00:00Z">
+    <saml:Issuer>https://attacker.example.com/idp</saml:Issuer>
+    <saml:Subject>
+      <saml:NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">attacker@evil.example</saml:NameID>
+    </saml:Subject>
+    <saml:AttributeStatement>
+      <saml:Attribute Name="email"><saml:AttributeValue>attacker@evil.example</saml:AttributeValue></saml:Attribute>
+    </saml:AttributeStatement>
+  </saml:Assertion>
+  <saml:Assertion ID="_legit_assert" Version="2.0" IssueInstant="2026-05-19T00:00:00Z">
+    <saml:Issuer>https://trusted.example.com/idp</saml:Issuer>
+    <saml:Subject>
+      <saml:NameID Format="urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress">user@trusted.example</saml:NameID>
+    </saml:Subject>
+    <saml:AttributeStatement>
+      <saml:Attribute Name="email"><saml:AttributeValue>user@trusted.example</saml:AttributeValue></saml:Attribute>
+    </saml:AttributeStatement>
+  </saml:Assertion>
+</samlp:Response>
