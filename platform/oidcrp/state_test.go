@@ -36,15 +36,22 @@ func TestSignedState_TamperedMACFails(t *testing.T) {
 	in := State{Tenant: "t", Idp: "i", Nonce: "n", CreatedAt: time.Now().Unix()}
 	raw := SignState(stateKey, in)
 
-	// Flip last char of mac.
-	last := raw[len(raw)-1]
-	var swap byte
-	if last == 'A' {
-		swap = 'B'
-	} else {
-		swap = 'A'
+	// Tamper: replace mac entirely with a different valid base64url-encoded
+	// blob the same length as the original. Any byte change anywhere in
+	// the MAC must trigger ErrStateInvalid.
+	dot := strings.LastIndex(raw, ".")
+	if dot < 0 {
+		t.Fatalf("no dot in raw: %q", raw)
 	}
-	tampered := raw[:len(raw)-1] + string(swap)
+	originalMAC := raw[dot+1:]
+	// Build a tampered MAC by replacing every char with 'A'. The legit
+	// MAC has 256 bits of entropy, so the all-'A' string differs at
+	// effectively every position.
+	tamperedMAC := strings.Repeat("A", len(originalMAC))
+	if tamperedMAC == originalMAC {
+		t.Fatalf("tampered MAC happened to equal original — pick a different fixture")
+	}
+	tampered := raw[:dot+1] + tamperedMAC
 
 	_, err := VerifyState(stateKey, tampered, time.Hour)
 	if !errors.Is(err, ErrStateInvalid) {
