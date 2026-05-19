@@ -26,8 +26,10 @@ require (
 	github.com/livekit/protocol v1.45.8
 	github.com/livekit/server-sdk-go/v2 v2.16.3
 	github.com/mattermost/xml-roundtrip-validator v0.1.0
+	github.com/maxmind/mmdbwriter v1.2.0
 	github.com/minio/minio-go/v7 v7.0.99
 	github.com/nats-io/nats.go v1.49.0
+	github.com/oschwald/maxminddb-golang/v2 v2.3.0
 	github.com/pquerna/otp v1.5.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
@@ -163,6 +165,7 @@ require (
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
 	golang.org/x/exp v0.0.0-20260212183809-81e46e3db34a // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
