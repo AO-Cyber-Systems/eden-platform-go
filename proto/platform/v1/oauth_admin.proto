@@ -1,0 +1,228 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// OAuthAdminService manages OAuth 2.1 client registrations on AOID.
+// Bound under super_admin or tenant_admin mTLS CNs (Obj 2 adminauth resolver).
+// All RPCs scope to tenant_id; super_admin can target any tenant.
+//
+// Client secrets are emitted exactly once — on CreateClient and
+// RotateClientSecret. They are NEVER read back via GetClient or any
+// other RPC; the server persists them bcrypt-hashed (cost 12) per
+// the Obj 3 password-hashing precedent.
+//
+// Tenant scoping (enforced by the same TenantScopeInterceptor used by
+// AccountAdminService):
+//   - Every request carries tenant_id as field 1.
+//   - Super admins may target any tenant.
+//   - Tenant admins are rejected at the request boundary when tenant_id
+//     does not match their bound tenant.
+//
+// Audit emission: every successful mutation emits a platform/audit.Event
+// with the action constants added in TRD 04-05 (oauth.client.*).
+service OAuthAdminService {
+  // CreateClient registers a new OAuth client and returns the canonical
+  // record plus the one-time plaintext client_secret (empty for public
+  // clients and for private_key_jwt clients).
+  rpc CreateClient(OAuthAdminServiceCreateClientRequest) returns (OAuthAdminServiceCreateClientResponse);
+
+  // GetClient fetches a single client by its public client_id within the
+  // tenant. The response never includes client_secret material.
+  rpc GetClient(OAuthAdminServiceGetClientRequest) returns (OAuthAdminServiceGetClientResponse);
+
+  // UpdateClient mutates non-collection attributes (client_name,
+  // allowed_scopes, auto_consent). redirect_uris and grant_types mutate
+  // through the dedicated Add/Remove RPCs to preserve per-mutation audit
+  // trails.
+  rpc UpdateClient(OAuthAdminServiceUpdateClientRequest) returns (OAuthAdminServiceUpdateClientResponse);
+
+  // DeleteClient permanently removes a client registration.
+  rpc DeleteClient(OAuthAdminServiceDeleteClientRequest) returns (OAuthAdminServiceDeleteClientResponse);
+
+  // ListClients returns a paginated list of clients in the tenant.
+  rpc ListClients(OAuthAdminServiceListClientsRequest) returns (OAuthAdminServiceListClientsResponse);
+
+  // RotateClientSecret generates a new client_secret, persists the bcrypt
+  // hash, and returns the plaintext exactly once.
+  rpc RotateClientSecret(OAuthAdminServiceRotateClientSecretRequest) returns (OAuthAdminServiceRotateClientSecretResponse);
+
+  // AddRedirectURI appends a redirect_uri to the client's allowlist.
+  rpc AddRedirectURI(OAuthAdminServiceAddRedirectURIRequest) returns (OAuthAdminServiceAddRedirectURIResponse);
+
+  // RemoveRedirectURI removes a redirect_uri from the client's allowlist.
+  rpc RemoveRedirectURI(OAuthAdminServiceRemoveRedirectURIRequest) returns (OAuthAdminServiceRemoveRedirectURIResponse);
+}
+
+// OAuthClient is the canonical client registration data. NO client_secret
+// is carried here — secret material appears only in CreateClientResponse
+// and RotateClientSecretResponse, never read back via GetClient.
+message OAuthClient {
+  // Internal database UUID (primary key).
+  string id = 1;
+
+  // Owning tenant UUID.
+  string tenant_id = 2;
+
+  // Public OAuth client identifier. Typically a generated UUID-without-dashes
+  // or a URL-safe random string (~22 chars). DIFFERENT from id.
+  string client_id = 3;
+
+  // Human-friendly label shown in admin UIs and consent screens.
+  string client_name = 4;
+
+  // "public" | "confidential". Confidential clients require a token-endpoint
+  // auth method other than "none"; public clients require PKCE.
+  string client_type = 5;
+
+  // Allowed OAuth 2.1 grant flows. Valid values:
+  //   "authorization_code", "client_credentials",
+  //   "device_code", "refresh_token".
+  // A single client may hold multiple grants (e.g. authorization_code +
+  // refresh_token). The server validates each token request's grant_type
+  // against this list.
+  repeated string grant_types = 6;
+
+  // Allowlisted redirect URIs. OAuth 2.1 requires exact-match comparison —
+  // the server validates HTTPS scheme and exact equality on each
+  // authorize request. Format checking is NOT enforced in proto.
+  repeated string redirect_uris = 7;
+
+  // Allowlisted OAuth scopes. The server intersects this list against
+  // the scopes requested on each authorize / token call.
+  repeated string allowed_scopes = 8;
+
+  // "client_secret_basic" | "private_key_jwt" | "none".
+  // "none" is valid only for public clients (PKCE-based). The server
+  // rejects "none" for confidential clients.
+  string token_endpoint_auth_method = 9;
+
+  // JWKS endpoint URL. Only meaningful when
+  // token_endpoint_auth_method == "private_key_jwt"; empty otherwise.
+  // The server validates this consistency at create/update time and
+  // fetches JWKs on demand to verify client assertions.
+  string jwks_uri = 10;
+
+  // First-party clients (auto_consent=true) skip the user consent screen.
+  // Reserved for clients owned by the operating tenant.
+  bool auto_consent = 11;
+
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message OAuthAdminServiceCreateClientRequest {
+  string tenant_id = 1;
+  string client_name = 2;
+  string client_type = 3;
+  repeated string grant_types = 4;
+  repeated string redirect_uris = 5;
+  repeated string allowed_scopes = 6;
+  string token_endpoint_auth_method = 7;
+  string jwks_uri = 8;
+  bool auto_consent = 9;
+}
+
+message OAuthAdminServiceCreateClientResponse {
+  OAuthClient client = 1;
+
+  // One-time plaintext client_secret. Empty for public clients
+  // (token_endpoint_auth_method == "none") and for private_key_jwt
+  // clients (which authenticate via signed JWT assertions).
+  string client_secret = 2;
+}
+
+message OAuthAdminServiceGetClientRequest {
+  string tenant_id = 1;
+  string client_id = 2;
+}
+
+message OAuthAdminServiceGetClientResponse {
+  OAuthClient client = 1;
+}
+
+message OAuthAdminServiceUpdateClientRequest {
+  string tenant_id = 1;
+  string client_id = 2;
+
+  // Empty string means no change.
+  string client_name = 3;
+
+  // Replacement list. Empty means no change. To clear, callers must use
+  // a server-side admin tool — proto cannot distinguish unset vs. empty.
+  repeated string allowed_scopes = 4;
+
+  // auto_consent always applies — the field is a bool, so callers must
+  // send the desired value on every UpdateClient call. To make an
+  // "unchanged" semantics possible, AOID treats UpdateClient as a
+  // full-replace of the addressable fields documented here.
+  bool auto_consent = 5;
+
+  // Note: redirect_uris and grant_types mutate via the dedicated
+  // Add/Remove RPCs to keep audit trails per-mutation.
+}
+
+message OAuthAdminServiceUpdateClientResponse {
+  OAuthClient client = 1;
+}
+
+message OAuthAdminServiceDeleteClientRequest {
+  string tenant_id = 1;
+  string client_id = 2;
+}
+
+message OAuthAdminServiceDeleteClientResponse {}
+
+message OAuthAdminServiceListClientsRequest {
+  string tenant_id = 1;
+
+  // Pagination — same shape as Obj 2 ListAccounts / ListGroups.
+  // 0 means server default (100). Server caps at 500.
+  int32 limit = 2;
+
+  // Opaque, server-issued cursor. Empty for first page.
+  string cursor = 3;
+}
+
+message OAuthAdminServiceListClientsResponse {
+  repeated OAuthClient clients = 1;
+
+  // Empty == no more results.
+  string next_cursor = 2;
+}
+
+message OAuthAdminServiceRotateClientSecretRequest {
+  string tenant_id = 1;
+  string client_id = 2;
+}
+
+message OAuthAdminServiceRotateClientSecretResponse {
+  OAuthClient client = 1;
+
+  // New plaintext client_secret. One-time emission — the server retains
+  // only the bcrypt hash.
+  string client_secret = 2;
+}
+
+message OAuthAdminServiceAddRedirectURIRequest {
+  string tenant_id = 1;
+  string client_id = 2;
+  string redirect_uri = 3;
+}
+
+message OAuthAdminServiceAddRedirectURIResponse {
+  OAuthClient client = 1;
+}
+
+message OAuthAdminServiceRemoveRedirectURIRequest {
+  string tenant_id = 1;
+  string client_id = 2;
+  string redirect_uri = 3;
+}
+
+message OAuthAdminServiceRemoveRedirectURIResponse {
+  OAuthClient client = 1;
+}
