@@ -1,0 +1,183 @@
+syntax = "proto3";
+
+package platform.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+
+// AOEdge boundary-protection audit event types (SC-7 evidence).
+//
+// Five event messages are emitted by AOEdge's data-plane middleware:
+//   - ConnectionLog: once per request (allowed or blocked).
+//   - WAFEvent:      on every WAF rule trigger (block, would-block, pass).
+//   - DDoSEvent:     on every rate-limit or slow-loris rejection.
+//   - GeoDecision:   on every geo enforcement evaluation.
+//   - DLPFinding:    when DLP scanning detects a pattern match.
+//
+// Invariants across all event messages:
+//   - Field 1 is always schema_version (int32, currently 1). Bump on
+//     breaking change.
+//   - The last field is always chain_hash (string, SHA-256 hex of
+//     prev_chain_hash || canonical(this event)).
+//   - Correlation fields request_id (rs/xid), trace_id (W3C traceparent
+//     trace-id hex), and span_id (W3C traceparent span-id hex) are
+//     present on every event for trace stitching from client through
+//     AOCore.
+//
+// PII-safety invariant (DLPFinding / DLPMatch):
+//   These messages MUST NOT carry any field that stores PII payload
+//   bytes from the upstream response. The set of prohibited field
+//   names is enforced by the companion schema-lint test
+//   (aoedge_audit_lint_test.go) — see that file for the canonical
+//   forbidden list. The DLP finding records only the pattern_id, an
+//   operator-readable pattern_name, and a byte offset+length range.
+//
+// Signing strategy:
+//   Per-event hash-chain (SHA-256, hot path, zero I/O). The dispatcher
+//   batches events and signs the Merkle root over each batch's
+//   chain_hash values with Ed25519 (local v1; KMS-resident v1.1). The
+//   AuditBatch message carries the signing envelope; raw event bytes
+//   travel as individual OTLP log records.
+
+// ConnectionLog is emitted once per request (allowed or blocked).
+// schema_version: increment when adding non-optional fields.
+message ConnectionLog {
+  int32  schema_version                  = 1;  // always 1 for v1; bump on breaking change
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;  // rs/xid (20 chars)
+  string trace_id                        = 4;  // W3C traceparent trace-id (hex)
+  string span_id                         = 5;  // W3C traceparent span-id (hex)
+  string source_ip                       = 6;
+  string identity                        = 7;  // "anonymous" or actor_id
+  string route_id                        = 8;
+  string upstream_backend                = 9;
+  string decision                        = 10; // "allow" | "block" | "error"
+  int32  status_code                     = 11;
+  int64  latency_ms                      = 12;
+  int64  response_bytes                  = 13;
+  string block_reason                    = 14; // empty when decision=allow
+  string tenant_id                       = 15;
+  string chain_hash                      = 16; // SHA-256 hex of (prev_chain_hash || canonical(this event))
+}
+
+// WAFEvent is emitted on every WAF rule trigger.
+message WAFEvent {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;
+  string trace_id                        = 4;
+  string span_id                         = 5;
+  string tx_id                           = 6;  // Coraza transaction ID
+  string action                          = 7;  // "block" | "would_block" | "pass"
+  int32  rule_id                         = 8;
+  int32  anomaly_score                   = 9;
+  int32  inbound_threshold               = 10;
+  string method                          = 11;
+  string path                            = 12;
+  string host                            = 13;
+  string tenant_id                       = 14;
+  string route_id                        = 15;
+  bool   shadow_mode                     = 16;
+  string client_ip                       = 17;
+  repeated MatchedRuleEntry matched_rules = 18;
+  string chain_hash                      = 19;
+}
+
+// MatchedRuleEntry describes a single Coraza rule match inside a WAFEvent.
+// The fragment_b64 field carries an operator-bounded fragment for incident
+// triage; v1 is base64-encoded and capped at ~256 bytes by the producer.
+// DLPFinding / DLPMatch must NOT include any analogue of this field —
+// see the PII-safety invariant at the top of this file.
+message MatchedRuleEntry {
+  int32           rule_id        = 1;
+  string          severity       = 2;
+  string          message        = 3;
+  repeated string tags           = 4;
+  string          matched_var    = 5;
+  string          fragment_b64   = 6;  // base64 (waf only); capped at producer
+}
+
+// DDoSEvent is emitted on every rate-limit or slow-loris rejection.
+message DDoSEvent {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;
+  string trace_id                        = 4;
+  string span_id                         = 5;
+  string limit_type                      = 6;  // "l4_conn" | "l7_ip" | "l7_identity" | "l7_tenant" | "slow_loris" | "smuggling"
+  string source_identifier               = 7;  // IP | identity | tenant
+  int64  counter_value                   = 8;
+  int64  threshold                       = 9;
+  string tenant_id                       = 10;
+  string chain_hash                      = 11;
+}
+
+// GeoDecision is emitted on every geo enforcement evaluation.
+message GeoDecision {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;
+  string trace_id                        = 4;
+  string span_id                         = 5;
+  string source_ip                       = 6;
+  string country_iso                     = 7;
+  string registered_country_iso          = 8;
+  uint32 asn                             = 9;
+  string as_org                          = 10;
+  repeated string subdivisions           = 11;
+  string route_id                        = 12;
+  string tenant_id                       = 13;
+  string decision                        = 14;  // "allow" | "block"
+  string block_reason                    = 15;
+  bool   is_tor_exit                     = 16;
+  bool   is_vpn                          = 17;
+  bool   is_public_proxy                 = 18;
+  bool   us_only_mode_active             = 19;
+  string chain_hash                      = 20;
+}
+
+// DLPFinding is emitted when DLP scanning detects a pattern match.
+//
+// HARD INVARIANT (PII-safety): this message and its DLPMatch entries
+// MUST NEVER store the matched payload bytes. Only the pattern_id,
+// operator-readable pattern_name, and byte offset+length are recorded.
+// A schema-lint test enforces this contract — see the top-of-file note
+// for the prohibited field names.
+message DLPFinding {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;
+  string trace_id                        = 4;
+  string span_id                         = 5;
+  string route_id                        = 6;
+  string tenant_id                       = 7;
+  string mode                            = 8;  // "block" | "redact" | "audit"
+  repeated DLPMatch matches              = 9;
+  string chain_hash                      = 10;
+}
+
+// DLPMatch carries a single pattern hit inside a DLPFinding. NO PII payload
+// bytes — only pattern identifiers and byte coordinates (offset+length).
+message DLPMatch {
+  string pattern_id   = 1;
+  string pattern_name = 2;
+  int64  offset       = 3;
+  int64  length       = 4;
+}
+
+// AuditBatch wraps a set of events with signing metadata.
+// Emitted as a single OTLP log record once per dispatcher batch; raw event
+// bytes travel as their own OTLP log records and are referenced by the
+// merkle_root signature.
+message AuditBatch {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string batch_id                        = 3;  // rs/xid
+  int64  seq_first                       = 4;
+  int64  seq_last                        = 5;
+  string merkle_root                     = 6;  // hex SHA-256 root of batch leaf hashes
+  string root_signature                  = 7;  // Ed25519 or KMS signature over merkle_root (hex)
+  string signing_key_id                  = 8;  // key identifier (local or KMS ARN)
+  int32  event_count                     = 9;
+}
