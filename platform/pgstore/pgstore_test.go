@@ -49,7 +49,7 @@ func truncateAll(t *testing.T, backend *pgstore.Backend) {
 	tables := []string{
 		"webhook_deliveries", "webhooks",
 		"audit_logs",
-		"parent_of_record", "household_members", "households",
+		"platform_parent_of_record", "platform_household_members", "platform_households",
 		"company_memberships", "role_permissions", "permissions",
 		"company_hierarchies",
 		"refresh_tokens", "sso_configs",

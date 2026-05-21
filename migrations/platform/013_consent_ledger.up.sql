@@ -3,9 +3,9 @@
 -- revokes_id points at the original grant row.
 CREATE TABLE IF NOT EXISTS consent_ledger (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    household_id UUID NOT NULL REFERENCES households(id),
-    principal_member_id UUID NOT NULL REFERENCES household_members(id),
-    consenter_member_id UUID NOT NULL REFERENCES household_members(id),
+    household_id UUID NOT NULL REFERENCES platform_households(id),
+    principal_member_id UUID NOT NULL REFERENCES platform_household_members(id),
+    consenter_member_id UUID NOT NULL REFERENCES platform_household_members(id),
     purpose TEXT NOT NULL,
     scope JSONB NOT NULL DEFAULT '{}',
     consent_text_version TEXT NOT NULL DEFAULT '',
