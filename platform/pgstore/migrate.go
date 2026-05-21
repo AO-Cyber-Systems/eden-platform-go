@@ -11,8 +11,10 @@ import (
 
 // RunMigrations applies all pending migrations to the database.
 // The migrationsFS should contain migration files at its root (already sub-pathed).
-// The databaseURL should use the "pgx5://" scheme for the golang-migrate pgx/v5 driver,
-// or "postgres://" which golang-migrate also accepts.
+// The databaseURL must use the "pgx5://" scheme — this file registers ONLY the
+// pgx/v5 driver via the blank import below. The "postgres://" scheme would
+// require additionally importing "github.com/golang-migrate/migrate/v4/database/postgres"
+// (lib/pq-backed), which the codebase does not.
 func RunMigrations(databaseURL string, migrationsFS fs.FS) error {
 	source, err := iofs.New(migrationsFS, ".")
 	if err != nil {
