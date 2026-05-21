@@ -14,7 +14,7 @@ import (
 )
 
 const addHouseholdMember = `-- name: AddHouseholdMember :one
-INSERT INTO household_members (household_id, user_id, role, status, birthdate, capabilities)
+INSERT INTO platform_household_members (household_id, user_id, role, status, birthdate, capabilities)
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at
 `
@@ -28,7 +28,7 @@ type AddHouseholdMemberParams struct {
 	Capabilities json.RawMessage `json:"capabilities"`
 }
 
-func (q *Queries) AddHouseholdMember(ctx context.Context, arg AddHouseholdMemberParams) (HouseholdMember, error) {
+func (q *Queries) AddHouseholdMember(ctx context.Context, arg AddHouseholdMemberParams) (PlatformHouseholdMember, error) {
 	row := q.db.QueryRow(ctx, addHouseholdMember,
 		arg.HouseholdID,
 		arg.UserID,
@@ -37,7 +37,7 @@ func (q *Queries) AddHouseholdMember(ctx context.Context, arg AddHouseholdMember
 		arg.Birthdate,
 		arg.Capabilities,
 	)
-	var i HouseholdMember
+	var i PlatformHouseholdMember
 	err := row.Scan(
 		&i.ID,
 		&i.HouseholdID,
@@ -53,7 +53,7 @@ func (q *Queries) AddHouseholdMember(ctx context.Context, arg AddHouseholdMember
 }
 
 const createHousehold = `-- name: CreateHousehold :one
-INSERT INTO households (primary_contact_user_id, display_name, metadata)
+INSERT INTO platform_households (primary_contact_user_id, display_name, metadata)
 VALUES ($1, $2, $3)
 RETURNING id, primary_contact_user_id, display_name, metadata, created_at, updated_at
 `
@@ -64,9 +64,9 @@ type CreateHouseholdParams struct {
 	Metadata             json.RawMessage `json:"metadata"`
 }
 
-func (q *Queries) CreateHousehold(ctx context.Context, arg CreateHouseholdParams) (Household, error) {
+func (q *Queries) CreateHousehold(ctx context.Context, arg CreateHouseholdParams) (PlatformHousehold, error) {
 	row := q.db.QueryRow(ctx, createHousehold, arg.PrimaryContactUserID, arg.DisplayName, arg.Metadata)
-	var i Household
+	var i PlatformHousehold
 	err := row.Scan(
 		&i.ID,
 		&i.PrimaryContactUserID,
@@ -79,7 +79,7 @@ func (q *Queries) CreateHousehold(ctx context.Context, arg CreateHouseholdParams
 }
 
 const deleteHousehold = `-- name: DeleteHousehold :exec
-DELETE FROM households WHERE id = $1
+DELETE FROM platform_households WHERE id = $1
 `
 
 func (q *Queries) DeleteHousehold(ctx context.Context, id uuid.UUID) error {
@@ -88,7 +88,7 @@ func (q *Queries) DeleteHousehold(ctx context.Context, id uuid.UUID) error {
 }
 
 const establishParentOfRecord = `-- name: EstablishParentOfRecord :one
-INSERT INTO parent_of_record (child_member_id, parent_member_id)
+INSERT INTO platform_parent_of_record (child_member_id, parent_member_id)
 VALUES ($1, $2)
 RETURNING id, child_member_id, parent_member_id, established_at, revoked_at
 `
@@ -98,9 +98,9 @@ type EstablishParentOfRecordParams struct {
 	ParentMemberID uuid.UUID `json:"parent_member_id"`
 }
 
-func (q *Queries) EstablishParentOfRecord(ctx context.Context, arg EstablishParentOfRecordParams) (ParentOfRecord, error) {
+func (q *Queries) EstablishParentOfRecord(ctx context.Context, arg EstablishParentOfRecordParams) (PlatformParentOfRecord, error) {
 	row := q.db.QueryRow(ctx, establishParentOfRecord, arg.ChildMemberID, arg.ParentMemberID)
-	var i ParentOfRecord
+	var i PlatformParentOfRecord
 	err := row.Scan(
 		&i.ID,
 		&i.ChildMemberID,
@@ -112,12 +112,12 @@ func (q *Queries) EstablishParentOfRecord(ctx context.Context, arg EstablishPare
 }
 
 const getHousehold = `-- name: GetHousehold :one
-SELECT id, primary_contact_user_id, display_name, metadata, created_at, updated_at FROM households WHERE id = $1
+SELECT id, primary_contact_user_id, display_name, metadata, created_at, updated_at FROM platform_households WHERE id = $1
 `
 
-func (q *Queries) GetHousehold(ctx context.Context, id uuid.UUID) (Household, error) {
+func (q *Queries) GetHousehold(ctx context.Context, id uuid.UUID) (PlatformHousehold, error) {
 	row := q.db.QueryRow(ctx, getHousehold, id)
-	var i Household
+	var i PlatformHousehold
 	err := row.Scan(
 		&i.ID,
 		&i.PrimaryContactUserID,
@@ -130,12 +130,12 @@ func (q *Queries) GetHousehold(ctx context.Context, id uuid.UUID) (Household, er
 }
 
 const getHouseholdMember = `-- name: GetHouseholdMember :one
-SELECT id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at FROM household_members WHERE id = $1
+SELECT id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at FROM platform_household_members WHERE id = $1
 `
 
-func (q *Queries) GetHouseholdMember(ctx context.Context, id uuid.UUID) (HouseholdMember, error) {
+func (q *Queries) GetHouseholdMember(ctx context.Context, id uuid.UUID) (PlatformHouseholdMember, error) {
 	row := q.db.QueryRow(ctx, getHouseholdMember, id)
-	var i HouseholdMember
+	var i PlatformHouseholdMember
 	err := row.Scan(
 		&i.ID,
 		&i.HouseholdID,
@@ -151,20 +151,20 @@ func (q *Queries) GetHouseholdMember(ctx context.Context, id uuid.UUID) (Househo
 }
 
 const listChildrenForParent = `-- name: ListChildrenForParent :many
-SELECT id, child_member_id, parent_member_id, established_at, revoked_at FROM parent_of_record
+SELECT id, child_member_id, parent_member_id, established_at, revoked_at FROM platform_parent_of_record
 WHERE parent_member_id = $1 AND revoked_at IS NULL
 ORDER BY established_at ASC
 `
 
-func (q *Queries) ListChildrenForParent(ctx context.Context, parentMemberID uuid.UUID) ([]ParentOfRecord, error) {
+func (q *Queries) ListChildrenForParent(ctx context.Context, parentMemberID uuid.UUID) ([]PlatformParentOfRecord, error) {
 	rows, err := q.db.Query(ctx, listChildrenForParent, parentMemberID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ParentOfRecord{}
+	items := []PlatformParentOfRecord{}
 	for rows.Next() {
-		var i ParentOfRecord
+		var i PlatformParentOfRecord
 		if err := rows.Scan(
 			&i.ID,
 			&i.ChildMemberID,
@@ -183,20 +183,20 @@ func (q *Queries) ListChildrenForParent(ctx context.Context, parentMemberID uuid
 }
 
 const listHouseholdMembers = `-- name: ListHouseholdMembers :many
-SELECT id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at FROM household_members
+SELECT id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at FROM platform_household_members
 WHERE household_id = $1 AND status != 'removed'
 ORDER BY added_at ASC
 `
 
-func (q *Queries) ListHouseholdMembers(ctx context.Context, householdID uuid.UUID) ([]HouseholdMember, error) {
+func (q *Queries) ListHouseholdMembers(ctx context.Context, householdID uuid.UUID) ([]PlatformHouseholdMember, error) {
 	rows, err := q.db.Query(ctx, listHouseholdMembers, householdID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []HouseholdMember{}
+	items := []PlatformHouseholdMember{}
 	for rows.Next() {
-		var i HouseholdMember
+		var i PlatformHouseholdMember
 		if err := rows.Scan(
 			&i.ID,
 			&i.HouseholdID,
@@ -219,21 +219,21 @@ func (q *Queries) ListHouseholdMembers(ctx context.Context, householdID uuid.UUI
 }
 
 const listHouseholdsForUser = `-- name: ListHouseholdsForUser :many
-SELECT h.id, h.primary_contact_user_id, h.display_name, h.metadata, h.created_at, h.updated_at FROM households h
-JOIN household_members m ON m.household_id = h.id
+SELECT h.id, h.primary_contact_user_id, h.display_name, h.metadata, h.created_at, h.updated_at FROM platform_households h
+JOIN platform_household_members m ON m.household_id = h.id
 WHERE m.user_id = $1 AND m.status != 'removed'
 ORDER BY h.created_at DESC
 `
 
-func (q *Queries) ListHouseholdsForUser(ctx context.Context, userID uuid.UUID) ([]Household, error) {
+func (q *Queries) ListHouseholdsForUser(ctx context.Context, userID uuid.UUID) ([]PlatformHousehold, error) {
 	rows, err := q.db.Query(ctx, listHouseholdsForUser, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Household{}
+	items := []PlatformHousehold{}
 	for rows.Next() {
-		var i Household
+		var i PlatformHousehold
 		if err := rows.Scan(
 			&i.ID,
 			&i.PrimaryContactUserID,
@@ -253,20 +253,20 @@ func (q *Queries) ListHouseholdsForUser(ctx context.Context, userID uuid.UUID) (
 }
 
 const listParentsOfRecord = `-- name: ListParentsOfRecord :many
-SELECT id, child_member_id, parent_member_id, established_at, revoked_at FROM parent_of_record
+SELECT id, child_member_id, parent_member_id, established_at, revoked_at FROM platform_parent_of_record
 WHERE child_member_id = $1 AND revoked_at IS NULL
 ORDER BY established_at ASC
 `
 
-func (q *Queries) ListParentsOfRecord(ctx context.Context, childMemberID uuid.UUID) ([]ParentOfRecord, error) {
+func (q *Queries) ListParentsOfRecord(ctx context.Context, childMemberID uuid.UUID) ([]PlatformParentOfRecord, error) {
 	rows, err := q.db.Query(ctx, listParentsOfRecord, childMemberID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ParentOfRecord{}
+	items := []PlatformParentOfRecord{}
 	for rows.Next() {
-		var i ParentOfRecord
+		var i PlatformParentOfRecord
 		if err := rows.Scan(
 			&i.ID,
 			&i.ChildMemberID,
@@ -285,7 +285,7 @@ func (q *Queries) ListParentsOfRecord(ctx context.Context, childMemberID uuid.UU
 }
 
 const removeHouseholdMember = `-- name: RemoveHouseholdMember :exec
-UPDATE household_members
+UPDATE platform_household_members
 SET status = 'removed', removed_at = now()
 WHERE id = $1
 `
@@ -296,7 +296,7 @@ func (q *Queries) RemoveHouseholdMember(ctx context.Context, id uuid.UUID) error
 }
 
 const revokeParentOfRecord = `-- name: RevokeParentOfRecord :exec
-UPDATE parent_of_record
+UPDATE platform_parent_of_record
 SET revoked_at = now()
 WHERE id = $1 AND revoked_at IS NULL
 `
@@ -307,7 +307,7 @@ func (q *Queries) RevokeParentOfRecord(ctx context.Context, id uuid.UUID) error 
 }
 
 const updateHousehold = `-- name: UpdateHousehold :one
-UPDATE households
+UPDATE platform_households
 SET display_name = $2, metadata = $3, updated_at = now()
 WHERE id = $1
 RETURNING id, primary_contact_user_id, display_name, metadata, created_at, updated_at
@@ -319,9 +319,9 @@ type UpdateHouseholdParams struct {
 	Metadata    json.RawMessage `json:"metadata"`
 }
 
-func (q *Queries) UpdateHousehold(ctx context.Context, arg UpdateHouseholdParams) (Household, error) {
+func (q *Queries) UpdateHousehold(ctx context.Context, arg UpdateHouseholdParams) (PlatformHousehold, error) {
 	row := q.db.QueryRow(ctx, updateHousehold, arg.ID, arg.DisplayName, arg.Metadata)
-	var i Household
+	var i PlatformHousehold
 	err := row.Scan(
 		&i.ID,
 		&i.PrimaryContactUserID,
@@ -334,7 +334,7 @@ func (q *Queries) UpdateHousehold(ctx context.Context, arg UpdateHouseholdParams
 }
 
 const updateHouseholdMemberRole = `-- name: UpdateHouseholdMemberRole :one
-UPDATE household_members
+UPDATE platform_household_members
 SET role = $2, capabilities = $3
 WHERE id = $1
 RETURNING id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at
@@ -346,9 +346,9 @@ type UpdateHouseholdMemberRoleParams struct {
 	Capabilities json.RawMessage `json:"capabilities"`
 }
 
-func (q *Queries) UpdateHouseholdMemberRole(ctx context.Context, arg UpdateHouseholdMemberRoleParams) (HouseholdMember, error) {
+func (q *Queries) UpdateHouseholdMemberRole(ctx context.Context, arg UpdateHouseholdMemberRoleParams) (PlatformHouseholdMember, error) {
 	row := q.db.QueryRow(ctx, updateHouseholdMemberRole, arg.ID, arg.Role, arg.Capabilities)
-	var i HouseholdMember
+	var i PlatformHouseholdMember
 	err := row.Scan(
 		&i.ID,
 		&i.HouseholdID,

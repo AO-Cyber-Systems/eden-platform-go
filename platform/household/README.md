@@ -116,6 +116,45 @@ products appear, the recommended migration is:
 A migration tool is **not** in scope for Objective 24; document the pattern
 above when the first migration is required.
 
+## Database tables
+
+This package's PostgreSQL backing tables are prefixed `platform_` to avoid
+colliding with downstream apps that already own a domain `households` table
+with a different shape (e.g. CRM voter-household tracking). The platform
+schema owns:
+
+- `platform_households`
+- `platform_household_members`
+- `platform_parent_of_record`
+
+### Note for installs that applied migration 012 before 2026-05-21
+
+Migration `012_households.up.sql` originally created un-prefixed tables. The
+file was rewritten in place (GitHub issue #20) because no external consumer
+had successfully applied the original — its un-prefixed shape collided with
+existing `households` tables in downstream apps and the migration went dirty.
+
+If your install **did** apply the original 012 cleanly (un-prefixed tables
+exist with platform shape) and you are now pulling the rewritten 012, run
+this one-time rename in a transaction before `migrate up`:
+
+```sql
+BEGIN;
+ALTER TABLE households            RENAME TO platform_households;
+ALTER TABLE household_members     RENAME TO platform_household_members;
+ALTER TABLE parent_of_record      RENAME TO platform_parent_of_record;
+ALTER INDEX idx_households_primary_contact      RENAME TO idx_platform_households_primary_contact;
+ALTER INDEX idx_household_members_household     RENAME TO idx_platform_household_members_household;
+ALTER INDEX idx_household_members_user          RENAME TO idx_platform_household_members_user;
+ALTER INDEX idx_parent_of_record_child          RENAME TO idx_platform_parent_of_record_child;
+ALTER INDEX idx_parent_of_record_parent         RENAME TO idx_platform_parent_of_record_parent;
+COMMIT;
+```
+
+Then mark migration 012 as applied at its new content hash (consult your
+migrate tool's docs — for `golang-migrate`, the version row in
+`schema_migrations` already records `12`; no force needed).
+
 ## Test surface
 
 - `service_test.go` covers all Service-layer business rules with an

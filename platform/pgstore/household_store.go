@@ -222,7 +222,7 @@ func (s *HouseholdStore) ListChildrenForParent(ctx context.Context, parentMember
 
 // ---- Mappers ----
 
-func dbHouseholdToDomain(row db.Household) household.Household {
+func dbHouseholdToDomain(row db.PlatformHousehold) household.Household {
 	return household.Household{
 		ID:                   row.ID,
 		PrimaryContactUserID: row.PrimaryContactUserID,
@@ -233,7 +233,7 @@ func dbHouseholdToDomain(row db.Household) household.Household {
 	}
 }
 
-func dbMemberToDomain(row db.HouseholdMember) (household.Member, error) {
+func dbMemberToDomain(row db.PlatformHouseholdMember) (household.Member, error) {
 	var caps household.Capabilities
 	if len(row.Capabilities) > 0 {
 		if err := json.Unmarshal(row.Capabilities, &caps); err != nil {
@@ -257,7 +257,7 @@ func dbMemberToDomain(row db.HouseholdMember) (household.Member, error) {
 	return m, nil
 }
 
-func dbPORToDomain(row db.ParentOfRecord) household.ParentOfRecord {
+func dbPORToDomain(row db.PlatformParentOfRecord) household.ParentOfRecord {
 	por := household.ParentOfRecord{
 		ID:             row.ID,
 		ChildMemberID:  row.ChildMemberID,
