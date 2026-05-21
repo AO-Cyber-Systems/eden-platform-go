@@ -57,11 +57,14 @@ jobs:
             sleep 0.2
           done
           curl -sf http://127.0.0.1:8090/healthz | grep -q '"status"'
-          curl -sf http://127.0.0.1:8090/.well-known/openid-configuration | grep -q '"service_status":"scaffold"'
+          curl -sf http://127.0.0.1:8090/.well-known/openid-configuration | grep -q '"service_status":"active"'
           curl -sf http://127.0.0.1:8090/.well-known/jwks.json | grep -q '"keys"'
-          # Issuer endpoints must reply 503.
+          # /oauth2/token requires POST — a GET smoke probe must reply 405 (Method Not Allowed)
+          # with body {"error":"invalid_request","error_description":"POST required"}.
+          # Pre-AO-ID-activation (Obj 30 Phase A, PR #14) this returned 503; the assertion
+          # was not updated when the issuer flipped active.
           status=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8090/oauth2/token)
-          test "$status" = "503"
+          test "$status" = "405"
         env:
           AOID_LISTEN_ADDR: 127.0.0.1:8090
           AOID_ISSUER: http://127.0.0.1:8090
