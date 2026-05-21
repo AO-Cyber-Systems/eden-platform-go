@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"net/url"
 	"testing"
@@ -16,11 +17,11 @@ import (
 // don't collide with real provider registrations.
 type stubSigner struct{}
 
-func (stubSigner) Public() crypto.PublicKey                                { return nil }
+func (stubSigner) Public() crypto.PublicKey                                  { return nil }
 func (stubSigner) Sign(io.Reader, []byte, crypto.SignerOpts) ([]byte, error) { return nil, nil }
-func (stubSigner) KeyID() string                                            { return "stub" }
-func (stubSigner) SigningAlgorithm() string                                 { return "ES256" }
-func (stubSigner) HealthCheck(context.Context) error                       { return nil }
+func (stubSigner) KeyID() string                                             { return "stub" }
+func (stubSigner) SigningAlgorithm() string                                  { return "ES256" }
+func (stubSigner) HealthCheck(context.Context) error                         { return nil }
 
 func TestOpen_DispatchesByScheme(t *testing.T) {
 	// Register a stub provider for the duration of this test under a
@@ -93,3 +94,79 @@ func TestHealthCheckPayload_NonTrivial(t *testing.T) {
 	// unused after refactoring.
 	_ = rand.Reader
 }
+
+// TestOpenWithOptions_FallsThroughForOptionlessProviders confirms that
+// providers registered only via Register (no RegisterOptions) still work when
+// callers go through the new OpenWithOptions entry point. This preserves
+// back-compat: AOID's boot code can call OpenWithOptions uniformly for every
+// provider, and providers that don't need opts (awskms, azkv, pkcs11) ignore
+// the opts argument.
+func TestOpenWithOptions_FallsThroughForOptionlessProviders(t *testing.T) {
+	const scheme = "owotest"
+	if _, ok := registry[scheme]; !ok {
+		Register(scheme, func(context.Context, *url.URL) (KMSSigner, error) {
+			return stubSigner{}, nil
+		})
+	}
+
+	t.Run("falls_through_when_no_options_factory_registered", func(t *testing.T) {
+		s, err := OpenWithOptions(context.Background(), "owotest:///key", nil)
+		require.NoError(t, err)
+		require.NotNil(t, s)
+		require.Equal(t, "stub", s.KeyID())
+	})
+}
+
+// TestOpenWithOptions_DispatchesToOptionsFactory exercises the new
+// providerOptionsFactory registry path with a synthetic scheme so the test
+// does not depend on softkey package init order.
+func TestOpenWithOptions_DispatchesToOptionsFactory(t *testing.T) {
+	const scheme = "owooptstest"
+	type optsT struct{ ID string }
+	captured := make(chan optsT, 1)
+	if _, ok := optionsRegistry[scheme]; !ok {
+		RegisterOptions(scheme, func(_ context.Context, _ *url.URL, opts any) (KMSSigner, error) {
+			o, ok := opts.(optsT)
+			if !ok {
+				return nil, fmt.Errorf("opts must be optsT, got %T", opts)
+			}
+			captured <- o
+			return stubSigner{}, nil
+		})
+	}
+
+	t.Run("dispatches_with_typed_opts", func(t *testing.T) {
+		s, err := OpenWithOptions(context.Background(), "owooptstest:///abc", optsT{ID: "row-uuid"})
+		require.NoError(t, err)
+		require.NotNil(t, s)
+		got := <-captured
+		require.Equal(t, "row-uuid", got.ID)
+	})
+
+	t.Run("rejects_wrong_opts_type", func(t *testing.T) {
+		_, err := OpenWithOptions(context.Background(), "owooptstest:///abc", "not-the-right-type")
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "optsT")
+	})
+}
+
+// TestRegisterOptions_PanicsOnDuplicate mirrors Register's behaviour.
+func TestRegisterOptions_PanicsOnDuplicate(t *testing.T) {
+	t.Run("panics_when_scheme_registered_twice", func(t *testing.T) {
+		const scheme = "dup-opts-scheme-test"
+		RegisterOptions(scheme, func(context.Context, *url.URL, any) (KMSSigner, error) {
+			return stubSigner{}, nil
+		})
+		require.Panics(t, func() {
+			RegisterOptions(scheme, func(context.Context, *url.URL, any) (KMSSigner, error) {
+				return stubSigner{}, nil
+			})
+		})
+	})
+}
+
+// NOTE: softkey-scheme registration assertions live in
+// platform/kms/softkey/softkey_test.go where the softkey package is imported
+// naturally and its init() runs as part of the test binary. Putting them here
+// would require an anonymous import which leaks softkey symbols into the kms
+// core test suite.
