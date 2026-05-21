@@ -38,7 +38,11 @@ jobs:
       - name: go test
         run: go test ./... -v -race
         env:
-          DATABASE_URL: postgres://test:test@localhost:5432/eden_platform_test?sslmode=disable
+          # Use the pgx5:// scheme — that's what platform/pgstore/migrate.go
+          # registers via _ "github.com/golang-migrate/migrate/v4/database/pgx/v5".
+          # The bare postgres:// scheme would require also importing the lib/pq-based
+          # driver, which the codebase does not.
+          DATABASE_URL: pgx5://test:test@localhost:5432/eden_platform_test?sslmode=disable
       - name: aoid smoke (binary boot + endpoint curl)
         run: |
           set -euo pipefail
