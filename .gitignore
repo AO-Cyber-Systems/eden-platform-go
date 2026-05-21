@@ -5,11 +5,19 @@
 *.so
 *.dylib
 
+# Build outputs from cmd/* entrypoints (root-relative, written by `go build ./cmd/foo`)
+/aoid
+/eden-platform-dev
+
 # Test binary
 *.test
 
 # Output
 *.out
+
+# OpenSSL CA serial files — regenerated whenever fixtures are signed (see
+# platform/mtls/piv/testdata/README.md). Never meant to be checked in.
+*.srl
 
 # Go workspace
 go.work
@@ -26,3 +34,9 @@ go.work.sum
 Thumbs.db
 
 # Generated
+
+# DevFlow runtime state — these are session-local caches and skill markers,
+# never meant to be committed. Planning artifacts under .planning/objectives/
+# and .planning/quick/ ARE committed; only the dotfiles are ignored.
+/.planning/.awareness-cache.json
+/.planning/.skill-active
