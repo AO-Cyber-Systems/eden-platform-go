@@ -69,6 +69,8 @@ jobs:
           AOID_LISTEN_ADDR: 127.0.0.1:8090
           AOID_ISSUER: http://127.0.0.1:8090
       - name: sqlc verify
+        # Pin to the version embedded in generated file headers. `@latest`
+        # drifts as sqlc releases and the version-comment line breaks `sqlc diff`.
         run: |
-          go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+          go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.30.0
           sqlc diff
