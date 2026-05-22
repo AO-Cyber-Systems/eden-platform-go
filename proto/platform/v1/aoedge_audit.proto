@@ -8,12 +8,15 @@ option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/
 
 // AOEdge boundary-protection audit event types (SC-7 evidence).
 //
-// Five event messages are emitted by AOEdge's data-plane middleware:
-//   - ConnectionLog: once per request (allowed or blocked).
-//   - WAFEvent:      on every WAF rule trigger (block, would-block, pass).
-//   - DDoSEvent:     on every rate-limit or slow-loris rejection.
-//   - GeoDecision:   on every geo enforcement evaluation.
-//   - DLPFinding:    when DLP scanning detects a pattern match.
+// Eight event messages are emitted by AOEdge's data-plane middleware:
+//   - ConnectionLog:           once per request (allowed or blocked).
+//   - WAFEvent:                on every WAF rule trigger.
+//   - DDoSEvent:               on every rate-limit / slow-loris rejection.
+//   - GeoDecision:             on every geo enforcement evaluation.
+//   - DLPFinding:              when DLP scanning detects a pattern match.
+//   - IdentityValidationEvent: every credential validation (accept/reject).
+//   - IdentityMintEvent:       every X-AOEdge-Identity-Context JWT mint.
+//   - StepUpChallengeEvent:    every RFC 9470 step-up challenge.
 //
 // Invariants across all event messages:
 //   - Field 1 is always schema_version (int32, currently 1). Bump on
@@ -166,10 +169,99 @@ message DLPMatch {
   int64  length       = 4;
 }
 
+// IdentityValidationEvent — emitted by the AOEdge IAP middleware on every
+// credential validation: JWT (IAP-01), opaque token via RFC 7662
+// introspection (IAP-02), API key (IAP-03), or anonymous-route admission
+// (IAP-07). BOTH accept and reject paths emit one event.
+//
+// PII-safety: this message MUST NOT carry the raw credential bytes. Only
+// `tok_ref` (first-8-byte SHA-256 hex of the raw credential, 16 chars) is
+// included — same pattern as the AOID identity-context tok_ref. The
+// schema-lint test in aoedge_audit_lint_test.go asserts the forbidden
+// field names raw_token | raw_key | password | plaintext | authorization
+// and bare token | secret are absent file-wide.
+message IdentityValidationEvent {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;
+  string trace_id                        = 4;
+  string span_id                         = 5;
+  string cred_type                       = 6;  // "jwt" | "opaque" | "api_key" | "anonymous"
+  string tok_ref                         = 7;  // hex(sha256(raw_credential))[:8] => 16 chars; "" for anonymous
+  string outcome                         = 8;  // "accepted" | "rejected_invalid" | "rejected_expired" | "rejected_wrong_audience" | "rejected_wrong_issuer" | "rejected_aoid_unreachable" | "rejected_inactive"
+  string outcome_reason                  = 9;  // operator-readable detail; never includes credential bytes
+  string iss                             = 10; // expected issuer (configured AOID URL); "" when cred_type=api_key/anonymous
+  string sub                             = 11; // accepted: AOID account UUID; rejected: ""
+  string tenant_id                       = 12; // tenant UUID resolved by hostname routing (Obj 3); always populated for non-anonymous
+  string aal                             = 13; // resolved AAL ("AAL1"/"AAL2"/"AAL3"); "" on reject
+  int64  latency_ms                      = 14; // wallclock validation latency incl. any AOID round-trip
+  bool   cache_hit                       = 15; // true when validation served from in-process introspection/API-key cache
+  string route_id                        = 16; // chi.RouteContext.RoutePattern() at validation time
+  string chain_hash                      = 17;
+}
+
+// IdentityMintEvent — emitted by the AOEdge IAP middleware on every
+// successful X-AOEdge-Identity-Context JWT mint (IAP-04). One event per
+// request that crosses to upstream with a freshly-signed identity context.
+//
+// PII-safety: the signed JWT itself is NOT included — it travels in the
+// X-AOEdge-Identity-Context request header. The audit stream logs only
+// metadata (sub, tnt, aal, kid, tok_ref, entitlements_count). The
+// schema-lint test forbids signed_jwt | jwt | id_token | access_token
+// field names on this message.
+message IdentityMintEvent {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;
+  string trace_id                        = 4;
+  string span_id                         = 5;
+  string kid                             = 6;  // AOEdge active signing key id
+  string sub                             = 7;  // AOID account UUID from validated credential
+  string tnt                             = 8;  // tenant SLUG (NOT UUID — see Obj 9 RESEARCH §6 pitfall)
+  string aal                             = 9;
+  string tok_ref                         = 10; // bound to validated credential (16 chars hex)
+  int32  entitlements_count              = 11; // count only — entitlement strings not logged for size
+  int64  ttl_seconds                     = 12; // identity-context exp - iat at mint time
+  string alg                             = 13; // "ES256" | "RS256"
+  string tenant_id                       = 14; // tenant UUID (resolved from tnt slug); for audit-stream filtering
+  string route_id                        = 15;
+  string chain_hash                      = 16;
+}
+
+// StepUpChallengeEvent — emitted by the AOEdge IAP middleware when per-route
+// policy requires a higher AAL than the validated credential carries
+// (IAP-06). The middleware issues either a browser 302 to AOID
+// /authorize?acr_values=... or a non-browser 403 with RFC 9470
+// WWW-Authenticate: Bearer error="insufficient_user_authentication".
+//
+// PII-safety: redirect_uri_host carries only scheme+host+path of the AOID
+// authorize endpoint — query parameters (state, nonce, redirect_uri) are
+// NOT logged. The schema-lint test forbids the bare `redirect_uri` field.
+message StepUpChallengeEvent {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;
+  string trace_id                        = 4;
+  string span_id                         = 5;
+  string required_aal                    = 6;  // "AAL2" | "AAL3"
+  string current_aal                     = 7;  // AAL from validated credential ("AAL1" typical)
+  string channel                         = 8;  // "browser" (302) | "api" (403)
+  string redirect_uri_host               = 9;  // scheme://host/path of AOID /authorize; NO query string
+  int32  status_code                     = 10; // 302 | 403
+  string tenant_id                       = 11;
+  string route_id                        = 12;
+  string sub                             = 13; // current account UUID (already authenticated at lower AAL)
+  string chain_hash                      = 14;
+}
+
 // AuditBatch wraps a set of events with signing metadata.
 // Emitted as a single OTLP log record once per dispatcher batch; raw event
 // bytes travel as their own OTLP log records and are referenced by the
 // merkle_root signature.
+//
+// NOTE: AuditBatch.event_count is int32; bumping to int64 is deferred to
+// Obj 11 (operational-posture objective). A 2^31 event-count batch is far
+// beyond v1 dispatch sizing.
 message AuditBatch {
   int32  schema_version                  = 1;
   google.protobuf.Timestamp timestamp    = 2;
