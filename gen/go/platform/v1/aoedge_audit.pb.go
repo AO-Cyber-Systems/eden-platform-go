@@ -1494,6 +1494,370 @@ func (x *StepUpChallengeEvent) GetChainHash() string {
 	return ""
 }
 
+// PolicyDecisionEvent — emitted by the authz middleware on EVERY policy
+// evaluation: allow, deny, or engine error (AUTHZ-01). Mirrors the way Geo
+// emits GeoDecision unconditionally. The allow/deny ratio per route is
+// derived from these events + the aoedge_authz_* Prometheus counters.
+//
+// PII-safety: this message MUST NOT carry the raw policy input document, the
+// raw identity-claims blob, or any credential. The full input is
+// reconstructible by correlating on request_id with the IdentityValidationEvent
+// (Obj 9) + GeoDecision (Obj 8) events. Schema-lint asserts policy_input /
+// raw_input / token / secret / etc. are absent file-wide.
+type PolicyDecisionEvent struct {
+	state               protoimpl.MessageState `protogen:"open.v1"`
+	SchemaVersion       int32                  `protobuf:"varint,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	Timestamp           *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	RequestId           string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	TraceId             string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	SpanId              string                 `protobuf:"bytes,5,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
+	TenantId            string                 `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`                                   // tenant UUID resolved by hostname routing (Obj 3); credential-authoritative tenant for cross-tenant decisions
+	RouteId             string                 `protobuf:"bytes,7,opt,name=route_id,json=routeId,proto3" json:"route_id,omitempty"`                                      // chi.RouteContext.RoutePattern() at evaluation time
+	Sub                 string                 `protobuf:"bytes,8,opt,name=sub,proto3" json:"sub,omitempty"`                                                             // identity subject (account UUID from Obj 9 iap.Identity); "" for anonymous
+	Decision            string                 `protobuf:"bytes,9,opt,name=decision,proto3" json:"decision,omitempty"`                                                   // "allow" | "deny" | "error"
+	DenyReason          string                 `protobuf:"bytes,10,opt,name=deny_reason,json=denyReason,proto3" json:"deny_reason,omitempty"`                            // "wrong_tenant" | "missing_entitlement" | "outside_business_hours" | "geo_blocked" | "risk_exceeded" | "engine_error" | ""; operator-readable, never raw input
+	PolicyQuery         string                 `protobuf:"bytes,11,opt,name=policy_query,json=policyQuery,proto3" json:"policy_query,omitempty"`                         // the Rego rule path queried for this route (e.g. "data.aoedge.authz.decision")
+	BackendGroup        string                 `protobuf:"bytes,12,opt,name=backend_group,json=backendGroup,proto3" json:"backend_group,omitempty"`                      // split-horizon output (AUTHZ-04); "" when not identity-routed
+	RequiredEntitlement string                 `protobuf:"bytes,13,opt,name=required_entitlement,json=requiredEntitlement,proto3" json:"required_entitlement,omitempty"` // the entitlement the route required (AUTHZ-02); "" when none
+	RequireStepup       bool                   `protobuf:"varint,14,opt,name=require_stepup,json=requireStepup,proto3" json:"require_stepup,omitempty"`                  // policy output: higher AAL required (AUTHZ-05 step-up interplay)
+	RequiredAal         string                 `protobuf:"bytes,15,opt,name=required_aal,json=requiredAal,proto3" json:"required_aal,omitempty"`                         // "AAL2"|"AAL3" when require_stepup=true; "" otherwise
+	BundleRevision      string                 `protobuf:"bytes,16,opt,name=bundle_revision,json=bundleRevision,proto3" json:"bundle_revision,omitempty"`                // active bundle commit SHA at evaluation time (correlates to BundleReloadEvent)
+	LatencyMs           int64                  `protobuf:"varint,17,opt,name=latency_ms,json=latencyMs,proto3" json:"latency_ms,omitempty"`                              // policy eval wallclock latency (microsecond budget; reported in ms)
+	FailOpen            bool                   `protobuf:"varint,18,opt,name=fail_open,json=failOpen,proto3" json:"fail_open,omitempty"`                                 // true when decision=allow was produced by AOEDGE_AUTHZ_FAIL_OPEN on an engine error
+	ChainHash           string                 `protobuf:"bytes,19,opt,name=chain_hash,json=chainHash,proto3" json:"chain_hash,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
+}
+
+func (x *PolicyDecisionEvent) Reset() {
+	*x = PolicyDecisionEvent{}
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PolicyDecisionEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PolicyDecisionEvent) ProtoMessage() {}
+
+func (x *PolicyDecisionEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PolicyDecisionEvent.ProtoReflect.Descriptor instead.
+func (*PolicyDecisionEvent) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_audit_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *PolicyDecisionEvent) GetSchemaVersion() int32 {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return 0
+}
+
+func (x *PolicyDecisionEvent) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *PolicyDecisionEvent) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetSpanId() string {
+	if x != nil {
+		return x.SpanId
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetRouteId() string {
+	if x != nil {
+		return x.RouteId
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetSub() string {
+	if x != nil {
+		return x.Sub
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetDecision() string {
+	if x != nil {
+		return x.Decision
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetDenyReason() string {
+	if x != nil {
+		return x.DenyReason
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetPolicyQuery() string {
+	if x != nil {
+		return x.PolicyQuery
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetBackendGroup() string {
+	if x != nil {
+		return x.BackendGroup
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetRequiredEntitlement() string {
+	if x != nil {
+		return x.RequiredEntitlement
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetRequireStepup() bool {
+	if x != nil {
+		return x.RequireStepup
+	}
+	return false
+}
+
+func (x *PolicyDecisionEvent) GetRequiredAal() string {
+	if x != nil {
+		return x.RequiredAal
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetBundleRevision() string {
+	if x != nil {
+		return x.BundleRevision
+	}
+	return ""
+}
+
+func (x *PolicyDecisionEvent) GetLatencyMs() int64 {
+	if x != nil {
+		return x.LatencyMs
+	}
+	return 0
+}
+
+func (x *PolicyDecisionEvent) GetFailOpen() bool {
+	if x != nil {
+		return x.FailOpen
+	}
+	return false
+}
+
+func (x *PolicyDecisionEvent) GetChainHash() string {
+	if x != nil {
+		return x.ChainHash
+	}
+	return ""
+}
+
+// BundleReloadEvent — emitted by the signed-bundle reloader on EVERY reload
+// attempt (AUTHZ-06): a successful atomic-swap (applied), a rejected bad
+// signature, a Rego compile failure, or a Git pull failure. This is the
+// audit record of the policy-plane control loop (SC6).
+//
+// PII-safety: this message MUST NOT carry the signing private key, the
+// verification public key bytes, or the bundle file contents. Only the
+// commit_sha + signer_identity (operator string from the signature's trusted
+// comment) + bundle_digest (the hex digest that WAS verified). A compromised
+// bundle must not be able to log/assert its own trust root.
+type BundleReloadEvent struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	SchemaVersion     int32                  `protobuf:"varint,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	Timestamp         *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	RequestId         string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"` // may be "" — system event, not request-scoped
+	TraceId           string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	SpanId            string                 `protobuf:"bytes,5,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
+	TenantId          string                 `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`                              // may be "" — deployment-wide single bundle in Obj 10 (per-tenant bundles are Obj 11)
+	CommitSha         string                 `protobuf:"bytes,7,opt,name=commit_sha,json=commitSha,proto3" json:"commit_sha,omitempty"`                           // Git HEAD SHA of the pulled bundle
+	PreviousCommitSha string                 `protobuf:"bytes,8,opt,name=previous_commit_sha,json=previousCommitSha,proto3" json:"previous_commit_sha,omitempty"` // the SHA that was active before this reload (for rollback correlation)
+	SignerIdentity    string                 `protobuf:"bytes,9,opt,name=signer_identity,json=signerIdentity,proto3" json:"signer_identity,omitempty"`            // operator/key identity from the detached-signature trusted comment; never the key bytes
+	BundleDigest      string                 `protobuf:"bytes,10,opt,name=bundle_digest,json=bundleDigest,proto3" json:"bundle_digest,omitempty"`                 // hex of the deterministic bundle digest that crypto/ed25519.Verify ran against
+	Outcome           string                 `protobuf:"bytes,11,opt,name=outcome,proto3" json:"outcome,omitempty"`                                               // "applied" | "rejected_signature" | "compile_error" | "pull_failed"
+	OutcomeDetail     string                 `protobuf:"bytes,12,opt,name=outcome_detail,json=outcomeDetail,proto3" json:"outcome_detail,omitempty"`              // operator-readable detail (e.g. "rego parse error in admin.rego:14"); never raw input/key
+	RegoModuleCount   int32                  `protobuf:"varint,13,opt,name=rego_module_count,json=regoModuleCount,proto3" json:"rego_module_count,omitempty"`     // number of .rego modules compiled into the prepared query
+	ReloadLatencyMs   int64                  `protobuf:"varint,14,opt,name=reload_latency_ms,json=reloadLatencyMs,proto3" json:"reload_latency_ms,omitempty"`     // pull + verify + compile + swap wallclock
+	ChainHash         string                 `protobuf:"bytes,15,opt,name=chain_hash,json=chainHash,proto3" json:"chain_hash,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *BundleReloadEvent) Reset() {
+	*x = BundleReloadEvent{}
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BundleReloadEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BundleReloadEvent) ProtoMessage() {}
+
+func (x *BundleReloadEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BundleReloadEvent.ProtoReflect.Descriptor instead.
+func (*BundleReloadEvent) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_audit_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *BundleReloadEvent) GetSchemaVersion() int32 {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return 0
+}
+
+func (x *BundleReloadEvent) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *BundleReloadEvent) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetSpanId() string {
+	if x != nil {
+		return x.SpanId
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetCommitSha() string {
+	if x != nil {
+		return x.CommitSha
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetPreviousCommitSha() string {
+	if x != nil {
+		return x.PreviousCommitSha
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetSignerIdentity() string {
+	if x != nil {
+		return x.SignerIdentity
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetBundleDigest() string {
+	if x != nil {
+		return x.BundleDigest
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetOutcomeDetail() string {
+	if x != nil {
+		return x.OutcomeDetail
+	}
+	return ""
+}
+
+func (x *BundleReloadEvent) GetRegoModuleCount() int32 {
+	if x != nil {
+		return x.RegoModuleCount
+	}
+	return 0
+}
+
+func (x *BundleReloadEvent) GetReloadLatencyMs() int64 {
+	if x != nil {
+		return x.ReloadLatencyMs
+	}
+	return 0
+}
+
+func (x *BundleReloadEvent) GetChainHash() string {
+	if x != nil {
+		return x.ChainHash
+	}
+	return ""
+}
+
 // AuditBatch wraps a set of events with signing metadata.
 // Emitted as a single OTLP log record once per dispatcher batch; raw event
 // bytes travel as their own OTLP log records and are referenced by the
@@ -1519,7 +1883,7 @@ type AuditBatch struct {
 
 func (x *AuditBatch) Reset() {
 	*x = AuditBatch{}
-	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[10]
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1531,7 +1895,7 @@ func (x *AuditBatch) String() string {
 func (*AuditBatch) ProtoMessage() {}
 
 func (x *AuditBatch) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[10]
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1544,7 +1908,7 @@ func (x *AuditBatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditBatch.ProtoReflect.Descriptor instead.
 func (*AuditBatch) Descriptor() ([]byte, []int) {
-	return file_platform_v1_aoedge_audit_proto_rawDescGZIP(), []int{10}
+	return file_platform_v1_aoedge_audit_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AuditBatch) GetSchemaVersion() int32 {
@@ -1793,7 +2157,52 @@ const file_platform_v1_aoedge_audit_proto_rawDesc = "" +
 	"\broute_id\x18\f \x01(\tR\arouteId\x12\x10\n" +
 	"\x03sub\x18\r \x01(\tR\x03sub\x12\x1d\n" +
 	"\n" +
-	"chain_hash\x18\x0e \x01(\tR\tchainHash\"\xcf\x02\n" +
+	"chain_hash\x18\x0e \x01(\tR\tchainHash\"\x99\x05\n" +
+	"\x13PolicyDecisionEvent\x12%\n" +
+	"\x0eschema_version\x18\x01 \x01(\x05R\rschemaVersion\x128\n" +
+	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x03 \x01(\tR\trequestId\x12\x19\n" +
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12\x17\n" +
+	"\aspan_id\x18\x05 \x01(\tR\x06spanId\x12\x1b\n" +
+	"\ttenant_id\x18\x06 \x01(\tR\btenantId\x12\x19\n" +
+	"\broute_id\x18\a \x01(\tR\arouteId\x12\x10\n" +
+	"\x03sub\x18\b \x01(\tR\x03sub\x12\x1a\n" +
+	"\bdecision\x18\t \x01(\tR\bdecision\x12\x1f\n" +
+	"\vdeny_reason\x18\n" +
+	" \x01(\tR\n" +
+	"denyReason\x12!\n" +
+	"\fpolicy_query\x18\v \x01(\tR\vpolicyQuery\x12#\n" +
+	"\rbackend_group\x18\f \x01(\tR\fbackendGroup\x121\n" +
+	"\x14required_entitlement\x18\r \x01(\tR\x13requiredEntitlement\x12%\n" +
+	"\x0erequire_stepup\x18\x0e \x01(\bR\rrequireStepup\x12!\n" +
+	"\frequired_aal\x18\x0f \x01(\tR\vrequiredAal\x12'\n" +
+	"\x0fbundle_revision\x18\x10 \x01(\tR\x0ebundleRevision\x12\x1d\n" +
+	"\n" +
+	"latency_ms\x18\x11 \x01(\x03R\tlatencyMs\x12\x1b\n" +
+	"\tfail_open\x18\x12 \x01(\bR\bfailOpen\x12\x1d\n" +
+	"\n" +
+	"chain_hash\x18\x13 \x01(\tR\tchainHash\"\xb9\x04\n" +
+	"\x11BundleReloadEvent\x12%\n" +
+	"\x0eschema_version\x18\x01 \x01(\x05R\rschemaVersion\x128\n" +
+	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x03 \x01(\tR\trequestId\x12\x19\n" +
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12\x17\n" +
+	"\aspan_id\x18\x05 \x01(\tR\x06spanId\x12\x1b\n" +
+	"\ttenant_id\x18\x06 \x01(\tR\btenantId\x12\x1d\n" +
+	"\n" +
+	"commit_sha\x18\a \x01(\tR\tcommitSha\x12.\n" +
+	"\x13previous_commit_sha\x18\b \x01(\tR\x11previousCommitSha\x12'\n" +
+	"\x0fsigner_identity\x18\t \x01(\tR\x0esignerIdentity\x12#\n" +
+	"\rbundle_digest\x18\n" +
+	" \x01(\tR\fbundleDigest\x12\x18\n" +
+	"\aoutcome\x18\v \x01(\tR\aoutcome\x12%\n" +
+	"\x0eoutcome_detail\x18\f \x01(\tR\routcomeDetail\x12*\n" +
+	"\x11rego_module_count\x18\r \x01(\x05R\x0fregoModuleCount\x12*\n" +
+	"\x11reload_latency_ms\x18\x0e \x01(\x03R\x0freloadLatencyMs\x12\x1d\n" +
+	"\n" +
+	"chain_hash\x18\x0f \x01(\tR\tchainHash\"\xcf\x02\n" +
 	"\n" +
 	"AuditBatch\x12%\n" +
 	"\x0eschema_version\x18\x01 \x01(\x05R\rschemaVersion\x128\n" +
@@ -1820,7 +2229,7 @@ func file_platform_v1_aoedge_audit_proto_rawDescGZIP() []byte {
 	return file_platform_v1_aoedge_audit_proto_rawDescData
 }
 
-var file_platform_v1_aoedge_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_platform_v1_aoedge_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_platform_v1_aoedge_audit_proto_goTypes = []any{
 	(*ConnectionLog)(nil),           // 0: platform.v1.ConnectionLog
 	(*WAFEvent)(nil),                // 1: platform.v1.WAFEvent
@@ -1832,26 +2241,30 @@ var file_platform_v1_aoedge_audit_proto_goTypes = []any{
 	(*IdentityValidationEvent)(nil), // 7: platform.v1.IdentityValidationEvent
 	(*IdentityMintEvent)(nil),       // 8: platform.v1.IdentityMintEvent
 	(*StepUpChallengeEvent)(nil),    // 9: platform.v1.StepUpChallengeEvent
-	(*AuditBatch)(nil),              // 10: platform.v1.AuditBatch
-	(*timestamppb.Timestamp)(nil),   // 11: google.protobuf.Timestamp
+	(*PolicyDecisionEvent)(nil),     // 10: platform.v1.PolicyDecisionEvent
+	(*BundleReloadEvent)(nil),       // 11: platform.v1.BundleReloadEvent
+	(*AuditBatch)(nil),              // 12: platform.v1.AuditBatch
+	(*timestamppb.Timestamp)(nil),   // 13: google.protobuf.Timestamp
 }
 var file_platform_v1_aoedge_audit_proto_depIdxs = []int32{
-	11, // 0: platform.v1.ConnectionLog.timestamp:type_name -> google.protobuf.Timestamp
-	11, // 1: platform.v1.WAFEvent.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 0: platform.v1.ConnectionLog.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 1: platform.v1.WAFEvent.timestamp:type_name -> google.protobuf.Timestamp
 	2,  // 2: platform.v1.WAFEvent.matched_rules:type_name -> platform.v1.MatchedRuleEntry
-	11, // 3: platform.v1.DDoSEvent.timestamp:type_name -> google.protobuf.Timestamp
-	11, // 4: platform.v1.GeoDecision.timestamp:type_name -> google.protobuf.Timestamp
-	11, // 5: platform.v1.DLPFinding.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 3: platform.v1.DDoSEvent.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 4: platform.v1.GeoDecision.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 5: platform.v1.DLPFinding.timestamp:type_name -> google.protobuf.Timestamp
 	6,  // 6: platform.v1.DLPFinding.matches:type_name -> platform.v1.DLPMatch
-	11, // 7: platform.v1.IdentityValidationEvent.timestamp:type_name -> google.protobuf.Timestamp
-	11, // 8: platform.v1.IdentityMintEvent.timestamp:type_name -> google.protobuf.Timestamp
-	11, // 9: platform.v1.StepUpChallengeEvent.timestamp:type_name -> google.protobuf.Timestamp
-	11, // 10: platform.v1.AuditBatch.timestamp:type_name -> google.protobuf.Timestamp
-	11, // [11:11] is the sub-list for method output_type
-	11, // [11:11] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	13, // 7: platform.v1.IdentityValidationEvent.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 8: platform.v1.IdentityMintEvent.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 9: platform.v1.StepUpChallengeEvent.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 10: platform.v1.PolicyDecisionEvent.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 11: platform.v1.BundleReloadEvent.timestamp:type_name -> google.protobuf.Timestamp
+	13, // 12: platform.v1.AuditBatch.timestamp:type_name -> google.protobuf.Timestamp
+	13, // [13:13] is the sub-list for method output_type
+	13, // [13:13] is the sub-list for method input_type
+	13, // [13:13] is the sub-list for extension type_name
+	13, // [13:13] is the sub-list for extension extendee
+	0,  // [0:13] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_aoedge_audit_proto_init() }
@@ -1865,7 +2278,7 @@ func file_platform_v1_aoedge_audit_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_aoedge_audit_proto_rawDesc), len(file_platform_v1_aoedge_audit_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
