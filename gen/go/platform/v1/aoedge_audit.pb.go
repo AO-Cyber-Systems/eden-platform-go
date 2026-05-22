@@ -981,10 +981,527 @@ func (x *DLPMatch) GetLength() int64 {
 	return 0
 }
 
+// IdentityValidationEvent — emitted by the AOEdge IAP middleware on every
+// credential validation: JWT (IAP-01), opaque token via RFC 7662
+// introspection (IAP-02), API key (IAP-03), or anonymous-route admission
+// (IAP-07). BOTH accept and reject paths emit one event.
+//
+// PII-safety: this message MUST NOT carry the raw credential bytes. Only
+// `tok_ref` (first-8-byte SHA-256 hex of the raw credential, 16 chars) is
+// included — same pattern as the AOID identity-context tok_ref. The
+// schema-lint test in aoedge_audit_lint_test.go asserts the forbidden
+// field names raw_token | raw_key | password | plaintext | authorization
+// and bare token | secret are absent file-wide.
+type IdentityValidationEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SchemaVersion int32                  `protobuf:"varint,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	Timestamp     *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	RequestId     string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	TraceId       string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	SpanId        string                 `protobuf:"bytes,5,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
+	CredType      string                 `protobuf:"bytes,6,opt,name=cred_type,json=credType,proto3" json:"cred_type,omitempty"`                // "jwt" | "opaque" | "api_key" | "anonymous"
+	TokRef        string                 `protobuf:"bytes,7,opt,name=tok_ref,json=tokRef,proto3" json:"tok_ref,omitempty"`                      // hex(sha256(raw_credential))[:8] => 16 chars; "" for anonymous
+	Outcome       string                 `protobuf:"bytes,8,opt,name=outcome,proto3" json:"outcome,omitempty"`                                  // "accepted" | "rejected_invalid" | "rejected_expired" | "rejected_wrong_audience" | "rejected_wrong_issuer" | "rejected_aoid_unreachable" | "rejected_inactive"
+	OutcomeReason string                 `protobuf:"bytes,9,opt,name=outcome_reason,json=outcomeReason,proto3" json:"outcome_reason,omitempty"` // operator-readable detail; never includes credential bytes
+	Iss           string                 `protobuf:"bytes,10,opt,name=iss,proto3" json:"iss,omitempty"`                                         // expected issuer (configured AOID URL); "" when cred_type=api_key/anonymous
+	Sub           string                 `protobuf:"bytes,11,opt,name=sub,proto3" json:"sub,omitempty"`                                         // accepted: AOID account UUID; rejected: ""
+	TenantId      string                 `protobuf:"bytes,12,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`               // tenant UUID resolved by hostname routing (Obj 3); always populated for non-anonymous
+	Aal           string                 `protobuf:"bytes,13,opt,name=aal,proto3" json:"aal,omitempty"`                                         // resolved AAL ("AAL1"/"AAL2"/"AAL3"); "" on reject
+	LatencyMs     int64                  `protobuf:"varint,14,opt,name=latency_ms,json=latencyMs,proto3" json:"latency_ms,omitempty"`           // wallclock validation latency incl. any AOID round-trip
+	CacheHit      bool                   `protobuf:"varint,15,opt,name=cache_hit,json=cacheHit,proto3" json:"cache_hit,omitempty"`              // true when validation served from in-process introspection/API-key cache
+	RouteId       string                 `protobuf:"bytes,16,opt,name=route_id,json=routeId,proto3" json:"route_id,omitempty"`                  // chi.RouteContext.RoutePattern() at validation time
+	ChainHash     string                 `protobuf:"bytes,17,opt,name=chain_hash,json=chainHash,proto3" json:"chain_hash,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IdentityValidationEvent) Reset() {
+	*x = IdentityValidationEvent{}
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IdentityValidationEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IdentityValidationEvent) ProtoMessage() {}
+
+func (x *IdentityValidationEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IdentityValidationEvent.ProtoReflect.Descriptor instead.
+func (*IdentityValidationEvent) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_audit_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *IdentityValidationEvent) GetSchemaVersion() int32 {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return 0
+}
+
+func (x *IdentityValidationEvent) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *IdentityValidationEvent) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetSpanId() string {
+	if x != nil {
+		return x.SpanId
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetCredType() string {
+	if x != nil {
+		return x.CredType
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetTokRef() string {
+	if x != nil {
+		return x.TokRef
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetOutcome() string {
+	if x != nil {
+		return x.Outcome
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetOutcomeReason() string {
+	if x != nil {
+		return x.OutcomeReason
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetIss() string {
+	if x != nil {
+		return x.Iss
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetSub() string {
+	if x != nil {
+		return x.Sub
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetAal() string {
+	if x != nil {
+		return x.Aal
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetLatencyMs() int64 {
+	if x != nil {
+		return x.LatencyMs
+	}
+	return 0
+}
+
+func (x *IdentityValidationEvent) GetCacheHit() bool {
+	if x != nil {
+		return x.CacheHit
+	}
+	return false
+}
+
+func (x *IdentityValidationEvent) GetRouteId() string {
+	if x != nil {
+		return x.RouteId
+	}
+	return ""
+}
+
+func (x *IdentityValidationEvent) GetChainHash() string {
+	if x != nil {
+		return x.ChainHash
+	}
+	return ""
+}
+
+// IdentityMintEvent — emitted by the AOEdge IAP middleware on every
+// successful X-AOEdge-Identity-Context JWT mint (IAP-04). One event per
+// request that crosses to upstream with a freshly-signed identity context.
+//
+// PII-safety: the signed JWT itself is NOT included — it travels in the
+// X-AOEdge-Identity-Context request header. The audit stream logs only
+// metadata (sub, tnt, aal, kid, tok_ref, entitlements_count). The
+// schema-lint test forbids signed_jwt | jwt | id_token | access_token
+// field names on this message.
+type IdentityMintEvent struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	SchemaVersion     int32                  `protobuf:"varint,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	Timestamp         *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	RequestId         string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	TraceId           string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	SpanId            string                 `protobuf:"bytes,5,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
+	Kid               string                 `protobuf:"bytes,6,opt,name=kid,proto3" json:"kid,omitempty"` // AOEdge active signing key id
+	Sub               string                 `protobuf:"bytes,7,opt,name=sub,proto3" json:"sub,omitempty"` // AOID account UUID from validated credential
+	Tnt               string                 `protobuf:"bytes,8,opt,name=tnt,proto3" json:"tnt,omitempty"` // tenant SLUG (NOT UUID — see Obj 9 RESEARCH §6 pitfall)
+	Aal               string                 `protobuf:"bytes,9,opt,name=aal,proto3" json:"aal,omitempty"`
+	TokRef            string                 `protobuf:"bytes,10,opt,name=tok_ref,json=tokRef,proto3" json:"tok_ref,omitempty"`                                   // bound to validated credential (16 chars hex)
+	EntitlementsCount int32                  `protobuf:"varint,11,opt,name=entitlements_count,json=entitlementsCount,proto3" json:"entitlements_count,omitempty"` // count only — entitlement strings not logged for size
+	TtlSeconds        int64                  `protobuf:"varint,12,opt,name=ttl_seconds,json=ttlSeconds,proto3" json:"ttl_seconds,omitempty"`                      // identity-context exp - iat at mint time
+	Alg               string                 `protobuf:"bytes,13,opt,name=alg,proto3" json:"alg,omitempty"`                                                       // "ES256" | "RS256"
+	TenantId          string                 `protobuf:"bytes,14,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`                             // tenant UUID (resolved from tnt slug); for audit-stream filtering
+	RouteId           string                 `protobuf:"bytes,15,opt,name=route_id,json=routeId,proto3" json:"route_id,omitempty"`
+	ChainHash         string                 `protobuf:"bytes,16,opt,name=chain_hash,json=chainHash,proto3" json:"chain_hash,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *IdentityMintEvent) Reset() {
+	*x = IdentityMintEvent{}
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IdentityMintEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IdentityMintEvent) ProtoMessage() {}
+
+func (x *IdentityMintEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IdentityMintEvent.ProtoReflect.Descriptor instead.
+func (*IdentityMintEvent) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_audit_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *IdentityMintEvent) GetSchemaVersion() int32 {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return 0
+}
+
+func (x *IdentityMintEvent) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *IdentityMintEvent) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetSpanId() string {
+	if x != nil {
+		return x.SpanId
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetKid() string {
+	if x != nil {
+		return x.Kid
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetSub() string {
+	if x != nil {
+		return x.Sub
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetTnt() string {
+	if x != nil {
+		return x.Tnt
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetAal() string {
+	if x != nil {
+		return x.Aal
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetTokRef() string {
+	if x != nil {
+		return x.TokRef
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetEntitlementsCount() int32 {
+	if x != nil {
+		return x.EntitlementsCount
+	}
+	return 0
+}
+
+func (x *IdentityMintEvent) GetTtlSeconds() int64 {
+	if x != nil {
+		return x.TtlSeconds
+	}
+	return 0
+}
+
+func (x *IdentityMintEvent) GetAlg() string {
+	if x != nil {
+		return x.Alg
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetRouteId() string {
+	if x != nil {
+		return x.RouteId
+	}
+	return ""
+}
+
+func (x *IdentityMintEvent) GetChainHash() string {
+	if x != nil {
+		return x.ChainHash
+	}
+	return ""
+}
+
+// StepUpChallengeEvent — emitted by the AOEdge IAP middleware when per-route
+// policy requires a higher AAL than the validated credential carries
+// (IAP-06). The middleware issues either a browser 302 to AOID
+// /authorize?acr_values=... or a non-browser 403 with RFC 9470
+// WWW-Authenticate: Bearer error="insufficient_user_authentication".
+//
+// PII-safety: redirect_uri_host carries only scheme+host+path of the AOID
+// authorize endpoint — query parameters (state, nonce, redirect_uri) are
+// NOT logged. The schema-lint test forbids the bare `redirect_uri` field.
+type StepUpChallengeEvent struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	SchemaVersion   int32                  `protobuf:"varint,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
+	Timestamp       *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	RequestId       string                 `protobuf:"bytes,3,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	TraceId         string                 `protobuf:"bytes,4,opt,name=trace_id,json=traceId,proto3" json:"trace_id,omitempty"`
+	SpanId          string                 `protobuf:"bytes,5,opt,name=span_id,json=spanId,proto3" json:"span_id,omitempty"`
+	RequiredAal     string                 `protobuf:"bytes,6,opt,name=required_aal,json=requiredAal,proto3" json:"required_aal,omitempty"`               // "AAL2" | "AAL3"
+	CurrentAal      string                 `protobuf:"bytes,7,opt,name=current_aal,json=currentAal,proto3" json:"current_aal,omitempty"`                  // AAL from validated credential ("AAL1" typical)
+	Channel         string                 `protobuf:"bytes,8,opt,name=channel,proto3" json:"channel,omitempty"`                                          // "browser" (302) | "api" (403)
+	RedirectUriHost string                 `protobuf:"bytes,9,opt,name=redirect_uri_host,json=redirectUriHost,proto3" json:"redirect_uri_host,omitempty"` // scheme://host/path of AOID /authorize; NO query string
+	StatusCode      int32                  `protobuf:"varint,10,opt,name=status_code,json=statusCode,proto3" json:"status_code,omitempty"`                // 302 | 403
+	TenantId        string                 `protobuf:"bytes,11,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	RouteId         string                 `protobuf:"bytes,12,opt,name=route_id,json=routeId,proto3" json:"route_id,omitempty"`
+	Sub             string                 `protobuf:"bytes,13,opt,name=sub,proto3" json:"sub,omitempty"` // current account UUID (already authenticated at lower AAL)
+	ChainHash       string                 `protobuf:"bytes,14,opt,name=chain_hash,json=chainHash,proto3" json:"chain_hash,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *StepUpChallengeEvent) Reset() {
+	*x = StepUpChallengeEvent{}
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StepUpChallengeEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StepUpChallengeEvent) ProtoMessage() {}
+
+func (x *StepUpChallengeEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StepUpChallengeEvent.ProtoReflect.Descriptor instead.
+func (*StepUpChallengeEvent) Descriptor() ([]byte, []int) {
+	return file_platform_v1_aoedge_audit_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *StepUpChallengeEvent) GetSchemaVersion() int32 {
+	if x != nil {
+		return x.SchemaVersion
+	}
+	return 0
+}
+
+func (x *StepUpChallengeEvent) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *StepUpChallengeEvent) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetTraceId() string {
+	if x != nil {
+		return x.TraceId
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetSpanId() string {
+	if x != nil {
+		return x.SpanId
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetRequiredAal() string {
+	if x != nil {
+		return x.RequiredAal
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetCurrentAal() string {
+	if x != nil {
+		return x.CurrentAal
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetChannel() string {
+	if x != nil {
+		return x.Channel
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetRedirectUriHost() string {
+	if x != nil {
+		return x.RedirectUriHost
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetStatusCode() int32 {
+	if x != nil {
+		return x.StatusCode
+	}
+	return 0
+}
+
+func (x *StepUpChallengeEvent) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetRouteId() string {
+	if x != nil {
+		return x.RouteId
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetSub() string {
+	if x != nil {
+		return x.Sub
+	}
+	return ""
+}
+
+func (x *StepUpChallengeEvent) GetChainHash() string {
+	if x != nil {
+		return x.ChainHash
+	}
+	return ""
+}
+
 // AuditBatch wraps a set of events with signing metadata.
 // Emitted as a single OTLP log record once per dispatcher batch; raw event
 // bytes travel as their own OTLP log records and are referenced by the
 // merkle_root signature.
+//
+// NOTE: AuditBatch.event_count is int32; bumping to int64 is deferred to
+// Obj 11 (operational-posture objective). A 2^31 event-count batch is far
+// beyond v1 dispatch sizing.
 type AuditBatch struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	SchemaVersion int32                  `protobuf:"varint,1,opt,name=schema_version,json=schemaVersion,proto3" json:"schema_version,omitempty"`
@@ -1002,7 +1519,7 @@ type AuditBatch struct {
 
 func (x *AuditBatch) Reset() {
 	*x = AuditBatch{}
-	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[7]
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1014,7 +1531,7 @@ func (x *AuditBatch) String() string {
 func (*AuditBatch) ProtoMessage() {}
 
 func (x *AuditBatch) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[7]
+	mi := &file_platform_v1_aoedge_audit_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1027,7 +1544,7 @@ func (x *AuditBatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AuditBatch.ProtoReflect.Descriptor instead.
 func (*AuditBatch) Descriptor() ([]byte, []int) {
-	return file_platform_v1_aoedge_audit_proto_rawDescGZIP(), []int{7}
+	return file_platform_v1_aoedge_audit_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AuditBatch) GetSchemaVersion() int32 {
@@ -1213,7 +1730,70 @@ const file_platform_v1_aoedge_audit_proto_rawDesc = "" +
 	"pattern_id\x18\x01 \x01(\tR\tpatternId\x12!\n" +
 	"\fpattern_name\x18\x02 \x01(\tR\vpatternName\x12\x16\n" +
 	"\x06offset\x18\x03 \x01(\x03R\x06offset\x12\x16\n" +
-	"\x06length\x18\x04 \x01(\x03R\x06length\"\xcf\x02\n" +
+	"\x06length\x18\x04 \x01(\x03R\x06length\"\x8d\x04\n" +
+	"\x17IdentityValidationEvent\x12%\n" +
+	"\x0eschema_version\x18\x01 \x01(\x05R\rschemaVersion\x128\n" +
+	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x03 \x01(\tR\trequestId\x12\x19\n" +
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12\x17\n" +
+	"\aspan_id\x18\x05 \x01(\tR\x06spanId\x12\x1b\n" +
+	"\tcred_type\x18\x06 \x01(\tR\bcredType\x12\x17\n" +
+	"\atok_ref\x18\a \x01(\tR\x06tokRef\x12\x18\n" +
+	"\aoutcome\x18\b \x01(\tR\aoutcome\x12%\n" +
+	"\x0eoutcome_reason\x18\t \x01(\tR\routcomeReason\x12\x10\n" +
+	"\x03iss\x18\n" +
+	" \x01(\tR\x03iss\x12\x10\n" +
+	"\x03sub\x18\v \x01(\tR\x03sub\x12\x1b\n" +
+	"\ttenant_id\x18\f \x01(\tR\btenantId\x12\x10\n" +
+	"\x03aal\x18\r \x01(\tR\x03aal\x12\x1d\n" +
+	"\n" +
+	"latency_ms\x18\x0e \x01(\x03R\tlatencyMs\x12\x1b\n" +
+	"\tcache_hit\x18\x0f \x01(\bR\bcacheHit\x12\x19\n" +
+	"\broute_id\x18\x10 \x01(\tR\arouteId\x12\x1d\n" +
+	"\n" +
+	"chain_hash\x18\x11 \x01(\tR\tchainHash\"\xe1\x03\n" +
+	"\x11IdentityMintEvent\x12%\n" +
+	"\x0eschema_version\x18\x01 \x01(\x05R\rschemaVersion\x128\n" +
+	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x03 \x01(\tR\trequestId\x12\x19\n" +
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12\x17\n" +
+	"\aspan_id\x18\x05 \x01(\tR\x06spanId\x12\x10\n" +
+	"\x03kid\x18\x06 \x01(\tR\x03kid\x12\x10\n" +
+	"\x03sub\x18\a \x01(\tR\x03sub\x12\x10\n" +
+	"\x03tnt\x18\b \x01(\tR\x03tnt\x12\x10\n" +
+	"\x03aal\x18\t \x01(\tR\x03aal\x12\x17\n" +
+	"\atok_ref\x18\n" +
+	" \x01(\tR\x06tokRef\x12-\n" +
+	"\x12entitlements_count\x18\v \x01(\x05R\x11entitlementsCount\x12\x1f\n" +
+	"\vttl_seconds\x18\f \x01(\x03R\n" +
+	"ttlSeconds\x12\x10\n" +
+	"\x03alg\x18\r \x01(\tR\x03alg\x12\x1b\n" +
+	"\ttenant_id\x18\x0e \x01(\tR\btenantId\x12\x19\n" +
+	"\broute_id\x18\x0f \x01(\tR\arouteId\x12\x1d\n" +
+	"\n" +
+	"chain_hash\x18\x10 \x01(\tR\tchainHash\"\xde\x03\n" +
+	"\x14StepUpChallengeEvent\x12%\n" +
+	"\x0eschema_version\x18\x01 \x01(\x05R\rschemaVersion\x128\n" +
+	"\ttimestamp\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x03 \x01(\tR\trequestId\x12\x19\n" +
+	"\btrace_id\x18\x04 \x01(\tR\atraceId\x12\x17\n" +
+	"\aspan_id\x18\x05 \x01(\tR\x06spanId\x12!\n" +
+	"\frequired_aal\x18\x06 \x01(\tR\vrequiredAal\x12\x1f\n" +
+	"\vcurrent_aal\x18\a \x01(\tR\n" +
+	"currentAal\x12\x18\n" +
+	"\achannel\x18\b \x01(\tR\achannel\x12*\n" +
+	"\x11redirect_uri_host\x18\t \x01(\tR\x0fredirectUriHost\x12\x1f\n" +
+	"\vstatus_code\x18\n" +
+	" \x01(\x05R\n" +
+	"statusCode\x12\x1b\n" +
+	"\ttenant_id\x18\v \x01(\tR\btenantId\x12\x19\n" +
+	"\broute_id\x18\f \x01(\tR\arouteId\x12\x10\n" +
+	"\x03sub\x18\r \x01(\tR\x03sub\x12\x1d\n" +
+	"\n" +
+	"chain_hash\x18\x0e \x01(\tR\tchainHash\"\xcf\x02\n" +
 	"\n" +
 	"AuditBatch\x12%\n" +
 	"\x0eschema_version\x18\x01 \x01(\x05R\rschemaVersion\x128\n" +
@@ -1240,32 +1820,38 @@ func file_platform_v1_aoedge_audit_proto_rawDescGZIP() []byte {
 	return file_platform_v1_aoedge_audit_proto_rawDescData
 }
 
-var file_platform_v1_aoedge_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_platform_v1_aoedge_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_platform_v1_aoedge_audit_proto_goTypes = []any{
-	(*ConnectionLog)(nil),         // 0: platform.v1.ConnectionLog
-	(*WAFEvent)(nil),              // 1: platform.v1.WAFEvent
-	(*MatchedRuleEntry)(nil),      // 2: platform.v1.MatchedRuleEntry
-	(*DDoSEvent)(nil),             // 3: platform.v1.DDoSEvent
-	(*GeoDecision)(nil),           // 4: platform.v1.GeoDecision
-	(*DLPFinding)(nil),            // 5: platform.v1.DLPFinding
-	(*DLPMatch)(nil),              // 6: platform.v1.DLPMatch
-	(*AuditBatch)(nil),            // 7: platform.v1.AuditBatch
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	(*ConnectionLog)(nil),           // 0: platform.v1.ConnectionLog
+	(*WAFEvent)(nil),                // 1: platform.v1.WAFEvent
+	(*MatchedRuleEntry)(nil),        // 2: platform.v1.MatchedRuleEntry
+	(*DDoSEvent)(nil),               // 3: platform.v1.DDoSEvent
+	(*GeoDecision)(nil),             // 4: platform.v1.GeoDecision
+	(*DLPFinding)(nil),              // 5: platform.v1.DLPFinding
+	(*DLPMatch)(nil),                // 6: platform.v1.DLPMatch
+	(*IdentityValidationEvent)(nil), // 7: platform.v1.IdentityValidationEvent
+	(*IdentityMintEvent)(nil),       // 8: platform.v1.IdentityMintEvent
+	(*StepUpChallengeEvent)(nil),    // 9: platform.v1.StepUpChallengeEvent
+	(*AuditBatch)(nil),              // 10: platform.v1.AuditBatch
+	(*timestamppb.Timestamp)(nil),   // 11: google.protobuf.Timestamp
 }
 var file_platform_v1_aoedge_audit_proto_depIdxs = []int32{
-	8, // 0: platform.v1.ConnectionLog.timestamp:type_name -> google.protobuf.Timestamp
-	8, // 1: platform.v1.WAFEvent.timestamp:type_name -> google.protobuf.Timestamp
-	2, // 2: platform.v1.WAFEvent.matched_rules:type_name -> platform.v1.MatchedRuleEntry
-	8, // 3: platform.v1.DDoSEvent.timestamp:type_name -> google.protobuf.Timestamp
-	8, // 4: platform.v1.GeoDecision.timestamp:type_name -> google.protobuf.Timestamp
-	8, // 5: platform.v1.DLPFinding.timestamp:type_name -> google.protobuf.Timestamp
-	6, // 6: platform.v1.DLPFinding.matches:type_name -> platform.v1.DLPMatch
-	8, // 7: platform.v1.AuditBatch.timestamp:type_name -> google.protobuf.Timestamp
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	11, // 0: platform.v1.ConnectionLog.timestamp:type_name -> google.protobuf.Timestamp
+	11, // 1: platform.v1.WAFEvent.timestamp:type_name -> google.protobuf.Timestamp
+	2,  // 2: platform.v1.WAFEvent.matched_rules:type_name -> platform.v1.MatchedRuleEntry
+	11, // 3: platform.v1.DDoSEvent.timestamp:type_name -> google.protobuf.Timestamp
+	11, // 4: platform.v1.GeoDecision.timestamp:type_name -> google.protobuf.Timestamp
+	11, // 5: platform.v1.DLPFinding.timestamp:type_name -> google.protobuf.Timestamp
+	6,  // 6: platform.v1.DLPFinding.matches:type_name -> platform.v1.DLPMatch
+	11, // 7: platform.v1.IdentityValidationEvent.timestamp:type_name -> google.protobuf.Timestamp
+	11, // 8: platform.v1.IdentityMintEvent.timestamp:type_name -> google.protobuf.Timestamp
+	11, // 9: platform.v1.StepUpChallengeEvent.timestamp:type_name -> google.protobuf.Timestamp
+	11, // 10: platform.v1.AuditBatch.timestamp:type_name -> google.protobuf.Timestamp
+	11, // [11:11] is the sub-list for method output_type
+	11, // [11:11] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_aoedge_audit_proto_init() }
@@ -1279,7 +1865,7 @@ func file_platform_v1_aoedge_audit_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_aoedge_audit_proto_rawDesc), len(file_platform_v1_aoedge_audit_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
