@@ -15,8 +15,10 @@ const protoPath = "aoedge_audit.proto"
 // chain_hash, no correlation triple, no tenant_id).
 //
 // Wave 1 (Obj 8 TRD 08-01) shipped the first 5 events. Wave 2 (Obj 9
-// TRD 09-01) appended the 3 Identity-event messages. Schema-lint walks
-// THIS list uniformly so all invariants apply to every event type.
+// TRD 09-01) appended the 3 Identity-event messages. Wave 3 (Obj 10
+// TRD 10-01) appended the 2 boundary-authorization event messages.
+// Schema-lint walks THIS list uniformly so all invariants apply to every
+// event type.
 var allEventMessages = []string{
 	"ConnectionLog",
 	"WAFEvent",
@@ -26,6 +28,8 @@ var allEventMessages = []string{
 	"IdentityValidationEvent",
 	"IdentityMintEvent",
 	"StepUpChallengeEvent",
+	"PolicyDecisionEvent",
+	"BundleReloadEvent",
 }
 
 func readProto(t *testing.T) string {
@@ -184,13 +188,18 @@ func TestAoedgeAuditSchema_TenantIsolation_AllEventsCarryTenantId(t *testing.T) 
 
 // TestAoedgeAuditSchema_NoForbiddenCredentialOrPIIFields asserts the proto
 // contains NO field whose name matches the credential-payload or PII
-// forbidden list — extended in TRD 09-01 to cover raw credential names.
+// forbidden list — extended in TRD 09-01 to cover raw credential names,
+// extended in TRD 10-01 to cover policy/secret payload names.
 //
 // Forbidden field names:
 //   - matched_value, matched_bytes, snippet (Obj 8 PII for DLP)
 //   - raw_token, raw_key, token, password, secret, plaintext, authorization
 //     (Obj 9 credential payloads — IdentityValidationEvent must carry only
 //     tok_ref, never the raw credential).
+//   - policy_input, raw_input (Obj 10 policy payloads — PolicyDecisionEvent
+//     must NOT carry the raw policy input document or identity-claims blob).
+//   - private_key, signing_key, signature_bytes (Obj 10 key material —
+//     BundleReloadEvent must NOT carry bundle signing keys or raw signatures).
 //
 // The lint walks all event-message bodies AND checks bare field declarations
 // at file scope; the test is intentionally strict — any reintroduction of
@@ -210,6 +219,14 @@ func TestAoedgeAuditSchema_NoForbiddenCredentialOrPIIFields(t *testing.T) {
 		"password",
 		"plaintext",
 		"authorization",
+		// Obj 10 policy/secret payload names — PolicyDecisionEvent must NOT carry the
+		// raw policy input document or identity-claims blob; BundleReloadEvent must
+		// NOT carry signing key material.
+		"policy_input",
+		"raw_input",
+		"private_key",
+		"signing_key",
+		"signature_bytes",
 	}
 	// Substring scan over the full source — catches both message-body fields
 	// AND comment text using the forbidden name as a field name. Comments
@@ -332,5 +349,90 @@ func TestAoedgeAuditSchema_StepUpChallengeEvent_RequiredFields(t *testing.T) {
 	// Only the base host+path form is permitted.
 	if regexp.MustCompile(`\bstring\s+redirect_uri\s*=\s*\d+\b`).MatchString(body) {
 		t.Errorf("StepUpChallengeEvent must NOT contain bare `redirect_uri` — only redirect_uri_host (base, no query string) is permitted")
+	}
+}
+
+// TestAoedgeAuditSchema_PolicyDecisionEvent_RequiredFields asserts the
+// Wave-1 Obj-10 boundary-authorization contract (AUTHZ-01): the authz
+// middleware emits this event on EVERY policy evaluation (allow/deny/error).
+// The event carries the decision metadata needed for tenant-isolated allow/deny
+// ratio analytics, but MUST NOT carry the raw policy input document or
+// any identity-claims blob.
+func TestAoedgeAuditSchema_PolicyDecisionEvent_RequiredFields(t *testing.T) {
+	src := readProto(t)
+	body := messageBody(src, "PolicyDecisionEvent")
+	if body == "" {
+		t.Fatalf("message PolicyDecisionEvent not found in %s", protoPath)
+	}
+	required := []struct {
+		name string
+		kind string
+	}{
+		{"decision", "string"},
+		{"deny_reason", "string"},
+		{"policy_query", "string"},
+		{"backend_group", "string"},
+		{"required_entitlement", "string"},
+		{"sub", "string"},
+		{"route_id", "string"},
+		{"bundle_revision", "string"},
+		{"latency_ms", "int64"},
+		{"require_stepup", "bool"},
+	}
+	for _, f := range required {
+		re := regexp.MustCompile(`\b` + f.kind + `\s+` + f.name + `\s*=\s*\d+\b`)
+		if !re.MatchString(body) {
+			t.Errorf("PolicyDecisionEvent is missing required `%s %s = N` field", f.kind, f.name)
+		}
+	}
+	// HARD INVARIANT: raw policy input MUST NOT be present. A PolicyDecisionEvent
+	// carries only scalar metadata — the raw input document is reconstructible
+	// by correlating on request_id with IdentityValidationEvent + GeoDecision.
+	forbidden := []string{"policy_input", "raw_input"}
+	for _, name := range forbidden {
+		re := regexp.MustCompile(`\b(?:string|bytes)\s+` + name + `\s*=\s*\d+\b`)
+		if re.MatchString(body) {
+			t.Errorf("PolicyDecisionEvent must NOT contain field %q — raw policy input must never be stored in the audit stream (use request_id correlation)", name)
+		}
+	}
+}
+
+// TestAoedgeAuditSchema_BundleReloadEvent_RequiredFields asserts the
+// Wave-1 Obj-10 signed-bundle-reloader contract (AUTHZ-06): the bundle
+// reloader emits this event on EVERY reload attempt (applied, signature
+// rejection, compile error, or pull failure). The event MUST NOT carry
+// signing key material — a compromised bundle must not be able to assert
+// its own trust root via the audit stream.
+func TestAoedgeAuditSchema_BundleReloadEvent_RequiredFields(t *testing.T) {
+	src := readProto(t)
+	body := messageBody(src, "BundleReloadEvent")
+	if body == "" {
+		t.Fatalf("message BundleReloadEvent not found in %s", protoPath)
+	}
+	required := []struct {
+		name string
+		kind string
+	}{
+		{"commit_sha", "string"},
+		{"signer_identity", "string"},
+		{"bundle_digest", "string"},
+		{"outcome", "string"},
+		{"rego_module_count", "int32"},
+		{"previous_commit_sha", "string"},
+	}
+	for _, f := range required {
+		re := regexp.MustCompile(`\b` + f.kind + `\s+` + f.name + `\s*=\s*\d+\b`)
+		if !re.MatchString(body) {
+			t.Errorf("BundleReloadEvent is missing required `%s %s = N` field", f.kind, f.name)
+		}
+	}
+	// HARD INVARIANT: signing key material MUST NOT be present. A compromised
+	// bundle must not be able to log/assert its own trust root.
+	forbidden := []string{"private_key", "signing_key", "signature_bytes"}
+	for _, name := range forbidden {
+		re := regexp.MustCompile(`\b(?:string|bytes)\s+` + name + `\s*=\s*\d+\b`)
+		if re.MatchString(body) {
+			t.Errorf("BundleReloadEvent must NOT contain field %q — signing key material must never appear in the audit stream", name)
+		}
 	}
 }
