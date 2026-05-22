@@ -8,7 +8,7 @@ option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/
 
 // AOEdge boundary-protection audit event types (SC-7 evidence).
 //
-// Eight event messages are emitted by AOEdge's data-plane middleware:
+// Ten event messages are emitted by AOEdge's data-plane middleware:
 //   - ConnectionLog:           once per request (allowed or blocked).
 //   - WAFEvent:                on every WAF rule trigger.
 //   - DDoSEvent:               on every rate-limit / slow-loris rejection.
@@ -17,6 +17,8 @@ option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/
 //   - IdentityValidationEvent: every credential validation (accept/reject).
 //   - IdentityMintEvent:       every X-AOEdge-Identity-Context JWT mint.
 //   - StepUpChallengeEvent:    every RFC 9470 step-up challenge.
+//   - PolicyDecisionEvent:     every policy evaluation (allow/deny/error).
+//   - BundleReloadEvent:       every signed-bundle reload attempt.
 //
 // Invariants across all event messages:
 //   - Field 1 is always schema_version (int32, currently 1). Bump on
@@ -252,6 +254,66 @@ message StepUpChallengeEvent {
   string route_id                        = 12;
   string sub                             = 13; // current account UUID (already authenticated at lower AAL)
   string chain_hash                      = 14;
+}
+
+// PolicyDecisionEvent — emitted by the authz middleware on EVERY policy
+// evaluation: allow, deny, or engine error (AUTHZ-01). Mirrors the way Geo
+// emits GeoDecision unconditionally. The allow/deny ratio per route is
+// derived from these events + the aoedge_authz_* Prometheus counters.
+//
+// PII-safety: this message MUST NOT carry the raw policy input document, the
+// raw identity-claims blob, or any credential. The full input is
+// reconstructible by correlating on request_id with the IdentityValidationEvent
+// (Obj 9) + GeoDecision (Obj 8) events. Schema-lint asserts policy_input /
+// raw_input / token / secret / etc. are absent file-wide.
+message PolicyDecisionEvent {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;
+  string trace_id                        = 4;
+  string span_id                         = 5;
+  string tenant_id                       = 6;   // tenant UUID resolved by hostname routing (Obj 3); credential-authoritative tenant for cross-tenant decisions
+  string route_id                        = 7;   // chi.RouteContext.RoutePattern() at evaluation time
+  string sub                             = 8;   // identity subject (account UUID from Obj 9 iap.Identity); "" for anonymous
+  string decision                        = 9;   // "allow" | "deny" | "error"
+  string deny_reason                     = 10;  // "wrong_tenant" | "missing_entitlement" | "outside_business_hours" | "geo_blocked" | "risk_exceeded" | "engine_error" | ""; operator-readable, never raw input
+  string policy_query                    = 11;  // the Rego rule path queried for this route (e.g. "data.aoedge.authz.decision")
+  string backend_group                   = 12;  // split-horizon output (AUTHZ-04); "" when not identity-routed
+  string required_entitlement            = 13;  // the entitlement the route required (AUTHZ-02); "" when none
+  bool   require_stepup                  = 14;  // policy output: higher AAL required (AUTHZ-05 step-up interplay)
+  string required_aal                    = 15;  // "AAL2"|"AAL3" when require_stepup=true; "" otherwise
+  string bundle_revision                 = 16;  // active bundle commit SHA at evaluation time (correlates to BundleReloadEvent)
+  int64  latency_ms                      = 17;  // policy eval wallclock latency (microsecond budget; reported in ms)
+  bool   fail_open                       = 18;  // true when decision=allow was produced by AOEDGE_AUTHZ_FAIL_OPEN on an engine error
+  string chain_hash                      = 19;
+}
+
+// BundleReloadEvent — emitted by the signed-bundle reloader on EVERY reload
+// attempt (AUTHZ-06): a successful atomic-swap (applied), a rejected bad
+// signature, a Rego compile failure, or a Git pull failure. This is the
+// audit record of the policy-plane control loop (SC6).
+//
+// PII-safety: this message MUST NOT carry the signing private key, the
+// verification public key bytes, or the bundle file contents. Only the
+// commit_sha + signer_identity (operator string from the signature's trusted
+// comment) + bundle_digest (the hex digest that WAS verified). A compromised
+// bundle must not be able to log/assert its own trust root.
+message BundleReloadEvent {
+  int32  schema_version                  = 1;
+  google.protobuf.Timestamp timestamp    = 2;
+  string request_id                      = 3;   // may be "" — system event, not request-scoped
+  string trace_id                        = 4;
+  string span_id                         = 5;
+  string tenant_id                       = 6;   // may be "" — deployment-wide single bundle in Obj 10 (per-tenant bundles are Obj 11)
+  string commit_sha                      = 7;   // Git HEAD SHA of the pulled bundle
+  string previous_commit_sha             = 8;   // the SHA that was active before this reload (for rollback correlation)
+  string signer_identity                 = 9;   // operator/key identity from the detached-signature trusted comment; never the key bytes
+  string bundle_digest                   = 10;  // hex of the deterministic bundle digest that crypto/ed25519.Verify ran against
+  string outcome                         = 11;  // "applied" | "rejected_signature" | "compile_error" | "pull_failed"
+  string outcome_detail                  = 12;  // operator-readable detail (e.g. "rego parse error in admin.rego:14"); never raw input/key
+  int32  rego_module_count               = 13;  // number of .rego modules compiled into the prepared query
+  int64  reload_latency_ms               = 14;  // pull + verify + compile + swap wallclock
+  string chain_hash                      = 15;
 }
 
 // AuditBatch wraps a set of events with signing metadata.
