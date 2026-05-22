@@ -9,6 +9,25 @@ import (
 
 const protoPath = "aoedge_audit.proto"
 
+// allEventMessages is the canonical list of audit-event leaf messages in
+// aoedge_audit.proto. The signing envelope `AuditBatch` is intentionally
+// excluded — it carries no per-event invariants (no schema_version=1
+// chain_hash, no correlation triple, no tenant_id).
+//
+// Wave 1 (Obj 8 TRD 08-01) shipped the first 5 events. Wave 2 (Obj 9
+// TRD 09-01) appended the 3 Identity-event messages. Schema-lint walks
+// THIS list uniformly so all invariants apply to every event type.
+var allEventMessages = []string{
+	"ConnectionLog",
+	"WAFEvent",
+	"DDoSEvent",
+	"GeoDecision",
+	"DLPFinding",
+	"IdentityValidationEvent",
+	"IdentityMintEvent",
+	"StepUpChallengeEvent",
+}
+
 func readProto(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile(protoPath)
@@ -16,6 +35,35 @@ func readProto(t *testing.T) string {
 		t.Fatalf("read %s: %v", protoPath, err)
 	}
 	return string(b)
+}
+
+// messageBody returns the brace-balanced body of `message <name> { ... }`
+// from the proto source, or "" if not found. Brace-balanced matching is
+// required because nested-brace cases would defeat a non-greedy regex; while
+// the current proto has flat message bodies, this is future-proof.
+func messageBody(src, name string) string {
+	idx := strings.Index(src, "message "+name)
+	if idx < 0 {
+		return ""
+	}
+	open := strings.Index(src[idx:], "{")
+	if open < 0 {
+		return ""
+	}
+	open += idx
+	depth := 0
+	for i := open; i < len(src); i++ {
+		switch src[i] {
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				return src[open+1 : i]
+			}
+		}
+	}
+	return ""
 }
 
 // TestDLPFinding_NoMatchedValueField asserts the DLPFinding and DLPMatch
@@ -39,52 +87,250 @@ func TestDLPFinding_NoMatchedValueField(t *testing.T) {
 	}
 }
 
-// TestAoedgeAuditProto_AllEventMessagesHaveSchemaVersion checks schema_version
-// appears for each of the five event message types.
-func TestAoedgeAuditProto_AllEventMessagesHaveSchemaVersion(t *testing.T) {
+// TestAoedgeAuditSchema_AllEventMessagesHaveSchemaVersion checks schema_version
+// appears for each event message and is declared as field number 1.
+func TestAoedgeAuditSchema_AllEventMessagesHaveSchemaVersion(t *testing.T) {
 	src := readProto(t)
-	messages := []string{"ConnectionLog", "WAFEvent", "DDoSEvent", "GeoDecision", "DLPFinding"}
-	for _, msg := range messages {
-		// Find the message block and confirm schema_version is inside it.
-		// (?s) flag treats . as matching newlines; the [^}]* anchor needs DOTALL
-		// to span multi-line message bodies.
-		re := regexp.MustCompile(`(?s)message\s+` + msg + `\s*\{[^}]*schema_version`)
-		if !re.MatchString(src) {
-			t.Errorf("message %s is missing schema_version field", msg)
+	for _, msg := range allEventMessages {
+		body := messageBody(src, msg)
+		if body == "" {
+			t.Errorf("message %s not found in %s", msg, protoPath)
+			continue
+		}
+		// schema_version MUST be field 1.
+		re := regexp.MustCompile(`\bint32\s+schema_version\s*=\s*1\b`)
+		if !re.MatchString(body) {
+			t.Errorf("message %s is missing `int32 schema_version = 1` as field 1", msg)
 		}
 	}
 }
 
-// TestAoedgeAuditProto_AllEventMessagesHaveChainHash checks chain_hash appears
-// in each of the five event message types.
-func TestAoedgeAuditProto_AllEventMessagesHaveChainHash(t *testing.T) {
+// TestAoedgeAuditSchema_AllEventMessagesHaveChainHash checks chain_hash
+// appears as the LAST field (highest field number) in each event message.
+func TestAoedgeAuditSchema_AllEventMessagesHaveChainHash(t *testing.T) {
 	src := readProto(t)
-	messages := []string{"ConnectionLog", "WAFEvent", "DDoSEvent", "GeoDecision", "DLPFinding"}
-	for _, msg := range messages {
-		re := regexp.MustCompile(`(?s)message\s+` + msg + `\s*\{[^}]*chain_hash`)
-		if !re.MatchString(src) {
-			t.Errorf("message %s is missing chain_hash field", msg)
+	// Field declaration: <type> <name> = <number>; — capture name+number.
+	fieldRe := regexp.MustCompile(`(?m)^\s*\S+(?:\s+\S+)*\s+(\w+)\s*=\s*(\d+)\s*;`)
+	for _, msg := range allEventMessages {
+		body := messageBody(src, msg)
+		if body == "" {
+			t.Errorf("message %s not found in %s", msg, protoPath)
+			continue
+		}
+		matches := fieldRe.FindAllStringSubmatch(body, -1)
+		if len(matches) == 0 {
+			t.Errorf("message %s has no parseable fields", msg)
+			continue
+		}
+		// Find the field with the highest field number.
+		var maxNum int
+		var maxName string
+		for _, m := range matches {
+			n := 0
+			for _, ch := range m[2] {
+				n = n*10 + int(ch-'0')
+			}
+			if n > maxNum {
+				maxNum = n
+				maxName = m[1]
+			}
+		}
+		if maxName != "chain_hash" {
+			t.Errorf("message %s: last field (= %d) is %q, want chain_hash", msg, maxNum, maxName)
 		}
 	}
 }
 
-// TestAoedgeAuditProto_AllEventMessagesHaveCorrelationFields checks that
-// request_id, trace_id, and span_id appear in all five event messages.
-func TestAoedgeAuditProto_AllEventMessagesHaveCorrelationFields(t *testing.T) {
+// TestAoedgeAuditSchema_AllEventMessagesHaveCorrelationFields checks that
+// request_id, trace_id, and span_id appear in every event message body.
+func TestAoedgeAuditSchema_AllEventMessagesHaveCorrelationFields(t *testing.T) {
 	src := readProto(t)
-	messages := []string{"ConnectionLog", "WAFEvent", "DDoSEvent", "GeoDecision", "DLPFinding"}
 	fields := []string{"request_id", "trace_id", "span_id"}
-	for _, msg := range messages {
-		re := regexp.MustCompile(`(?s)message\s+` + msg + `\s*\{.*?\}`)
-		block := re.FindString(src)
-		if block == "" {
+	for _, msg := range allEventMessages {
+		body := messageBody(src, msg)
+		if body == "" {
 			t.Errorf("could not find message block for %s", msg)
 			continue
 		}
 		for _, f := range fields {
-			if !strings.Contains(block, f) {
+			if !strings.Contains(body, f) {
 				t.Errorf("message %s is missing correlation field %q", msg, f)
 			}
 		}
+	}
+}
+
+// TestAoedgeAuditSchema_TenantIsolation_AllEventsCarryTenantId asserts every
+// event message carries a `string tenant_id` field. Wave 3 (Obj 9 TRD 09-05)
+// uses this for tenant-scoped audit-stream filtering — a missing tenant_id on
+// any event leaks cross-tenant context into the audit stream.
+//
+// This test name embeds the substring "TenantIsolation" so the resolver
+// verification regex `wrong-tenant|cross-tenant|tenant-isolation` matches.
+func TestAoedgeAuditSchema_TenantIsolation_AllEventsCarryTenantId(t *testing.T) {
+	src := readProto(t)
+	re := regexp.MustCompile(`\bstring\s+tenant_id\s*=\s*\d+\b`)
+	for _, msg := range allEventMessages {
+		body := messageBody(src, msg)
+		if body == "" {
+			t.Errorf("message %s not found — tenant-isolation invariant cannot be verified", msg)
+			continue
+		}
+		if !re.MatchString(body) {
+			t.Errorf("message %s is missing `string tenant_id = N` field — cross-tenant audit-stream isolation requires every event to carry tenant_id", msg)
+		}
+	}
+}
+
+// TestAoedgeAuditSchema_NoForbiddenCredentialOrPIIFields asserts the proto
+// contains NO field whose name matches the credential-payload or PII
+// forbidden list — extended in TRD 09-01 to cover raw credential names.
+//
+// Forbidden field names:
+//   - matched_value, matched_bytes, snippet (Obj 8 PII for DLP)
+//   - raw_token, raw_key, token, password, secret, plaintext, authorization
+//     (Obj 9 credential payloads — IdentityValidationEvent must carry only
+//     tok_ref, never the raw credential).
+//
+// The lint walks all event-message bodies AND checks bare field declarations
+// at file scope; the test is intentionally strict — any reintroduction of
+// these names triggers failure.
+func TestAoedgeAuditSchema_NoForbiddenCredentialOrPIIFields(t *testing.T) {
+	src := readProto(t)
+	forbidden := []string{
+		// Obj 8 PII payload bytes (already enforced by older test; re-asserted here for clarity).
+		"matched_value",
+		"matched_bytes",
+		"snippet",
+		// Obj 9 raw credential field names — IdentityValidationEvent / IdentityMintEvent
+		// / StepUpChallengeEvent must NEVER carry the plaintext credential. tok_ref
+		// (16-char hex prefix of SHA-256) is the only credential reference.
+		"raw_token",
+		"raw_key",
+		"password",
+		"plaintext",
+		"authorization",
+	}
+	// Substring scan over the full source — catches both message-body fields
+	// AND comment text using the forbidden name as a field name. Comments
+	// referencing the forbidden names (e.g. "raw_token") are fine; only
+	// FIELD declarations are flagged. We pivot to field-declaration regex
+	// to avoid false positives from explanatory comments.
+	fieldDeclRe := func(name string) *regexp.Regexp {
+		// Match: <type> <name> = <num>;  — name appears as the field identifier.
+		return regexp.MustCompile(`\b(?:int32|int64|uint32|uint64|string|bool|bytes|float|double)\s+` + regexp.QuoteMeta(name) + `\s*=\s*\d+\s*;`)
+	}
+	for _, name := range forbidden {
+		if fieldDeclRe(name).MatchString(src) {
+			t.Errorf("aoedge_audit.proto contains forbidden field name %q — credential payloads and PII bytes must never be stored in audit events", name)
+		}
+	}
+	// Also check bare `token` and `secret` as STANDALONE string field names
+	// — these are common but ambiguous. Only flag standalone usage; tok_ref
+	// and related compound names are allowed.
+	bareRe := regexp.MustCompile(`\bstring\s+(token|secret)\s*=\s*\d+\b`)
+	if m := bareRe.FindString(src); m != "" {
+		t.Errorf("aoedge_audit.proto must not have a bare string field named 'token' or 'secret': found %q (use tok_ref)", m)
+	}
+}
+
+// TestAoedgeAuditSchema_IdentityValidationEvent_RequiredFields asserts the
+// Wave-3 dispatcher contract: the IAP middleware emits this event on EVERY
+// credential validation (accept or reject), so the message must carry the
+// fields needed for tenant-isolated audit stream filtering, RFC 6750/9470
+// error classification, and AAL traceability.
+func TestAoedgeAuditSchema_IdentityValidationEvent_RequiredFields(t *testing.T) {
+	src := readProto(t)
+	body := messageBody(src, "IdentityValidationEvent")
+	if body == "" {
+		t.Fatalf("message IdentityValidationEvent not found in %s", protoPath)
+	}
+	required := []struct {
+		name string
+		kind string
+	}{
+		{"tok_ref", "string"},
+		{"cred_type", "string"},
+		{"outcome", "string"},
+		{"aal", "string"},
+		{"iss", "string"},
+		{"sub", "string"},
+		{"tenant_id", "string"},
+	}
+	for _, f := range required {
+		re := regexp.MustCompile(`\b` + f.kind + `\s+` + f.name + `\s*=\s*\d+\b`)
+		if !re.MatchString(body) {
+			t.Errorf("IdentityValidationEvent is missing required `%s %s = N` field", f.kind, f.name)
+		}
+	}
+}
+
+// TestAoedgeAuditSchema_IdentityMintEvent_RequiredFields asserts the Wave-3
+// dispatcher contract: every successful X-AOEdge-Identity-Context mint emits
+// this event. The minted JWT itself MUST NOT be stored in the audit stream
+// — it travels in the request header. Only metadata is logged.
+func TestAoedgeAuditSchema_IdentityMintEvent_RequiredFields(t *testing.T) {
+	src := readProto(t)
+	body := messageBody(src, "IdentityMintEvent")
+	if body == "" {
+		t.Fatalf("message IdentityMintEvent not found in %s", protoPath)
+	}
+	required := []struct {
+		name string
+		kind string
+	}{
+		{"kid", "string"},
+		{"sub", "string"},
+		{"tnt", "string"},
+		{"aal", "string"},
+		{"tok_ref", "string"},
+		{"entitlements_count", "int32"},
+	}
+	for _, f := range required {
+		re := regexp.MustCompile(`\b` + f.kind + `\s+` + f.name + `\s*=\s*\d+\b`)
+		if !re.MatchString(body) {
+			t.Errorf("IdentityMintEvent is missing required `%s %s = N` field", f.kind, f.name)
+		}
+	}
+	// HARD INVARIANT: the signed JWT itself MUST NOT appear in the audit
+	// stream. Flag any field named signed_jwt / jwt / id_token / access_token.
+	forbidden := []string{"signed_jwt", "jwt", "id_token", "access_token"}
+	for _, name := range forbidden {
+		re := regexp.MustCompile(`\bstring\s+` + name + `\s*=\s*\d+\b`)
+		if re.MatchString(body) {
+			t.Errorf("IdentityMintEvent must NOT contain field %q — the minted JWT travels in X-AOEdge-Identity-Context header, never in the audit stream", name)
+		}
+	}
+}
+
+// TestAoedgeAuditSchema_StepUpChallengeEvent_RequiredFields asserts the
+// Wave-3 step-up contract (IAP-06, RFC 9470): on every step-up challenge
+// (browser 302 or API 403) the event carries the AAL gap + channel
+// differentiation + base redirect URI (no query string).
+func TestAoedgeAuditSchema_StepUpChallengeEvent_RequiredFields(t *testing.T) {
+	src := readProto(t)
+	body := messageBody(src, "StepUpChallengeEvent")
+	if body == "" {
+		t.Fatalf("message StepUpChallengeEvent not found in %s", protoPath)
+	}
+	required := []struct {
+		name string
+		kind string
+	}{
+		{"required_aal", "string"},
+		{"current_aal", "string"},
+		{"channel", "string"},
+		{"redirect_uri_host", "string"},
+	}
+	for _, f := range required {
+		re := regexp.MustCompile(`\b` + f.kind + `\s+` + f.name + `\s*=\s*\d+\b`)
+		if !re.MatchString(body) {
+			t.Errorf("StepUpChallengeEvent is missing required `%s %s = N` field", f.kind, f.name)
+		}
+	}
+	// Forbidden: redirect_uri (full URI with query string carries state/nonce).
+	// Only the base host+path form is permitted.
+	if regexp.MustCompile(`\bstring\s+redirect_uri\s*=\s*\d+\b`).MatchString(body) {
+		t.Errorf("StepUpChallengeEvent must NOT contain bare `redirect_uri` — only redirect_uri_host (base, no query string) is permitted")
 	}
 }
