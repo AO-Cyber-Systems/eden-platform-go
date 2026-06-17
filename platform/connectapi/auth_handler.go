@@ -8,17 +8,27 @@ import (
 	connect "connectrpc.com/connect"
 	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
 	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"github.com/aocybersystems/eden-platform-go/platform/auth/social"
 	"github.com/aocybersystems/eden-platform-go/platform/server"
 	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
-	service    *auth.Service
-	ssoService *auth.SSOService
+	service       *auth.Service
+	ssoService    *auth.SSOService
+	socialService *social.SocialAuthService
 }
 
 func NewAuthHandler(service *auth.Service, ssoService *auth.SSOService) *AuthHandler {
 	return &AuthHandler{service: service, ssoService: ssoService}
+}
+
+// WithSocial attaches the consumer social-login service so InitiateSocialLogin
+// can delegate to it. Returns the receiver for fluent construction. Kept
+// separate from NewAuthHandler so existing call sites compile unchanged.
+func (h *AuthHandler) WithSocial(socialService *social.SocialAuthService) *AuthHandler {
+	h.socialService = socialService
+	return h
 }
 
 func (h *AuthHandler) SignUp(ctx context.Context, req *connect.Request[platformv1.SignUpRequest]) (*connect.Response[platformv1.SignUpResponse], error) {
@@ -74,6 +84,39 @@ func (h *AuthHandler) InitiateOIDC(ctx context.Context, req *connect.Request[pla
 	}
 
 	return connect.NewResponse(&platformv1.InitiateOIDCResponse{
+		AuthUrl: authURL,
+		State:   state,
+	}), nil
+}
+
+// InitiateSocialLogin starts a consumer social-login flow (Google/Microsoft via
+// OIDC in 09-02; Apple/Facebook/X added in 09-03). It is user-scoped — there is
+// NO company_id. Tokens are delivered out-of-band by the /auth/social/callback
+// HTTP handler via redirect, so this RPC only returns the authorization URL +
+// state JWT.
+func (h *AuthHandler) InitiateSocialLogin(ctx context.Context, req *connect.Request[platformv1.InitiateSocialLoginRequest]) (*connect.Response[platformv1.InitiateSocialLoginResponse], error) {
+	if h.socialService == nil {
+		return nil, connect.NewError(connect.CodeUnimplemented, errors.New("social login not configured"))
+	}
+	provider := req.Msg.GetProvider()
+	redirectURI := req.Msg.GetRedirectUri()
+	if provider == "" || redirectURI == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("provider and redirect_uri are required"))
+	}
+
+	authURL, state, err := h.socialService.InitiateOIDC(ctx, provider, redirectURI)
+	if err != nil {
+		// Allowlist / unknown-provider rejections are caller errors, not server faults.
+		if strings.Contains(err.Error(), "not allowed") ||
+			strings.Contains(err.Error(), "unknown OIDC provider") ||
+			strings.Contains(err.Error(), "not registered") ||
+			strings.Contains(err.Error(), "not an OIDC provider") {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
+		}
+		return nil, connect.NewError(connect.CodeInternal, err)
+	}
+
+	return connect.NewResponse(&platformv1.InitiateSocialLoginResponse{
 		AuthUrl: authURL,
 		State:   state,
 	}), nil

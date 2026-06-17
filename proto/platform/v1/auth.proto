@@ -12,6 +12,10 @@ service AuthService {
   rpc Logout(LogoutRequest) returns (LogoutResponse);
   rpc InitiateOIDC(InitiateOIDCRequest) returns (InitiateOIDCResponse);
   rpc InitiateSAML(InitiateSAMLRequest) returns (InitiateSAMLResponse);
+  // InitiateSocialLogin starts a consumer social-login flow (Google, Apple,
+  // Microsoft, Facebook, X). User-scoped — NO company_id. Tokens are delivered
+  // out-of-band by the GET /auth/social/callback HTTP handler via redirect.
+  rpc InitiateSocialLogin(InitiateSocialLoginRequest) returns (InitiateSocialLoginResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
 }
 
@@ -81,6 +85,23 @@ message InitiateSAMLRequest {
 
 message InitiateSAMLResponse {
   string redirect_url = 1;
+}
+
+// InitiateSocialLoginRequest starts a consumer social-login flow. provider is
+// one of "google"|"apple"|"microsoft"|"facebook"|"x". redirect_uri is where the
+// user is sent after auth (Flutter deep-link or web origin) — it MUST match the
+// server's redirect allowlist.
+message InitiateSocialLoginRequest {
+  string provider = 1;
+  string redirect_uri = 2;
+}
+
+// InitiateSocialLoginResponse carries the provider authorization URL the client
+// must open, plus the opaque state JWT for client-side correlation. Tokens are
+// NOT returned here — the HTTP callback delivers them via redirect.
+message InitiateSocialLoginResponse {
+  string auth_url = 1;
+  string state = 2;
 }
 
 message UpdateProfileRequest {

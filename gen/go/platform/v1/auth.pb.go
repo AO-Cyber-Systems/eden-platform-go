@@ -720,6 +720,117 @@ func (x *InitiateSAMLResponse) GetRedirectUrl() string {
 	return ""
 }
 
+// InitiateSocialLoginRequest starts a consumer social-login flow. provider is
+// one of "google"|"apple"|"microsoft"|"facebook"|"x". redirect_uri is where the
+// user is sent after auth (Flutter deep-link or web origin) — it MUST match the
+// server's redirect allowlist.
+type InitiateSocialLoginRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Provider      string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	RedirectUri   string                 `protobuf:"bytes,2,opt,name=redirect_uri,json=redirectUri,proto3" json:"redirect_uri,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InitiateSocialLoginRequest) Reset() {
+	*x = InitiateSocialLoginRequest{}
+	mi := &file_platform_v1_auth_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InitiateSocialLoginRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InitiateSocialLoginRequest) ProtoMessage() {}
+
+func (x *InitiateSocialLoginRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_auth_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InitiateSocialLoginRequest.ProtoReflect.Descriptor instead.
+func (*InitiateSocialLoginRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_auth_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *InitiateSocialLoginRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *InitiateSocialLoginRequest) GetRedirectUri() string {
+	if x != nil {
+		return x.RedirectUri
+	}
+	return ""
+}
+
+// InitiateSocialLoginResponse carries the provider authorization URL the client
+// must open, plus the opaque state JWT for client-side correlation. Tokens are
+// NOT returned here — the HTTP callback delivers them via redirect.
+type InitiateSocialLoginResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AuthUrl       string                 `protobuf:"bytes,1,opt,name=auth_url,json=authUrl,proto3" json:"auth_url,omitempty"`
+	State         string                 `protobuf:"bytes,2,opt,name=state,proto3" json:"state,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *InitiateSocialLoginResponse) Reset() {
+	*x = InitiateSocialLoginResponse{}
+	mi := &file_platform_v1_auth_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InitiateSocialLoginResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InitiateSocialLoginResponse) ProtoMessage() {}
+
+func (x *InitiateSocialLoginResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_auth_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InitiateSocialLoginResponse.ProtoReflect.Descriptor instead.
+func (*InitiateSocialLoginResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_auth_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *InitiateSocialLoginResponse) GetAuthUrl() string {
+	if x != nil {
+		return x.AuthUrl
+	}
+	return ""
+}
+
+func (x *InitiateSocialLoginResponse) GetState() string {
+	if x != nil {
+		return x.State
+	}
+	return ""
+}
+
 type UpdateProfileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	DisplayName   string                 `protobuf:"bytes,1,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
@@ -730,7 +841,7 @@ type UpdateProfileRequest struct {
 
 func (x *UpdateProfileRequest) Reset() {
 	*x = UpdateProfileRequest{}
-	mi := &file_platform_v1_auth_proto_msgTypes[14]
+	mi := &file_platform_v1_auth_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -742,7 +853,7 @@ func (x *UpdateProfileRequest) String() string {
 func (*UpdateProfileRequest) ProtoMessage() {}
 
 func (x *UpdateProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_auth_proto_msgTypes[14]
+	mi := &file_platform_v1_auth_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -755,7 +866,7 @@ func (x *UpdateProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProfileRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProfileRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_auth_proto_rawDescGZIP(), []int{14}
+	return file_platform_v1_auth_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *UpdateProfileRequest) GetDisplayName() string {
@@ -781,7 +892,7 @@ type UpdateProfileResponse struct {
 
 func (x *UpdateProfileResponse) Reset() {
 	*x = UpdateProfileResponse{}
-	mi := &file_platform_v1_auth_proto_msgTypes[15]
+	mi := &file_platform_v1_auth_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -793,7 +904,7 @@ func (x *UpdateProfileResponse) String() string {
 func (*UpdateProfileResponse) ProtoMessage() {}
 
 func (x *UpdateProfileResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_auth_proto_msgTypes[15]
+	mi := &file_platform_v1_auth_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -806,7 +917,7 @@ func (x *UpdateProfileResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProfileResponse.ProtoReflect.Descriptor instead.
 func (*UpdateProfileResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_auth_proto_rawDescGZIP(), []int{15}
+	return file_platform_v1_auth_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *UpdateProfileResponse) GetUser() *User {
@@ -862,20 +973,27 @@ const file_platform_v1_auth_proto_rawDesc = "" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\"9\n" +
 	"\x14InitiateSAMLResponse\x12!\n" +
-	"\fredirect_url\x18\x01 \x01(\tR\vredirectUrl\"X\n" +
+	"\fredirect_url\x18\x01 \x01(\tR\vredirectUrl\"[\n" +
+	"\x1aInitiateSocialLoginRequest\x12\x1a\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\x12!\n" +
+	"\fredirect_uri\x18\x02 \x01(\tR\vredirectUri\"N\n" +
+	"\x1bInitiateSocialLoginResponse\x12\x19\n" +
+	"\bauth_url\x18\x01 \x01(\tR\aauthUrl\x12\x14\n" +
+	"\x05state\x18\x02 \x01(\tR\x05state\"X\n" +
 	"\x14UpdateProfileRequest\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x02 \x01(\tR\tavatarUrl\">\n" +
 	"\x15UpdateProfileResponse\x12%\n" +
-	"\x04user\x18\x01 \x01(\v2\x11.platform.v1.UserR\x04user2\xaa\x04\n" +
+	"\x04user\x18\x01 \x01(\v2\x11.platform.v1.UserR\x04user2\x94\x05\n" +
 	"\vAuthService\x12A\n" +
 	"\x06SignUp\x12\x1a.platform.v1.SignUpRequest\x1a\x1b.platform.v1.SignUpResponse\x12>\n" +
 	"\x05Login\x12\x19.platform.v1.LoginRequest\x1a\x1a.platform.v1.LoginResponse\x12S\n" +
 	"\fRefreshToken\x12 .platform.v1.RefreshTokenRequest\x1a!.platform.v1.RefreshTokenResponse\x12A\n" +
 	"\x06Logout\x12\x1a.platform.v1.LogoutRequest\x1a\x1b.platform.v1.LogoutResponse\x12S\n" +
 	"\fInitiateOIDC\x12 .platform.v1.InitiateOIDCRequest\x1a!.platform.v1.InitiateOIDCResponse\x12S\n" +
-	"\fInitiateSAML\x12 .platform.v1.InitiateSAMLRequest\x1a!.platform.v1.InitiateSAMLResponse\x12V\n" +
+	"\fInitiateSAML\x12 .platform.v1.InitiateSAMLRequest\x1a!.platform.v1.InitiateSAMLResponse\x12h\n" +
+	"\x13InitiateSocialLogin\x12'.platform.v1.InitiateSocialLoginRequest\x1a(.platform.v1.InitiateSocialLoginResponse\x12V\n" +
 	"\rUpdateProfile\x12!.platform.v1.UpdateProfileRequest\x1a\".platform.v1.UpdateProfileResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
@@ -890,24 +1008,26 @@ func file_platform_v1_auth_proto_rawDescGZIP() []byte {
 	return file_platform_v1_auth_proto_rawDescData
 }
 
-var file_platform_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_platform_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
 var file_platform_v1_auth_proto_goTypes = []any{
-	(*SignUpRequest)(nil),         // 0: platform.v1.SignUpRequest
-	(*LoginRequest)(nil),          // 1: platform.v1.LoginRequest
-	(*RefreshTokenRequest)(nil),   // 2: platform.v1.RefreshTokenRequest
-	(*LogoutRequest)(nil),         // 3: platform.v1.LogoutRequest
-	(*LogoutResponse)(nil),        // 4: platform.v1.LogoutResponse
-	(*AuthData)(nil),              // 5: platform.v1.AuthData
-	(*SignUpResponse)(nil),        // 6: platform.v1.SignUpResponse
-	(*LoginResponse)(nil),         // 7: platform.v1.LoginResponse
-	(*RefreshTokenResponse)(nil),  // 8: platform.v1.RefreshTokenResponse
-	(*User)(nil),                  // 9: platform.v1.User
-	(*InitiateOIDCRequest)(nil),   // 10: platform.v1.InitiateOIDCRequest
-	(*InitiateOIDCResponse)(nil),  // 11: platform.v1.InitiateOIDCResponse
-	(*InitiateSAMLRequest)(nil),   // 12: platform.v1.InitiateSAMLRequest
-	(*InitiateSAMLResponse)(nil),  // 13: platform.v1.InitiateSAMLResponse
-	(*UpdateProfileRequest)(nil),  // 14: platform.v1.UpdateProfileRequest
-	(*UpdateProfileResponse)(nil), // 15: platform.v1.UpdateProfileResponse
+	(*SignUpRequest)(nil),               // 0: platform.v1.SignUpRequest
+	(*LoginRequest)(nil),                // 1: platform.v1.LoginRequest
+	(*RefreshTokenRequest)(nil),         // 2: platform.v1.RefreshTokenRequest
+	(*LogoutRequest)(nil),               // 3: platform.v1.LogoutRequest
+	(*LogoutResponse)(nil),              // 4: platform.v1.LogoutResponse
+	(*AuthData)(nil),                    // 5: platform.v1.AuthData
+	(*SignUpResponse)(nil),              // 6: platform.v1.SignUpResponse
+	(*LoginResponse)(nil),               // 7: platform.v1.LoginResponse
+	(*RefreshTokenResponse)(nil),        // 8: platform.v1.RefreshTokenResponse
+	(*User)(nil),                        // 9: platform.v1.User
+	(*InitiateOIDCRequest)(nil),         // 10: platform.v1.InitiateOIDCRequest
+	(*InitiateOIDCResponse)(nil),        // 11: platform.v1.InitiateOIDCResponse
+	(*InitiateSAMLRequest)(nil),         // 12: platform.v1.InitiateSAMLRequest
+	(*InitiateSAMLResponse)(nil),        // 13: platform.v1.InitiateSAMLResponse
+	(*InitiateSocialLoginRequest)(nil),  // 14: platform.v1.InitiateSocialLoginRequest
+	(*InitiateSocialLoginResponse)(nil), // 15: platform.v1.InitiateSocialLoginResponse
+	(*UpdateProfileRequest)(nil),        // 16: platform.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),       // 17: platform.v1.UpdateProfileResponse
 }
 var file_platform_v1_auth_proto_depIdxs = []int32{
 	9,  // 0: platform.v1.AuthData.user:type_name -> platform.v1.User
@@ -921,16 +1041,18 @@ var file_platform_v1_auth_proto_depIdxs = []int32{
 	3,  // 8: platform.v1.AuthService.Logout:input_type -> platform.v1.LogoutRequest
 	10, // 9: platform.v1.AuthService.InitiateOIDC:input_type -> platform.v1.InitiateOIDCRequest
 	12, // 10: platform.v1.AuthService.InitiateSAML:input_type -> platform.v1.InitiateSAMLRequest
-	14, // 11: platform.v1.AuthService.UpdateProfile:input_type -> platform.v1.UpdateProfileRequest
-	6,  // 12: platform.v1.AuthService.SignUp:output_type -> platform.v1.SignUpResponse
-	7,  // 13: platform.v1.AuthService.Login:output_type -> platform.v1.LoginResponse
-	8,  // 14: platform.v1.AuthService.RefreshToken:output_type -> platform.v1.RefreshTokenResponse
-	4,  // 15: platform.v1.AuthService.Logout:output_type -> platform.v1.LogoutResponse
-	11, // 16: platform.v1.AuthService.InitiateOIDC:output_type -> platform.v1.InitiateOIDCResponse
-	13, // 17: platform.v1.AuthService.InitiateSAML:output_type -> platform.v1.InitiateSAMLResponse
-	15, // 18: platform.v1.AuthService.UpdateProfile:output_type -> platform.v1.UpdateProfileResponse
-	12, // [12:19] is the sub-list for method output_type
-	5,  // [5:12] is the sub-list for method input_type
+	14, // 11: platform.v1.AuthService.InitiateSocialLogin:input_type -> platform.v1.InitiateSocialLoginRequest
+	16, // 12: platform.v1.AuthService.UpdateProfile:input_type -> platform.v1.UpdateProfileRequest
+	6,  // 13: platform.v1.AuthService.SignUp:output_type -> platform.v1.SignUpResponse
+	7,  // 14: platform.v1.AuthService.Login:output_type -> platform.v1.LoginResponse
+	8,  // 15: platform.v1.AuthService.RefreshToken:output_type -> platform.v1.RefreshTokenResponse
+	4,  // 16: platform.v1.AuthService.Logout:output_type -> platform.v1.LogoutResponse
+	11, // 17: platform.v1.AuthService.InitiateOIDC:output_type -> platform.v1.InitiateOIDCResponse
+	13, // 18: platform.v1.AuthService.InitiateSAML:output_type -> platform.v1.InitiateSAMLResponse
+	15, // 19: platform.v1.AuthService.InitiateSocialLogin:output_type -> platform.v1.InitiateSocialLoginResponse
+	17, // 20: platform.v1.AuthService.UpdateProfile:output_type -> platform.v1.UpdateProfileResponse
+	13, // [13:21] is the sub-list for method output_type
+	5,  // [5:13] is the sub-list for method input_type
 	5,  // [5:5] is the sub-list for extension type_name
 	5,  // [5:5] is the sub-list for extension extendee
 	0,  // [0:5] is the sub-list for field type_name
@@ -947,7 +1069,7 @@ func file_platform_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_auth_proto_rawDesc), len(file_platform_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   18,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

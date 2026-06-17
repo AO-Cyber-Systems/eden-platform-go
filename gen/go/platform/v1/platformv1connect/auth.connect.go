@@ -48,6 +48,9 @@ const (
 	// AuthServiceInitiateSAMLProcedure is the fully-qualified name of the AuthService's InitiateSAML
 	// RPC.
 	AuthServiceInitiateSAMLProcedure = "/platform.v1.AuthService/InitiateSAML"
+	// AuthServiceInitiateSocialLoginProcedure is the fully-qualified name of the AuthService's
+	// InitiateSocialLogin RPC.
+	AuthServiceInitiateSocialLoginProcedure = "/platform.v1.AuthService/InitiateSocialLogin"
 	// AuthServiceUpdateProfileProcedure is the fully-qualified name of the AuthService's UpdateProfile
 	// RPC.
 	AuthServiceUpdateProfileProcedure = "/platform.v1.AuthService/UpdateProfile"
@@ -61,6 +64,10 @@ type AuthServiceClient interface {
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	InitiateOIDC(context.Context, *connect.Request[v1.InitiateOIDCRequest]) (*connect.Response[v1.InitiateOIDCResponse], error)
 	InitiateSAML(context.Context, *connect.Request[v1.InitiateSAMLRequest]) (*connect.Response[v1.InitiateSAMLResponse], error)
+	// InitiateSocialLogin starts a consumer social-login flow (Google, Apple,
+	// Microsoft, Facebook, X). User-scoped — NO company_id. Tokens are delivered
+	// out-of-band by the GET /auth/social/callback HTTP handler via redirect.
+	InitiateSocialLogin(context.Context, *connect.Request[v1.InitiateSocialLoginRequest]) (*connect.Response[v1.InitiateSocialLoginResponse], error)
 	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
 }
 
@@ -111,6 +118,12 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(authServiceMethods.ByName("InitiateSAML")),
 			connect.WithClientOptions(opts...),
 		),
+		initiateSocialLogin: connect.NewClient[v1.InitiateSocialLoginRequest, v1.InitiateSocialLoginResponse](
+			httpClient,
+			baseURL+AuthServiceInitiateSocialLoginProcedure,
+			connect.WithSchema(authServiceMethods.ByName("InitiateSocialLogin")),
+			connect.WithClientOptions(opts...),
+		),
 		updateProfile: connect.NewClient[v1.UpdateProfileRequest, v1.UpdateProfileResponse](
 			httpClient,
 			baseURL+AuthServiceUpdateProfileProcedure,
@@ -122,13 +135,14 @@ func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // authServiceClient implements AuthServiceClient.
 type authServiceClient struct {
-	signUp        *connect.Client[v1.SignUpRequest, v1.SignUpResponse]
-	login         *connect.Client[v1.LoginRequest, v1.LoginResponse]
-	refreshToken  *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
-	logout        *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
-	initiateOIDC  *connect.Client[v1.InitiateOIDCRequest, v1.InitiateOIDCResponse]
-	initiateSAML  *connect.Client[v1.InitiateSAMLRequest, v1.InitiateSAMLResponse]
-	updateProfile *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
+	signUp              *connect.Client[v1.SignUpRequest, v1.SignUpResponse]
+	login               *connect.Client[v1.LoginRequest, v1.LoginResponse]
+	refreshToken        *connect.Client[v1.RefreshTokenRequest, v1.RefreshTokenResponse]
+	logout              *connect.Client[v1.LogoutRequest, v1.LogoutResponse]
+	initiateOIDC        *connect.Client[v1.InitiateOIDCRequest, v1.InitiateOIDCResponse]
+	initiateSAML        *connect.Client[v1.InitiateSAMLRequest, v1.InitiateSAMLResponse]
+	initiateSocialLogin *connect.Client[v1.InitiateSocialLoginRequest, v1.InitiateSocialLoginResponse]
+	updateProfile       *connect.Client[v1.UpdateProfileRequest, v1.UpdateProfileResponse]
 }
 
 // SignUp calls platform.v1.AuthService.SignUp.
@@ -161,6 +175,11 @@ func (c *authServiceClient) InitiateSAML(ctx context.Context, req *connect.Reque
 	return c.initiateSAML.CallUnary(ctx, req)
 }
 
+// InitiateSocialLogin calls platform.v1.AuthService.InitiateSocialLogin.
+func (c *authServiceClient) InitiateSocialLogin(ctx context.Context, req *connect.Request[v1.InitiateSocialLoginRequest]) (*connect.Response[v1.InitiateSocialLoginResponse], error) {
+	return c.initiateSocialLogin.CallUnary(ctx, req)
+}
+
 // UpdateProfile calls platform.v1.AuthService.UpdateProfile.
 func (c *authServiceClient) UpdateProfile(ctx context.Context, req *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
 	return c.updateProfile.CallUnary(ctx, req)
@@ -174,6 +193,10 @@ type AuthServiceHandler interface {
 	Logout(context.Context, *connect.Request[v1.LogoutRequest]) (*connect.Response[v1.LogoutResponse], error)
 	InitiateOIDC(context.Context, *connect.Request[v1.InitiateOIDCRequest]) (*connect.Response[v1.InitiateOIDCResponse], error)
 	InitiateSAML(context.Context, *connect.Request[v1.InitiateSAMLRequest]) (*connect.Response[v1.InitiateSAMLResponse], error)
+	// InitiateSocialLogin starts a consumer social-login flow (Google, Apple,
+	// Microsoft, Facebook, X). User-scoped — NO company_id. Tokens are delivered
+	// out-of-band by the GET /auth/social/callback HTTP handler via redirect.
+	InitiateSocialLogin(context.Context, *connect.Request[v1.InitiateSocialLoginRequest]) (*connect.Response[v1.InitiateSocialLoginResponse], error)
 	UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error)
 }
 
@@ -220,6 +243,12 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(authServiceMethods.ByName("InitiateSAML")),
 		connect.WithHandlerOptions(opts...),
 	)
+	authServiceInitiateSocialLoginHandler := connect.NewUnaryHandler(
+		AuthServiceInitiateSocialLoginProcedure,
+		svc.InitiateSocialLogin,
+		connect.WithSchema(authServiceMethods.ByName("InitiateSocialLogin")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authServiceUpdateProfileHandler := connect.NewUnaryHandler(
 		AuthServiceUpdateProfileProcedure,
 		svc.UpdateProfile,
@@ -240,6 +269,8 @@ func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption
 			authServiceInitiateOIDCHandler.ServeHTTP(w, r)
 		case AuthServiceInitiateSAMLProcedure:
 			authServiceInitiateSAMLHandler.ServeHTTP(w, r)
+		case AuthServiceInitiateSocialLoginProcedure:
+			authServiceInitiateSocialLoginHandler.ServeHTTP(w, r)
 		case AuthServiceUpdateProfileProcedure:
 			authServiceUpdateProfileHandler.ServeHTTP(w, r)
 		default:
@@ -273,6 +304,10 @@ func (UnimplementedAuthServiceHandler) InitiateOIDC(context.Context, *connect.Re
 
 func (UnimplementedAuthServiceHandler) InitiateSAML(context.Context, *connect.Request[v1.InitiateSAMLRequest]) (*connect.Response[v1.InitiateSAMLResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AuthService.InitiateSAML is not implemented"))
+}
+
+func (UnimplementedAuthServiceHandler) InitiateSocialLogin(context.Context, *connect.Request[v1.InitiateSocialLoginRequest]) (*connect.Response[v1.InitiateSocialLoginResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AuthService.InitiateSocialLogin is not implemented"))
 }
 
 func (UnimplementedAuthServiceHandler) UpdateProfile(context.Context, *connect.Request[v1.UpdateProfileRequest]) (*connect.Response[v1.UpdateProfileResponse], error) {
