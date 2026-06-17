@@ -44,13 +44,18 @@ type SocialAuthService struct {
 	baseURL           string
 	redirectAllowlist []string
 	providers         map[string]ProviderConfig
+
+	// callback is the code→tokens completion used by the HTTP callback handler.
+	// It defaults to s.HandleCallback; tests inject a canned result to avoid
+	// real OIDC discovery/network.
+	callback func(ctx context.Context, code, stateJWT string) (*auth.AuthResponse, string, error)
 }
 
 // NewSocialAuthService constructs a SocialAuthService. The provider registry is
 // initialized empty; provider TRDs register inert ProviderConfig entries keyed
 // by "google"|"apple"|"microsoft"|"facebook"|"x".
 func NewSocialAuthService(social auth.SocialStore, users auth.AuthStore, jwt *auth.JWTManager, baseURL string, allowlist []string) *SocialAuthService {
-	return &SocialAuthService{
+	s := &SocialAuthService{
 		social:            social,
 		users:             users,
 		jwt:               jwt,
@@ -58,6 +63,8 @@ func NewSocialAuthService(social auth.SocialStore, users auth.AuthStore, jwt *au
 		redirectAllowlist: allowlist,
 		providers:         make(map[string]ProviderConfig),
 	}
+	s.callback = s.HandleCallback
+	return s
 }
 
 // Provision resolves a verified provider Identity to a platform user and issues
