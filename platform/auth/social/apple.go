@@ -17,8 +17,8 @@ import (
 
 // appleIssuer is Apple's OIDC issuer. It supports discovery, so the existing
 // go-oidc provider can fetch Apple's JWKS (https://appleid.apple.com/auth/keys)
-// and verify id_token signatures — UNLIKE the insecure oauth/oauth.go fetchApple
-// which base64-decodes the id_token WITHOUT verifying its signature.
+// and verify id_token signatures — UNLIKE the insecure decoder in the oauth/
+// package which base64-decodes the id_token WITHOUT verifying its signature.
 const appleIssuer = "https://appleid.apple.com"
 
 // appleAuthURL / appleTokenURL are Apple's OAuth2 endpoints. Apple does not
