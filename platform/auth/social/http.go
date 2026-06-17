@@ -47,7 +47,11 @@ func (s *SocialAuthService) handleCallbackHTTP(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	resp, redirectURI, err := s.callback(r.Context(), code, state)
+	// Apple POSTs a one-time `user` field (name JSON) on the FIRST authorization
+	// only; absent for every other provider and on repeat Apple sign-ins.
+	formUserField := r.FormValue("user")
+
+	resp, redirectURI, err := s.callback(r.Context(), code, state, formUserField)
 	if err != nil {
 		slog.Error("social callback failed", "error", err)
 		// If we know where to send the user, surface the error there instead of

@@ -162,7 +162,7 @@ func TestHandleCallback_RejectsUnallowlistedRedirect_NoTokens(t *testing.T) {
 		t.Fatalf("createStateJWT: %v", err)
 	}
 
-	_, _, err = svc.HandleCallback(t.Context(), "any-code", state)
+	_, _, err = svc.HandleCallback(t.Context(), "any-code", state, "")
 	if err == nil {
 		t.Fatal("expected error for non-allowlisted redirect_uri in state, got nil")
 	}

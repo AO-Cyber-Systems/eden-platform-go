@@ -92,13 +92,18 @@ func (s *SocialAuthService) InitiateOIDC(ctx context.Context, provider, redirect
 	return authURL, state, nil
 }
 
-// HandleCallback completes a Google/Microsoft OIDC flow: it parses the state
-// JWT, re-checks the redirect allowlist (defense-in-depth — Pitfall 4),
-// exchanges the code, verifies the id_token via the provider's JWKS, maps the
-// claims into an Identity, and provisions/links per the 09-01 matrix. It returns
-// the issued token pair plus the app redirect_uri for the HTTP callback to use.
-func (s *SocialAuthService) HandleCallback(ctx context.Context, code, stateJWT string) (*auth.AuthResponse, string, error) {
-	provider, redirectURI, _, _, err := s.parseStateJWT(stateJWT)
+// HandleCallback completes a social-login flow for ALL five providers: it parses
+// the state JWT, re-checks the redirect allowlist (defense-in-depth — Pitfall 4),
+// then dispatches by provider. OIDC providers (google/microsoft) exchange the
+// code and verify the id_token via JWKS; the custom providers (apple/facebook/x)
+// run their own exchange — Apple verifies its id_token against Apple's JWKS, X
+// completes its PKCE exchange with the verifier carried in the state JWT, and
+// Facebook calls the Graph userinfo endpoint. The resulting Identity flows through
+// the shared Provision pipeline. formUserField carries Apple's one-time `user`
+// (name) form POST; it is "" for every other provider. It returns the issued
+// token pair plus the app redirect_uri for the HTTP callback to use.
+func (s *SocialAuthService) HandleCallback(ctx context.Context, code, stateJWT, formUserField string) (*auth.AuthResponse, string, error) {
+	provider, redirectURI, pkceVerifier, _, err := s.parseStateJWT(stateJWT)
 	if err != nil {
 		return nil, "", fmt.Errorf("parse state: %w", err)
 	}
@@ -107,25 +112,40 @@ func (s *SocialAuthService) HandleCallback(ctx context.Context, code, stateJWT s
 	if !s.isAllowedRedirectURI(redirectURI) {
 		return nil, "", fmt.Errorf("redirect_uri not allowed")
 	}
-	if _, ok := oidcPresets[provider]; !ok {
-		return nil, "", fmt.Errorf("unknown OIDC provider %q", provider)
+
+	var identity Identity
+	switch {
+	case oidcPresets[provider] != "":
+		cfg, err := s.oidcConfig(provider)
+		if err != nil {
+			return nil, "", err
+		}
+		tokens, err := oidc.ExchangeCode(ctx, cfg, code)
+		if err != nil {
+			return nil, "", fmt.Errorf("exchange code: %w", err)
+		}
+		claims, err := oidc.VerifyIDToken(ctx, cfg, tokens.IDToken)
+		if err != nil {
+			return nil, "", fmt.Errorf("verify id_token: %w", err)
+		}
+		identity = claimsToIdentity(provider, claims)
+
+	case provider == "x":
+		identity, err = s.handleXCallback(ctx, code, pkceVerifier)
+		if err != nil {
+			return nil, "", err
+		}
+
+	case customProviders[provider]:
+		identity, err = s.handleCustomCallback(ctx, provider, code, formUserField)
+		if err != nil {
+			return nil, "", err
+		}
+
+	default:
+		return nil, "", fmt.Errorf("unknown social provider %q", provider)
 	}
 
-	cfg, err := s.oidcConfig(provider)
-	if err != nil {
-		return nil, "", err
-	}
-
-	tokens, err := oidc.ExchangeCode(ctx, cfg, code)
-	if err != nil {
-		return nil, "", fmt.Errorf("exchange code: %w", err)
-	}
-	claims, err := oidc.VerifyIDToken(ctx, cfg, tokens.IDToken)
-	if err != nil {
-		return nil, "", fmt.Errorf("verify id_token: %w", err)
-	}
-
-	identity := claimsToIdentity(provider, claims)
 	resp, err := s.Provision(ctx, identity)
 	if err != nil {
 		return nil, "", fmt.Errorf("provision: %w", err)

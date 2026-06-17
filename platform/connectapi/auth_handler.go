@@ -104,11 +104,12 @@ func (h *AuthHandler) InitiateSocialLogin(ctx context.Context, req *connect.Requ
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("provider and redirect_uri are required"))
 	}
 
-	authURL, state, err := h.socialService.InitiateOIDC(ctx, provider, redirectURI)
+	authURL, state, err := h.socialService.Initiate(ctx, provider, redirectURI)
 	if err != nil {
 		// Allowlist / unknown-provider rejections are caller errors, not server faults.
 		if strings.Contains(err.Error(), "not allowed") ||
 			strings.Contains(err.Error(), "unknown OIDC provider") ||
+			strings.Contains(err.Error(), "unknown social provider") ||
 			strings.Contains(err.Error(), "not registered") ||
 			strings.Contains(err.Error(), "not an OIDC provider") {
 			return nil, connect.NewError(connect.CodeInvalidArgument, err)

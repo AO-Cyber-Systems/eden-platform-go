@@ -47,8 +47,9 @@ type SocialAuthService struct {
 
 	// callback is the code→tokens completion used by the HTTP callback handler.
 	// It defaults to s.HandleCallback; tests inject a canned result to avoid
-	// real OIDC discovery/network.
-	callback func(ctx context.Context, code, stateJWT string) (*auth.AuthResponse, string, error)
+	// real OIDC discovery/network. formUserField carries Apple's one-time `user`
+	// (name) form POST; it is "" for every other provider.
+	callback func(ctx context.Context, code, stateJWT, formUserField string) (*auth.AuthResponse, string, error)
 }
 
 // NewSocialAuthService constructs a SocialAuthService. The provider registry is

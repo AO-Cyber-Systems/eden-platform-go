@@ -18,7 +18,7 @@ func TestHandleCallbackHTTP_Success_RedirectsWithTokens(t *testing.T) {
 
 	// Inject a canned HandleCallback so the handler test never touches the
 	// network / real OIDC discovery.
-	svc.callback = func(_ context.Context, code, state string) (*auth.AuthResponse, string, error) {
+	svc.callback = func(_ context.Context, code, state, _ string) (*auth.AuthResponse, string, error) {
 		return &auth.AuthResponse{
 			AccessToken:  "ACCESS123",
 			RefreshToken: "REFRESH456",
@@ -53,7 +53,7 @@ func TestHandleCallbackHTTP_Success_RedirectsWithTokens(t *testing.T) {
 func TestHandleCallbackHTTP_Error_RedirectsWithErrorParam(t *testing.T) {
 	svc, _, _ := newOIDCTestService(t)
 
-	svc.callback = func(_ context.Context, code, state string) (*auth.AuthResponse, string, error) {
+	svc.callback = func(_ context.Context, code, state, _ string) (*auth.AuthResponse, string, error) {
 		return nil, "com.justindonnaruma.app://auth/social/callback", errTest
 	}
 
@@ -84,7 +84,7 @@ func TestHandleCallbackHTTP_Error_RedirectsWithErrorParam(t *testing.T) {
 func TestHandleCallbackHTTP_Error_NoRedirectURI_HTTPError(t *testing.T) {
 	svc, _, _ := newOIDCTestService(t)
 
-	svc.callback = func(_ context.Context, code, state string) (*auth.AuthResponse, string, error) {
+	svc.callback = func(_ context.Context, code, state, _ string) (*auth.AuthResponse, string, error) {
 		return nil, "", errTest
 	}
 
@@ -108,7 +108,7 @@ func TestHandleCallbackHTTP_Error_NoRedirectURI_HTTPError(t *testing.T) {
 func TestHandleCallbackHTTP_POST_Accepted(t *testing.T) {
 	svc, _, _ := newOIDCTestService(t)
 
-	svc.callback = func(_ context.Context, code, state string) (*auth.AuthResponse, string, error) {
+	svc.callback = func(_ context.Context, code, state, _ string) (*auth.AuthResponse, string, error) {
 		return &auth.AuthResponse{AccessToken: "A", RefreshToken: "R", User: auth.User{ID: uuid.New()}},
 			"com.justindonnaruma.app://auth/social/callback", nil
 	}
