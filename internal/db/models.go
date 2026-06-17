@@ -187,6 +187,20 @@ type User struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+type UserIdentity struct {
+	ID          uuid.UUID `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
+	Provider    string    `json:"provider"`
+	ProviderSub string    `json:"provider_sub"`
+	Email       *string   `json:"email"`
+	IsVerified  bool      `json:"is_verified"`
+	DisplayName *string   `json:"display_name"`
+	AvatarUrl   *string   `json:"avatar_url"`
+	RawClaims   []byte    `json:"raw_claims"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type Webhook struct {
 	ID               uuid.UUID `json:"id"`
 	CompanyID        uuid.UUID `json:"company_id"`

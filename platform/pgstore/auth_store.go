@@ -15,6 +15,7 @@ import (
 )
 
 var _ auth.TxAuthStore = (*AuthStore)(nil)
+var _ auth.SocialStore = (*AuthStore)(nil)
 
 // AuthStore implements auth.TxAuthStore backed by PostgreSQL via pgx and sqlc.
 type AuthStore struct {
@@ -308,6 +309,66 @@ func (s *AuthStore) GetOAuthCredential(ctx context.Context, userID uuid.UUID, pr
 	return c, nil
 }
 
+// -- Social identity operations (user-scoped; NO company_id) --
+
+func (s *AuthStore) UpsertUserIdentity(ctx context.Context, identity auth.UserIdentity) (auth.UserIdentity, error) {
+	row, err := s.queries().UpsertUserIdentity(ctx, db.UpsertUserIdentityParams{
+		UserID:      identity.UserID,
+		Provider:    identity.Provider,
+		ProviderSub: identity.ProviderSub,
+		Email:       identity.Email,
+		IsVerified:  identity.IsVerified,
+		DisplayName: strPtrOrNil(identity.DisplayName),
+		AvatarUrl:   strPtrOrNil(identity.AvatarURL),
+		RawClaims:   identity.RawClaims,
+	})
+	if err != nil {
+		return auth.UserIdentity{}, fmt.Errorf("upsert user identity: %w", err)
+	}
+	return dbUserIdentityToAuth(row), nil
+}
+
+func (s *AuthStore) GetUserIdentityByProviderSub(ctx context.Context, provider, sub string) (auth.UserIdentity, error) {
+	row, err := s.queries().GetUserIdentityByProviderSub(ctx, db.GetUserIdentityByProviderSubParams{
+		Provider:    provider,
+		ProviderSub: sub,
+	})
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return auth.UserIdentity{}, fmt.Errorf("user identity not found")
+		}
+		return auth.UserIdentity{}, fmt.Errorf("get user identity by provider sub: %w", err)
+	}
+	return dbUserIdentityToAuth(row), nil
+}
+
+func (s *AuthStore) GetUserIdentityByEmail(ctx context.Context, email string) (auth.UserIdentity, error) {
+	row, err := s.queries().GetUserIdentityByEmail(ctx, &email)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return auth.UserIdentity{}, fmt.Errorf("user identity not found")
+		}
+		return auth.UserIdentity{}, fmt.Errorf("get user identity by email: %w", err)
+	}
+	return dbUserIdentityToAuth(row), nil
+}
+
+func (s *AuthStore) ListUserIdentitiesByUser(ctx context.Context, userID uuid.UUID) ([]auth.UserIdentity, error) {
+	rows, err := s.queries().ListUserIdentitiesByUser(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list user identities: %w", err)
+	}
+	out := make([]auth.UserIdentity, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, dbUserIdentityToAuth(row))
+	}
+	return out, nil
+}
+
+func (s *AuthStore) DeleteUserIdentity(ctx context.Context, id uuid.UUID) error {
+	return s.queries().DeleteUserIdentity(ctx, id)
+}
+
 // -- Audit --
 
 func (s *AuthStore) CreateAuditLog(ctx context.Context, companyID, actorID uuid.UUID, action, resource, resourceID, ipAddress string, details []byte) error {
@@ -361,6 +422,39 @@ func dbUserToAuth(u db.User) auth.User {
 		IsActive:     u.IsActive,
 		CreatedAt:    u.CreatedAt,
 	}
+}
+
+func dbUserIdentityToAuth(u db.UserIdentity) auth.UserIdentity {
+	return auth.UserIdentity{
+		ID:          u.ID,
+		UserID:      u.UserID,
+		Provider:    u.Provider,
+		ProviderSub: u.ProviderSub,
+		Email:       u.Email,
+		IsVerified:  u.IsVerified,
+		DisplayName: strPtrToStr(u.DisplayName),
+		AvatarURL:   strPtrToStr(u.AvatarUrl),
+		RawClaims:   json.RawMessage(u.RawClaims),
+		CreatedAt:   u.CreatedAt,
+		UpdatedAt:   u.UpdatedAt,
+	}
+}
+
+// strPtrToStr dereferences a nullable *string into a plain string ("" when nil).
+func strPtrToStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// strPtrOrNil converts a plain string into a nullable *string (nil when empty),
+// so empty display_name / avatar_url are stored as SQL NULL.
+func strPtrOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 // pgtypeUUID converts a pgtype.UUID to *uuid.UUID.

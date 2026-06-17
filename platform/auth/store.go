@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -64,6 +65,42 @@ type RefreshTokenRecord struct {
 	UserID    uuid.UUID
 	TokenHash string
 	ExpiresAt time.Time
+}
+
+// UserIdentity represents a user's link to an external social-login provider.
+//
+// User-scoped only — there is NO company_id. This is consumer social login,
+// explicitly NOT the company-scoped SSOService. One row exists per
+// (Provider, ProviderSub) pair; a single user may own several identities.
+//
+// Email is a pointer because some providers never return one (X/Twitter
+// always; Facebook when the user declines), in which case the column is NULL.
+// RawClaims holds the provider's identity claims for audit — it MUST NOT
+// store provider access/refresh tokens.
+type UserIdentity struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Provider    string  // "google"|"apple"|"microsoft"|"facebook"|"x"
+	ProviderSub string  // provider's stable user identifier (sub/id)
+	Email       *string // nil when the provider returned no email
+	IsVerified  bool    // did the provider mark the email verified
+	DisplayName string
+	AvatarURL   string
+	RawClaims   json.RawMessage
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+// SocialStore defines the database operations for user-scoped social
+// identities (consumer social login). NO company_id appears in any
+// signature — this is deliberately separate from the company-scoped SSO
+// operations on AuthStore.
+type SocialStore interface {
+	UpsertUserIdentity(ctx context.Context, identity UserIdentity) (UserIdentity, error)
+	GetUserIdentityByProviderSub(ctx context.Context, provider, sub string) (UserIdentity, error)
+	GetUserIdentityByEmail(ctx context.Context, email string) (UserIdentity, error)
+	ListUserIdentitiesByUser(ctx context.Context, userID uuid.UUID) ([]UserIdentity, error)
+	DeleteUserIdentity(ctx context.Context, id uuid.UUID) error
 }
 
 // AuthStore defines the database operations needed by the auth package.
