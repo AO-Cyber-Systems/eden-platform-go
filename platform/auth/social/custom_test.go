@@ -5,7 +5,10 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
@@ -278,5 +281,47 @@ func TestInitiateX_RejectsUnallowlistedRedirect(t *testing.T) {
 	svc, _, _ := newCustomTestService(t)
 	if _, _, err := svc.initiateX("https://evil.example.com/steal"); err == nil {
 		t.Fatal("expected error for non-allowlisted redirect_uri, got nil")
+	}
+}
+
+// Test list case 6: POST /auth/social/facebook/deletion returns 200 with a JSON
+// body carrying {url, confirmation_code} (Meta's required shape) and records an
+// audit log entry. It performs NO real deletion.
+func TestFacebookDeletion_Returns200WithConfirmationAndAudit(t *testing.T) {
+	svc, _, users := newCustomTestService(t)
+
+	mux := http.NewServeMux()
+	svc.RegisterSocialHTTPHandlers(mux)
+
+	body := strings.NewReader("signed_request=fake.payload")
+	req := httptest.NewRequest(http.MethodPost, "/auth/social/facebook/deletion", body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	var resp struct {
+		URL              string `json:"url"`
+		ConfirmationCode string `json:"confirmation_code"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode JSON body %q: %v", rec.Body.String(), err)
+	}
+	if resp.ConfirmationCode == "" {
+		t.Error("response body missing confirmation_code (Meta requires it)")
+	}
+	if resp.URL == "" {
+		t.Error("response body missing status url (Meta requires it)")
+	}
+
+	// The deletion request must be audited (best-effort, but the fake records it).
+	if len(users.auditLogs) == 0 {
+		t.Fatal("expected a deletion-request audit log entry, got none")
+	}
+	if users.auditLogs[0].Action != "social.facebook.deletion_request" {
+		t.Errorf("audit action = %q, want social.facebook.deletion_request", users.auditLogs[0].Action)
 	}
 }

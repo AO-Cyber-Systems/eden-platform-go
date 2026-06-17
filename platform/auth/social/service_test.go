@@ -89,6 +89,16 @@ type fakeAuthStore struct {
 	usersByID     map[uuid.UUID]auth.User
 	createdUsers  int
 	refreshTokens []auth.RefreshTokenRecord
+	auditLogs     []fakeAuditEntry
+}
+
+// fakeAuditEntry captures a CreateAuditLog call so tests can assert audit
+// behavior (e.g. the Facebook data-deletion request).
+type fakeAuditEntry struct {
+	CompanyID uuid.UUID
+	ActorID   uuid.UUID
+	Action    string
+	Resource  string
 }
 
 var _ auth.AuthStore = (*fakeAuthStore)(nil)
@@ -200,7 +210,8 @@ func (f *fakeAuthStore) UpsertOAuthCredential(context.Context, auth.OAuthCredent
 func (f *fakeAuthStore) GetOAuthCredential(context.Context, uuid.UUID, string) (auth.OAuthCredential, error) {
 	return auth.OAuthCredential{}, fmt.Errorf("not implemented")
 }
-func (f *fakeAuthStore) CreateAuditLog(context.Context, uuid.UUID, uuid.UUID, string, string, string, string, []byte) error {
+func (f *fakeAuthStore) CreateAuditLog(_ context.Context, companyID, actorID uuid.UUID, action, resource, _, _ string, _ []byte) error {
+	f.auditLogs = append(f.auditLogs, fakeAuditEntry{CompanyID: companyID, ActorID: actorID, Action: action, Resource: resource})
 	return nil
 }
 
