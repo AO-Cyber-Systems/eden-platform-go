@@ -1,11 +1,16 @@
 package social
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // RegisterSocialHTTPHandlers registers the consumer social-login callback on the
@@ -16,9 +21,53 @@ import (
 func (s *SocialAuthService) RegisterSocialHTTPHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/social/callback", s.handleCallbackHTTP)
 	mux.HandleFunc("POST /auth/social/callback", s.handleCallbackHTTP)
+	// Meta requires a data-deletion callback to publish a Facebook app. This is a
+	// stub: it acknowledges the request (the {url, confirmation_code} shape Meta
+	// validates) and audits it, but performs NO real deletion here.
+	mux.HandleFunc("POST /auth/social/facebook/deletion", s.handleFacebookDeletion)
 
-	slog.Info("registered social-login HTTP endpoint",
-		"social_callback", "/auth/social/callback (GET+POST)")
+	slog.Info("registered social-login HTTP endpoints",
+		"social_callback", "/auth/social/callback (GET+POST)",
+		"facebook_deletion", "/auth/social/facebook/deletion (POST)")
+}
+
+// handleFacebookDeletion implements Meta's required data-deletion callback. Meta
+// rejects a bare 200 — it expects a JSON body of {url, confirmation_code} where
+// `url` is a human-readable status page and `confirmation_code` is a tracking
+// token. We acknowledge the request, record a best-effort audit entry, and do
+// NOT delete any data here (a real deletion job is out of scope for this stub).
+func (s *SocialAuthService) handleFacebookDeletion(w http.ResponseWriter, r *http.Request) {
+	confirmationCode, err := randomConfirmationCode()
+	if err != nil {
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// Audit the request — best-effort, never block the 200. B2C has no company
+	// scope, so companyID/actorID are uuid.Nil.
+	if s.users != nil {
+		details := fmt.Sprintf(`{"confirmation_code":%q}`, confirmationCode)
+		_ = s.users.CreateAuditLog(r.Context(), uuid.Nil, uuid.Nil,
+			"social.facebook.deletion_request", "user_identity", "", "", []byte(details))
+	}
+
+	statusURL := s.baseURL + "/auth/social/facebook/deletion/status?code=" + url.QueryEscape(confirmationCode)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"url":               statusURL,
+		"confirmation_code": confirmationCode,
+	})
+}
+
+// randomConfirmationCode returns a 32-hex-char tracking code for a data-deletion
+// request.
+func randomConfirmationCode() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 // handleCallbackHTTP completes a social-login flow and delivers the issued token
