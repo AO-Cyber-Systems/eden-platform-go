@@ -171,5 +171,5 @@ func (s *SocialAuthService) appleClientSecret() (string, error) {
 	if keyPEM == "" {
 		return "", fmt.Errorf("APPLE_PRIVATE_KEY or APPLE_PRIVATE_KEY_PATH not set")
 	}
-	return generateAppleClientSecret(keyPEM, teamID, servicesID, keyID)
+	return GenerateAppleClientSecret(keyPEM, teamID, servicesID, keyID)
 }

@@ -33,12 +33,12 @@ const (
 // .p8 key never expires, but the signed JWT does — regenerate within this window.
 const appleClientSecretMaxAge = 150 * 24 * time.Hour
 
-// generateAppleClientSecret hand-rolls Apple's "Sign in with Apple" client-secret
+// GenerateAppleClientSecret hand-rolls Apple's "Sign in with Apple" client-secret
 // JWT: an ES256-signed token with iss=teamID, sub=servicesID,
 // aud=https://appleid.apple.com, and a header kid=keyID. This avoids a new
 // dependency (golang-jwt/jwt/v5 is already vendored). The privateKeyPEM is the
 // PKCS#8 EC key Apple issues as a .p8 file.
-func generateAppleClientSecret(privateKeyPEM, teamID, servicesID, keyID string) (string, error) {
+func GenerateAppleClientSecret(privateKeyPEM, teamID, servicesID, keyID string) (string, error) {
 	key, err := parseECPrivateKey(privateKeyPEM)
 	if err != nil {
 		return "", fmt.Errorf("parse apple private key: %w", err)

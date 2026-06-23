@@ -40,7 +40,7 @@ func newCustomTestService(t *testing.T) (*SocialAuthService, *fakeSocialStore, *
 
 // testECKeyPEM generates a fresh P-256 EC private key in PKCS#8 PEM form,
 // matching the format Apple issues its .p8 keys in. Used to drive
-// generateAppleClientSecret without a real Apple key.
+// GenerateAppleClientSecret without a real Apple key.
 func testECKeyPEM(t *testing.T) string {
 	t.Helper()
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -60,9 +60,9 @@ func testECKeyPEM(t *testing.T) string {
 func TestGenerateAppleClientSecret_ClaimShape(t *testing.T) {
 	keyPEM := testECKeyPEM(t)
 
-	secret, err := generateAppleClientSecret(keyPEM, "TEAMID1234", "com.justindonnaruma.service", "KEYID5678")
+	secret, err := GenerateAppleClientSecret(keyPEM, "TEAMID1234", "com.justindonnaruma.service", "KEYID5678")
 	if err != nil {
-		t.Fatalf("generateAppleClientSecret: %v", err)
+		t.Fatalf("GenerateAppleClientSecret: %v", err)
 	}
 
 	// Parse WITHOUT verifying the signature (we don't hold Apple's pub key here);
@@ -102,7 +102,7 @@ func TestGenerateAppleClientSecret_ClaimShape(t *testing.T) {
 
 // Bad key input is surfaced as an error, not a panic.
 func TestGenerateAppleClientSecret_BadKey(t *testing.T) {
-	if _, err := generateAppleClientSecret("not-a-pem", "T", "S", "K"); err == nil {
+	if _, err := GenerateAppleClientSecret("not-a-pem", "T", "S", "K"); err == nil {
 		t.Fatal("expected error for malformed private key, got nil")
 	}
 }
