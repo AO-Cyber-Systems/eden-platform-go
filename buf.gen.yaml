@@ -18,3 +18,8 @@ plugins:
     out: docs/api
     opt:
       - markdown,api.md
+  # Structured JSON drives the eden-docs Swagger-style /api/ explorer.
+  - remote: buf.build/community/pseudomuto-doc
+    out: docs/api
+    opt:
+      - json,api.json
