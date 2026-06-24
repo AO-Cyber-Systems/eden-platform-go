@@ -1197,6 +1197,17 @@
           "fields": []
         },
         {
+          "name": "AccountSelfServiceListMyIdPLinksRequest",
+          "longName": "AccountSelfServiceListMyIdPLinksRequest",
+          "fullName": "platform.v1.AccountSelfServiceListMyIdPLinksRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        },
+        {
           "name": "AccountSelfServiceListMyMFAFactorsRequest",
           "longName": "AccountSelfServiceListMyMFAFactorsRequest",
           "fullName": "platform.v1.AccountSelfServiceListMyMFAFactorsRequest",
@@ -1322,6 +1333,54 @@
           "hasOneofs": false,
           "extensions": [],
           "fields": []
+        },
+        {
+          "name": "AccountSelfServiceUnlinkMyIdPRequest",
+          "longName": "AccountSelfServiceUnlinkMyIdPRequest",
+          "fullName": "platform.v1.AccountSelfServiceUnlinkMyIdPRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "external_idp_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "AccountSelfServiceUnlinkMyIdPResponse",
+          "longName": "AccountSelfServiceUnlinkMyIdPResponse",
+          "fullName": "platform.v1.AccountSelfServiceUnlinkMyIdPResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "remaining",
+              "description": "remaining lists the caller's IdP links AFTER the unlink succeeds.",
+              "label": "repeated",
+              "type": "IdPLink",
+              "longType": "IdPLink",
+              "fullType": "platform.v1.IdPLink",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
         },
         {
           "name": "AccountSelfServiceUpdateMyProfileRequest",
@@ -1516,6 +1575,78 @@
           ]
         },
         {
+          "name": "IdPLink",
+          "longName": "IdPLink",
+          "fullName": "platform.v1.IdPLink",
+          "description": "IdPLink is one external-IdP login method linked to the caller's global\nidentity (Obj 14). idp_subject + idp_email are the values the IdP asserted\nat link time (recorded on the link row, never promoted to the identity).\ncreated_at is an RFC3339 string — the link rows are global (no per-tenant\ntimestamptz coercion the portal would need to localize differently).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "external_idp_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "idp_name",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "idp_subject",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "idp_email",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "created_at",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "ListMyApiKeysResponse",
           "longName": "ListMyApiKeysResponse",
           "fullName": "platform.v1.ListMyApiKeysResponse",
@@ -1532,6 +1663,30 @@
               "type": "ApiKeySummary",
               "longType": "ApiKeySummary",
               "fullType": "platform.v1.ApiKeySummary",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ListMyIdPLinksResponse",
+          "longName": "ListMyIdPLinksResponse",
+          "fullName": "platform.v1.ListMyIdPLinksResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "links",
+              "description": "",
+              "label": "repeated",
+              "type": "IdPLink",
+              "longType": "IdPLink",
+              "fullType": "platform.v1.IdPLink",
               "ismap": false,
               "isoneof": false,
               "oneofdecl": "",
@@ -1953,6 +2108,30 @@
               "responseType": "AccountSelfServiceRevokeMyApiKeyResponse",
               "responseLongType": "AccountSelfServiceRevokeMyApiKeyResponse",
               "responseFullType": "platform.v1.AccountSelfServiceRevokeMyApiKeyResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "ListMyIdPLinks",
+              "description": "MGMT-05 — Linked IdP listing + self-unlink (Obj 14 GID-08). The caller's\nidentity is resolved from the session; UnlinkMyIdP refuses to remove the\nlast remaining link (CodeFailedPrecondition) to prevent login lockout.",
+              "requestType": "AccountSelfServiceListMyIdPLinksRequest",
+              "requestLongType": "AccountSelfServiceListMyIdPLinksRequest",
+              "requestFullType": "platform.v1.AccountSelfServiceListMyIdPLinksRequest",
+              "requestStreaming": false,
+              "responseType": "ListMyIdPLinksResponse",
+              "responseLongType": "ListMyIdPLinksResponse",
+              "responseFullType": "platform.v1.ListMyIdPLinksResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "UnlinkMyIdP",
+              "description": "",
+              "requestType": "AccountSelfServiceUnlinkMyIdPRequest",
+              "requestLongType": "AccountSelfServiceUnlinkMyIdPRequest",
+              "requestFullType": "platform.v1.AccountSelfServiceUnlinkMyIdPRequest",
+              "requestStreaming": false,
+              "responseType": "AccountSelfServiceUnlinkMyIdPResponse",
+              "responseLongType": "AccountSelfServiceUnlinkMyIdPResponse",
+              "responseFullType": "platform.v1.AccountSelfServiceUnlinkMyIdPResponse",
               "responseStreaming": false
             }
           ]
@@ -12174,6 +12353,126 @@
       "extensions": [],
       "messages": [
         {
+          "name": "ClientIdPOption",
+          "longName": "ClientIdPOption",
+          "fullName": "platform.v1.ClientIdPOption",
+          "description": "ClientIdPOption is the (OAuth client, external IdP) pairing that controls\nwhether a given IdP is offered in a client's /authorize IdP picker.\nRemoveClientIdPOption returns this with enabled = false (disable, not\ndelete) to preserve the admin audit trail.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "client_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "idp_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "enabled",
+              "description": "",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "FederationAdminServiceAddClientIdPOptionRequest",
+          "longName": "FederationAdminServiceAddClientIdPOptionRequest",
+          "fullName": "platform.v1.FederationAdminServiceAddClientIdPOptionRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "client_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "idp_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "FederationAdminServiceAddClientIdPOptionResponse",
+          "longName": "FederationAdminServiceAddClientIdPOptionResponse",
+          "fullName": "platform.v1.FederationAdminServiceAddClientIdPOptionResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "option",
+              "description": "",
+              "label": "",
+              "type": "ClientIdPOption",
+              "longType": "ClientIdPOption",
+              "fullType": "platform.v1.ClientIdPOption",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "FederationAdminServiceCreateAttributeMappingRequest",
           "longName": "FederationAdminServiceCreateAttributeMappingRequest",
           "fullName": "platform.v1.FederationAdminServiceCreateAttributeMappingRequest",
@@ -13310,6 +13609,66 @@
           ]
         },
         {
+          "name": "FederationAdminServiceRemoveClientIdPOptionRequest",
+          "longName": "FederationAdminServiceRemoveClientIdPOptionRequest",
+          "fullName": "platform.v1.FederationAdminServiceRemoveClientIdPOptionRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "client_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "idp_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "FederationAdminServiceRemoveClientIdPOptionResponse",
+          "longName": "FederationAdminServiceRemoveClientIdPOptionResponse",
+          "fullName": "platform.v1.FederationAdminServiceRemoveClientIdPOptionResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "option",
+              "description": "",
+              "label": "",
+              "type": "ClientIdPOption",
+              "longType": "ClientIdPOption",
+              "fullType": "platform.v1.ClientIdPOption",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "FederationAdminServiceUpdateAttributeMappingRequest",
           "longName": "FederationAdminServiceUpdateAttributeMappingRequest",
           "fullName": "platform.v1.FederationAdminServiceUpdateAttributeMappingRequest",
@@ -13999,6 +14358,30 @@
               "responseType": "FederationAdminServiceRegisterDownstreamClientResponse",
               "responseLongType": "FederationAdminServiceRegisterDownstreamClientResponse",
               "responseFullType": "platform.v1.FederationAdminServiceRegisterDownstreamClientResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "AddClientIdPOption",
+              "description": "AddClientIdPOption enables an (OAuth client, external IdP) pairing so the\nIdP is offered in that client's /authorize IdP picker. Idempotent on the\n(client_id, idp_id) pair. The response carries the resulting option with\nenabled = true.",
+              "requestType": "FederationAdminServiceAddClientIdPOptionRequest",
+              "requestLongType": "FederationAdminServiceAddClientIdPOptionRequest",
+              "requestFullType": "platform.v1.FederationAdminServiceAddClientIdPOptionRequest",
+              "requestStreaming": false,
+              "responseType": "FederationAdminServiceAddClientIdPOptionResponse",
+              "responseLongType": "FederationAdminServiceAddClientIdPOptionResponse",
+              "responseFullType": "platform.v1.FederationAdminServiceAddClientIdPOptionResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "RemoveClientIdPOption",
+              "description": "RemoveClientIdPOption DISABLES (enabled = false — it does NOT delete the\nrow, preserving the admin audit trail) an (OAuth client, external IdP)\npairing. The response carries the option with enabled = false.",
+              "requestType": "FederationAdminServiceRemoveClientIdPOptionRequest",
+              "requestLongType": "FederationAdminServiceRemoveClientIdPOptionRequest",
+              "requestFullType": "platform.v1.FederationAdminServiceRemoveClientIdPOptionRequest",
+              "requestStreaming": false,
+              "responseType": "FederationAdminServiceRemoveClientIdPOptionResponse",
+              "responseLongType": "FederationAdminServiceRemoveClientIdPOptionResponse",
+              "responseFullType": "platform.v1.FederationAdminServiceRemoveClientIdPOptionResponse",
               "responseStreaming": false
             }
           ]

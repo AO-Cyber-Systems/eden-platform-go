@@ -25,6 +25,7 @@
 - [platform/v1/account_self_service.proto](#platform_v1_account_self_service-proto)
     - [AccountSelfServiceGetMyProfileRequest](#platform-v1-AccountSelfServiceGetMyProfileRequest)
     - [AccountSelfServiceListMyApiKeysRequest](#platform-v1-AccountSelfServiceListMyApiKeysRequest)
+    - [AccountSelfServiceListMyIdPLinksRequest](#platform-v1-AccountSelfServiceListMyIdPLinksRequest)
     - [AccountSelfServiceListMyMFAFactorsRequest](#platform-v1-AccountSelfServiceListMyMFAFactorsRequest)
     - [AccountSelfServiceListMyOAuthGrantsRequest](#platform-v1-AccountSelfServiceListMyOAuthGrantsRequest)
     - [AccountSelfServiceRemoveMyMFARequest](#platform-v1-AccountSelfServiceRemoveMyMFARequest)
@@ -33,10 +34,14 @@
     - [AccountSelfServiceRevokeMyApiKeyResponse](#platform-v1-AccountSelfServiceRevokeMyApiKeyResponse)
     - [AccountSelfServiceRevokeMyOAuthGrantRequest](#platform-v1-AccountSelfServiceRevokeMyOAuthGrantRequest)
     - [AccountSelfServiceRevokeMyOAuthGrantResponse](#platform-v1-AccountSelfServiceRevokeMyOAuthGrantResponse)
+    - [AccountSelfServiceUnlinkMyIdPRequest](#platform-v1-AccountSelfServiceUnlinkMyIdPRequest)
+    - [AccountSelfServiceUnlinkMyIdPResponse](#platform-v1-AccountSelfServiceUnlinkMyIdPResponse)
     - [AccountSelfServiceUpdateMyProfileRequest](#platform-v1-AccountSelfServiceUpdateMyProfileRequest)
     - [ApiKeySummary](#platform-v1-ApiKeySummary)
     - [CommunicationPrefs](#platform-v1-CommunicationPrefs)
+    - [IdPLink](#platform-v1-IdPLink)
     - [ListMyApiKeysResponse](#platform-v1-ListMyApiKeysResponse)
+    - [ListMyIdPLinksResponse](#platform-v1-ListMyIdPLinksResponse)
     - [ListMyMFAFactorsResponse](#platform-v1-ListMyMFAFactorsResponse)
     - [ListMyOAuthGrantsResponse](#platform-v1-ListMyOAuthGrantsResponse)
     - [MFAFactor](#platform-v1-MFAFactor)
@@ -258,6 +263,9 @@
     - [OAuthAdminService](#platform-v1-OAuthAdminService)
   
 - [platform/v1/federation_admin.proto](#platform_v1_federation_admin-proto)
+    - [ClientIdPOption](#platform-v1-ClientIdPOption)
+    - [FederationAdminServiceAddClientIdPOptionRequest](#platform-v1-FederationAdminServiceAddClientIdPOptionRequest)
+    - [FederationAdminServiceAddClientIdPOptionResponse](#platform-v1-FederationAdminServiceAddClientIdPOptionResponse)
     - [FederationAdminServiceCreateAttributeMappingRequest](#platform-v1-FederationAdminServiceCreateAttributeMappingRequest)
     - [FederationAdminServiceCreateAttributeMappingRequest.CustomAttrsEntry](#platform-v1-FederationAdminServiceCreateAttributeMappingRequest-CustomAttrsEntry)
     - [FederationAdminServiceCreateAttributeMappingResponse](#platform-v1-FederationAdminServiceCreateAttributeMappingResponse)
@@ -285,6 +293,8 @@
     - [FederationAdminServiceRegisterDownstreamClientResponse](#platform-v1-FederationAdminServiceRegisterDownstreamClientResponse)
     - [FederationAdminServiceRegisterDownstreamSPRequest](#platform-v1-FederationAdminServiceRegisterDownstreamSPRequest)
     - [FederationAdminServiceRegisterDownstreamSPResponse](#platform-v1-FederationAdminServiceRegisterDownstreamSPResponse)
+    - [FederationAdminServiceRemoveClientIdPOptionRequest](#platform-v1-FederationAdminServiceRemoveClientIdPOptionRequest)
+    - [FederationAdminServiceRemoveClientIdPOptionResponse](#platform-v1-FederationAdminServiceRemoveClientIdPOptionResponse)
     - [FederationAdminServiceUpdateAttributeMappingRequest](#platform-v1-FederationAdminServiceUpdateAttributeMappingRequest)
     - [FederationAdminServiceUpdateAttributeMappingRequest.CustomAttrsEntry](#platform-v1-FederationAdminServiceUpdateAttributeMappingRequest-CustomAttrsEntry)
     - [FederationAdminServiceUpdateAttributeMappingResponse](#platform-v1-FederationAdminServiceUpdateAttributeMappingResponse)
@@ -797,6 +807,16 @@ Reports are computed on demand from the live aoid.* tables &#43; aoid.audit_buff
 
 
 
+<a name="platform-v1-AccountSelfServiceListMyIdPLinksRequest"></a>
+
+### AccountSelfServiceListMyIdPLinksRequest
+
+
+
+
+
+
+
 <a name="platform-v1-AccountSelfServiceListMyMFAFactorsRequest"></a>
 
 ### AccountSelfServiceListMyMFAFactorsRequest
@@ -892,6 +912,36 @@ Reports are computed on demand from the live aoid.* tables &#43; aoid.audit_buff
 
 
 
+<a name="platform-v1-AccountSelfServiceUnlinkMyIdPRequest"></a>
+
+### AccountSelfServiceUnlinkMyIdPRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| external_idp_id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="platform-v1-AccountSelfServiceUnlinkMyIdPResponse"></a>
+
+### AccountSelfServiceUnlinkMyIdPResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| remaining | [IdPLink](#platform-v1-IdPLink) | repeated | remaining lists the caller&#39;s IdP links AFTER the unlink succeeds. |
+
+
+
+
+
+
 <a name="platform-v1-AccountSelfServiceUpdateMyProfileRequest"></a>
 
 ### AccountSelfServiceUpdateMyProfileRequest
@@ -949,6 +999,29 @@ product_updates &#43; marketing honor the user&#39;s setting.
 
 
 
+<a name="platform-v1-IdPLink"></a>
+
+### IdPLink
+IdPLink is one external-IdP login method linked to the caller&#39;s global
+identity (Obj 14). idp_subject &#43; idp_email are the values the IdP asserted
+at link time (recorded on the link row, never promoted to the identity).
+created_at is an RFC3339 string — the link rows are global (no per-tenant
+timestamptz coercion the portal would need to localize differently).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| external_idp_id | [string](#string) |  |  |
+| idp_name | [string](#string) |  |  |
+| idp_subject | [string](#string) |  |  |
+| idp_email | [string](#string) |  |  |
+| created_at | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="platform-v1-ListMyApiKeysResponse"></a>
 
 ### ListMyApiKeysResponse
@@ -958,6 +1031,21 @@ product_updates &#43; marketing honor the user&#39;s setting.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | keys | [ApiKeySummary](#platform-v1-ApiKeySummary) | repeated |  |
+
+
+
+
+
+
+<a name="platform-v1-ListMyIdPLinksResponse"></a>
+
+### ListMyIdPLinksResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| links | [IdPLink](#platform-v1-IdPLink) | repeated |  |
 
 
 
@@ -1085,6 +1173,8 @@ EndUserSessionService (Obj 3, TRD 03-05) and is NOT duplicated here.
 | RevokeMyOAuthGrant | [AccountSelfServiceRevokeMyOAuthGrantRequest](#platform-v1-AccountSelfServiceRevokeMyOAuthGrantRequest) | [AccountSelfServiceRevokeMyOAuthGrantResponse](#platform-v1-AccountSelfServiceRevokeMyOAuthGrantResponse) |  |
 | ListMyApiKeys | [AccountSelfServiceListMyApiKeysRequest](#platform-v1-AccountSelfServiceListMyApiKeysRequest) | [ListMyApiKeysResponse](#platform-v1-ListMyApiKeysResponse) | MGMT-04 — API key listing &#43; self-revoke |
 | RevokeMyApiKey | [AccountSelfServiceRevokeMyApiKeyRequest](#platform-v1-AccountSelfServiceRevokeMyApiKeyRequest) | [AccountSelfServiceRevokeMyApiKeyResponse](#platform-v1-AccountSelfServiceRevokeMyApiKeyResponse) |  |
+| ListMyIdPLinks | [AccountSelfServiceListMyIdPLinksRequest](#platform-v1-AccountSelfServiceListMyIdPLinksRequest) | [ListMyIdPLinksResponse](#platform-v1-ListMyIdPLinksResponse) | MGMT-05 — Linked IdP listing &#43; self-unlink (Obj 14 GID-08). The caller&#39;s identity is resolved from the session; UnlinkMyIdP refuses to remove the last remaining link (CodeFailedPrecondition) to prevent login lockout. |
+| UnlinkMyIdP | [AccountSelfServiceUnlinkMyIdPRequest](#platform-v1-AccountSelfServiceUnlinkMyIdPRequest) | [AccountSelfServiceUnlinkMyIdPResponse](#platform-v1-AccountSelfServiceUnlinkMyIdPResponse) |  |
 
  
 
@@ -4514,6 +4604,58 @@ with the action constants added in TRD 04-05 (oauth.client.*).
 
 
 
+<a name="platform-v1-ClientIdPOption"></a>
+
+### ClientIdPOption
+ClientIdPOption is the (OAuth client, external IdP) pairing that controls
+whether a given IdP is offered in a client&#39;s /authorize IdP picker.
+RemoveClientIdPOption returns this with enabled = false (disable, not
+delete) to preserve the admin audit trail.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| client_id | [string](#string) |  |  |
+| idp_id | [string](#string) |  |  |
+| enabled | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="platform-v1-FederationAdminServiceAddClientIdPOptionRequest"></a>
+
+### FederationAdminServiceAddClientIdPOptionRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| client_id | [string](#string) |  |  |
+| idp_id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="platform-v1-FederationAdminServiceAddClientIdPOptionResponse"></a>
+
+### FederationAdminServiceAddClientIdPOptionResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| option | [ClientIdPOption](#platform-v1-ClientIdPOption) |  |  |
+
+
+
+
+
+
 <a name="platform-v1-FederationAdminServiceCreateAttributeMappingRequest"></a>
 
 ### FederationAdminServiceCreateAttributeMappingRequest
@@ -4944,6 +5086,37 @@ with the action constants added in TRD 04-05 (oauth.client.*).
 
 
 
+<a name="platform-v1-FederationAdminServiceRemoveClientIdPOptionRequest"></a>
+
+### FederationAdminServiceRemoveClientIdPOptionRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| client_id | [string](#string) |  |  |
+| idp_id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="platform-v1-FederationAdminServiceRemoveClientIdPOptionResponse"></a>
+
+### FederationAdminServiceRemoveClientIdPOptionResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| option | [ClientIdPOption](#platform-v1-ClientIdPOption) |  |  |
+
+
+
+
+
+
 <a name="platform-v1-FederationAdminServiceUpdateAttributeMappingRequest"></a>
 
 ### FederationAdminServiceUpdateAttributeMappingRequest
@@ -5128,6 +5301,8 @@ opaque server-issued cursor; empty next_cursor means &#34;no more results&#34;).
 | ListDownstreamSPs | [FederationAdminServiceListDownstreamSPsRequest](#platform-v1-FederationAdminServiceListDownstreamSPsRequest) | [FederationAdminServiceListDownstreamSPsResponse](#platform-v1-FederationAdminServiceListDownstreamSPsResponse) | ListDownstreamSPs returns a paginated list of SPs in the tenant. |
 | DeleteDownstreamSP | [FederationAdminServiceDeleteDownstreamSPRequest](#platform-v1-FederationAdminServiceDeleteDownstreamSPRequest) | [FederationAdminServiceDeleteDownstreamSPResponse](#platform-v1-FederationAdminServiceDeleteDownstreamSPResponse) | DeleteDownstreamSP removes an SP registration. In-flight assertions already issued remain valid for their lifetime. |
 | RegisterDownstreamClient | [FederationAdminServiceRegisterDownstreamClientRequest](#platform-v1-FederationAdminServiceRegisterDownstreamClientRequest) | [FederationAdminServiceRegisterDownstreamClientResponse](#platform-v1-FederationAdminServiceRegisterDownstreamClientResponse) | RegisterDownstreamClient is a thin convenience wrapper around OAuthAdminService.CreateClient (Obj 4). It applies federation-friendly defaults (client_type=confidential, grant_types= [authorization_code, refresh_token], token_endpoint_auth_method= client_secret_basic, default scopes openid&#43;profile&#43;email) and returns the canonical OAuthClient &#43; one-time client_secret. Admin UIs that need finer control should call OAuthAdminService.CreateClient directly instead. |
+| AddClientIdPOption | [FederationAdminServiceAddClientIdPOptionRequest](#platform-v1-FederationAdminServiceAddClientIdPOptionRequest) | [FederationAdminServiceAddClientIdPOptionResponse](#platform-v1-FederationAdminServiceAddClientIdPOptionResponse) | AddClientIdPOption enables an (OAuth client, external IdP) pairing so the IdP is offered in that client&#39;s /authorize IdP picker. Idempotent on the (client_id, idp_id) pair. The response carries the resulting option with enabled = true. |
+| RemoveClientIdPOption | [FederationAdminServiceRemoveClientIdPOptionRequest](#platform-v1-FederationAdminServiceRemoveClientIdPOptionRequest) | [FederationAdminServiceRemoveClientIdPOptionResponse](#platform-v1-FederationAdminServiceRemoveClientIdPOptionResponse) | RemoveClientIdPOption DISABLES (enabled = false — it does NOT delete the row, preserving the admin audit trail) an (OAuth client, external IdP) pairing. The response carries the option with enabled = false. |
 
  
 
