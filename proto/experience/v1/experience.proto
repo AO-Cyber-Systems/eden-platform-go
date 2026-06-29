@@ -75,8 +75,87 @@ message ExperienceSpec {
   reserved 20 to 29;   // NavGraph                                    (140-05)
   reserved 30 to 39;   // ThemeSpec + TermSet + LocaleSpec            (140-06)
   reserved 40 to 49;   // per-surface OfflineSpec                     (140-06)
-  reserved 50 to 59;   // ServiceTransportBinding (+ AOID scope)      (140-04)
+  // 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
+  repeated ServiceTransportBinding bindings = 50;  // service<->transport bindings (transport- AND scope-agnostic)
+  reserved 51 to 59;   // additional binding seams                     (140-04)
   reserved 60 to 69;   // ToolDefinition / AgentNode                  (140-07)
   reserved 70 to 79;   // telemetry / ResolutionContext / LockedSurface (140-07/08/09)
   reserved 80 to 89;   // flag_overrides / variant / declared_states / customFields / RulePolicy (140-07)
+}
+
+// --- 140-04 ServiceTransportBinding (must-have #3) -------------------------
+//
+// The binding makes a FeatureSurface bind to a backend service in a way that is
+// TRANSPORT-agnostic (eden-biz = CONNECT; aocore = REST_OPENAPI) AND
+// SCOPE-agnostic (biz = company scope; aocore = org scope). It carries reads
+// AND writes -- create/update/delete are first-class Operations, not read-only.
+//
+// AOID IDENTITY MODEL (Decision #1, locked -- the mechanism is RUNTIME, not a
+// proto field): the device holds ONE AOID identity. scope_authority on each
+// binding selects which backend tenant scope that single identity projects to
+// via the AOEdge identity-context -- COMPANY (eden-biz) or ORG (aocore). aocore
+// VERIFIES the AOEdge identity-context today; biz aligns to accept it inbound
+// (alignment task #16). There is NO device-side multi-credential store: one
+// identity, projected per-backend at request time (see binding.ResolveScope).
+// Authority is derived ONLY from the verified identity context -- NEVER bound
+// from a request body.
+
+// TransportKind is the wire protocol a binding speaks. Room is reserved for
+// future transports (e.g. GraphQL) by keeping UNSPECIFIED=0 fail-closed and
+// numbering known transports sparsely-safe.
+enum TransportKind {
+  TRANSPORT_KIND_UNSPECIFIED = 0;   // reserved / not-yet-bindable (forward-compat)
+  TRANSPORT_KIND_CONNECT = 1;       // eden-biz Connect RPC
+  TRANSPORT_KIND_REST_OPENAPI = 2;  // aocore REST / OpenAPI
+}
+
+// ScopeAuthority is how a single AOID identity projects to a backend's tenant
+// scope. COMPANY = eden-biz company scope; ORG = aocore org scope. UNSPECIFIED
+// is fail-closed (not bindable). This enum is the proto-level mapping of the
+// one identity to each backend -- the projection logic is binding.ResolveScope.
+enum ScopeAuthority {
+  SCOPE_AUTHORITY_UNSPECIFIED = 0;  // reserved / fail-closed
+  SCOPE_AUTHORITY_COMPANY = 1;      // eden-biz company scope
+  SCOPE_AUTHORITY_ORG = 2;          // aocore org scope
+}
+
+// Operation is a single read or write the binding exposes. The binding is NOT
+// read-only: CREATE/UPDATE/DELETE are first-class alongside GET/LIST.
+enum Operation {
+  OPERATION_UNSPECIFIED = 0;
+  OPERATION_GET = 1;     // read one
+  OPERATION_LIST = 2;    // read many
+  OPERATION_CREATE = 3;  // write (create)
+  OPERATION_UPDATE = 4;  // write (update)
+  OPERATION_DELETE = 5;  // write (delete)
+}
+
+// PaginationKind is the pagination contract a LIST operation honors, independent
+// of transport (a CONNECT and a REST_OPENAPI binding can each use any kind).
+enum PaginationKind {
+  PAGINATION_KIND_UNSPECIFIED = 0;
+  PAGINATION_KIND_NONE = 1;    // no pagination
+  PAGINATION_KIND_CURSOR = 2;  // opaque page_token cursor
+  PAGINATION_KIND_OFFSET = 3;  // numeric offset/limit
+}
+
+// ServiceTransportBinding binds one entity's service to a transport + scope.
+// It is the anchor every later message references for identity + scope. It is
+// transport- AND scope-agnostic so the SAME ExperienceSpec can drive eden-biz
+// (CONNECT/COMPANY) and aocore (REST_OPENAPI/ORG) through one Repository
+// abstraction (the runtime two-transport proof lands in 140-11).
+//
+// NO authority field (company_id/org_id) lives here that a REST handler could
+// bind from the request BODY -- scope_authority selects WHICH scope the
+// verified AOID identity projects to; the scope VALUE is resolved at runtime
+// from the identity context, never the body (binding.ResolveScope).
+message ServiceTransportBinding {
+  string entity = 1;              // logical entity (e.g. "Invoice", "Tenant")
+  string service_package = 2;     // backend service package / namespace
+  string service_name = 3;        // backend service name
+  repeated Operation operations = 4;  // reads AND writes this binding exposes
+  TransportKind transport_kind = 5;   // CONNECT (biz) | REST_OPENAPI (aocore)
+  ScopeAuthority scope_authority = 6; // COMPANY (biz) | ORG (aocore) projection target
+  PaginationKind pagination = 7;      // LIST pagination contract
+  string repo_interface_id = 8;       // Repository abstraction id (140-11 two-transport proof)
 }

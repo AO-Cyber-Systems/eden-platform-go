@@ -86,6 +86,225 @@ func (UnknownSurfacePolicy) EnumDescriptor() ([]byte, []int) {
 	return file_experience_v1_experience_proto_rawDescGZIP(), []int{0}
 }
 
+// TransportKind is the wire protocol a binding speaks. Room is reserved for
+// future transports (e.g. GraphQL) by keeping UNSPECIFIED=0 fail-closed and
+// numbering known transports sparsely-safe.
+type TransportKind int32
+
+const (
+	TransportKind_TRANSPORT_KIND_UNSPECIFIED  TransportKind = 0 // reserved / not-yet-bindable (forward-compat)
+	TransportKind_TRANSPORT_KIND_CONNECT      TransportKind = 1 // eden-biz Connect RPC
+	TransportKind_TRANSPORT_KIND_REST_OPENAPI TransportKind = 2 // aocore REST / OpenAPI
+)
+
+// Enum value maps for TransportKind.
+var (
+	TransportKind_name = map[int32]string{
+		0: "TRANSPORT_KIND_UNSPECIFIED",
+		1: "TRANSPORT_KIND_CONNECT",
+		2: "TRANSPORT_KIND_REST_OPENAPI",
+	}
+	TransportKind_value = map[string]int32{
+		"TRANSPORT_KIND_UNSPECIFIED":  0,
+		"TRANSPORT_KIND_CONNECT":      1,
+		"TRANSPORT_KIND_REST_OPENAPI": 2,
+	}
+)
+
+func (x TransportKind) Enum() *TransportKind {
+	p := new(TransportKind)
+	*p = x
+	return p
+}
+
+func (x TransportKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TransportKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[1].Descriptor()
+}
+
+func (TransportKind) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[1]
+}
+
+func (x TransportKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TransportKind.Descriptor instead.
+func (TransportKind) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{1}
+}
+
+// ScopeAuthority is how a single AOID identity projects to a backend's tenant
+// scope. COMPANY = eden-biz company scope; ORG = aocore org scope. UNSPECIFIED
+// is fail-closed (not bindable). This enum is the proto-level mapping of the
+// one identity to each backend -- the projection logic is binding.ResolveScope.
+type ScopeAuthority int32
+
+const (
+	ScopeAuthority_SCOPE_AUTHORITY_UNSPECIFIED ScopeAuthority = 0 // reserved / fail-closed
+	ScopeAuthority_SCOPE_AUTHORITY_COMPANY     ScopeAuthority = 1 // eden-biz company scope
+	ScopeAuthority_SCOPE_AUTHORITY_ORG         ScopeAuthority = 2 // aocore org scope
+)
+
+// Enum value maps for ScopeAuthority.
+var (
+	ScopeAuthority_name = map[int32]string{
+		0: "SCOPE_AUTHORITY_UNSPECIFIED",
+		1: "SCOPE_AUTHORITY_COMPANY",
+		2: "SCOPE_AUTHORITY_ORG",
+	}
+	ScopeAuthority_value = map[string]int32{
+		"SCOPE_AUTHORITY_UNSPECIFIED": 0,
+		"SCOPE_AUTHORITY_COMPANY":     1,
+		"SCOPE_AUTHORITY_ORG":         2,
+	}
+)
+
+func (x ScopeAuthority) Enum() *ScopeAuthority {
+	p := new(ScopeAuthority)
+	*p = x
+	return p
+}
+
+func (x ScopeAuthority) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ScopeAuthority) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[2].Descriptor()
+}
+
+func (ScopeAuthority) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[2]
+}
+
+func (x ScopeAuthority) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ScopeAuthority.Descriptor instead.
+func (ScopeAuthority) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{2}
+}
+
+// Operation is a single read or write the binding exposes. The binding is NOT
+// read-only: CREATE/UPDATE/DELETE are first-class alongside GET/LIST.
+type Operation int32
+
+const (
+	Operation_OPERATION_UNSPECIFIED Operation = 0
+	Operation_OPERATION_GET         Operation = 1 // read one
+	Operation_OPERATION_LIST        Operation = 2 // read many
+	Operation_OPERATION_CREATE      Operation = 3 // write (create)
+	Operation_OPERATION_UPDATE      Operation = 4 // write (update)
+	Operation_OPERATION_DELETE      Operation = 5 // write (delete)
+)
+
+// Enum value maps for Operation.
+var (
+	Operation_name = map[int32]string{
+		0: "OPERATION_UNSPECIFIED",
+		1: "OPERATION_GET",
+		2: "OPERATION_LIST",
+		3: "OPERATION_CREATE",
+		4: "OPERATION_UPDATE",
+		5: "OPERATION_DELETE",
+	}
+	Operation_value = map[string]int32{
+		"OPERATION_UNSPECIFIED": 0,
+		"OPERATION_GET":         1,
+		"OPERATION_LIST":        2,
+		"OPERATION_CREATE":      3,
+		"OPERATION_UPDATE":      4,
+		"OPERATION_DELETE":      5,
+	}
+)
+
+func (x Operation) Enum() *Operation {
+	p := new(Operation)
+	*p = x
+	return p
+}
+
+func (x Operation) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Operation) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[3].Descriptor()
+}
+
+func (Operation) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[3]
+}
+
+func (x Operation) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Operation.Descriptor instead.
+func (Operation) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{3}
+}
+
+// PaginationKind is the pagination contract a LIST operation honors, independent
+// of transport (a CONNECT and a REST_OPENAPI binding can each use any kind).
+type PaginationKind int32
+
+const (
+	PaginationKind_PAGINATION_KIND_UNSPECIFIED PaginationKind = 0
+	PaginationKind_PAGINATION_KIND_NONE        PaginationKind = 1 // no pagination
+	PaginationKind_PAGINATION_KIND_CURSOR      PaginationKind = 2 // opaque page_token cursor
+	PaginationKind_PAGINATION_KIND_OFFSET      PaginationKind = 3 // numeric offset/limit
+)
+
+// Enum value maps for PaginationKind.
+var (
+	PaginationKind_name = map[int32]string{
+		0: "PAGINATION_KIND_UNSPECIFIED",
+		1: "PAGINATION_KIND_NONE",
+		2: "PAGINATION_KIND_CURSOR",
+		3: "PAGINATION_KIND_OFFSET",
+	}
+	PaginationKind_value = map[string]int32{
+		"PAGINATION_KIND_UNSPECIFIED": 0,
+		"PAGINATION_KIND_NONE":        1,
+		"PAGINATION_KIND_CURSOR":      2,
+		"PAGINATION_KIND_OFFSET":      3,
+	}
+)
+
+func (x PaginationKind) Enum() *PaginationKind {
+	p := new(PaginationKind)
+	*p = x
+	return p
+}
+
+func (x PaginationKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (PaginationKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[4].Descriptor()
+}
+
+func (PaginationKind) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[4]
+}
+
+func (x PaginationKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use PaginationKind.Descriptor instead.
+func (PaginationKind) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{4}
+}
+
 // AppDefinition: build-time definition feeding BOTH the runtime resolver AND
 // the per-company native build pipeline (layered output).
 type AppDefinition struct {
@@ -292,8 +511,10 @@ type ExperienceSpec struct {
 	// surfaces" range; 12..19 stay reserved for granted-surface refs.
 	ReferencedSurfaceIds []string             `protobuf:"bytes,10,rep,name=referenced_surface_ids,json=referencedSurfaceIds,proto3" json:"referenced_surface_ids,omitempty"`                                          // surface ids this spec references (negotiated vs the binary's manifest)
 	UnknownSurfacePolicy UnknownSurfacePolicy `protobuf:"varint,11,opt,name=unknown_surface_policy,json=unknownSurfacePolicy,proto3,enum=experience.v1.UnknownSurfacePolicy" json:"unknown_surface_policy,omitempty"` // how the binary handles a referenced surface it does not know
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
+	Bindings      []*ServiceTransportBinding `protobuf:"bytes,50,rep,name=bindings,proto3" json:"bindings,omitempty"` // service<->transport bindings (transport- AND scope-agnostic)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ExperienceSpec) Reset() {
@@ -389,6 +610,123 @@ func (x *ExperienceSpec) GetUnknownSurfacePolicy() UnknownSurfacePolicy {
 	return UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_UNSPECIFIED
 }
 
+func (x *ExperienceSpec) GetBindings() []*ServiceTransportBinding {
+	if x != nil {
+		return x.Bindings
+	}
+	return nil
+}
+
+// ServiceTransportBinding binds one entity's service to a transport + scope.
+// It is the anchor every later message references for identity + scope. It is
+// transport- AND scope-agnostic so the SAME ExperienceSpec can drive eden-biz
+// (CONNECT/COMPANY) and aocore (REST_OPENAPI/ORG) through one Repository
+// abstraction (the runtime two-transport proof lands in 140-11).
+//
+// NO authority field (company_id/org_id) lives here that a REST handler could
+// bind from the request BODY -- scope_authority selects WHICH scope the
+// verified AOID identity projects to; the scope VALUE is resolved at runtime
+// from the identity context, never the body (binding.ResolveScope).
+type ServiceTransportBinding struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	Entity          string                 `protobuf:"bytes,1,opt,name=entity,proto3" json:"entity,omitempty"`                                                                          // logical entity (e.g. "Invoice", "Tenant")
+	ServicePackage  string                 `protobuf:"bytes,2,opt,name=service_package,json=servicePackage,proto3" json:"service_package,omitempty"`                                    // backend service package / namespace
+	ServiceName     string                 `protobuf:"bytes,3,opt,name=service_name,json=serviceName,proto3" json:"service_name,omitempty"`                                             // backend service name
+	Operations      []Operation            `protobuf:"varint,4,rep,packed,name=operations,proto3,enum=experience.v1.Operation" json:"operations,omitempty"`                             // reads AND writes this binding exposes
+	TransportKind   TransportKind          `protobuf:"varint,5,opt,name=transport_kind,json=transportKind,proto3,enum=experience.v1.TransportKind" json:"transport_kind,omitempty"`     // CONNECT (biz) | REST_OPENAPI (aocore)
+	ScopeAuthority  ScopeAuthority         `protobuf:"varint,6,opt,name=scope_authority,json=scopeAuthority,proto3,enum=experience.v1.ScopeAuthority" json:"scope_authority,omitempty"` // COMPANY (biz) | ORG (aocore) projection target
+	Pagination      PaginationKind         `protobuf:"varint,7,opt,name=pagination,proto3,enum=experience.v1.PaginationKind" json:"pagination,omitempty"`                               // LIST pagination contract
+	RepoInterfaceId string                 `protobuf:"bytes,8,opt,name=repo_interface_id,json=repoInterfaceId,proto3" json:"repo_interface_id,omitempty"`                               // Repository abstraction id (140-11 two-transport proof)
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ServiceTransportBinding) Reset() {
+	*x = ServiceTransportBinding{}
+	mi := &file_experience_v1_experience_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ServiceTransportBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ServiceTransportBinding) ProtoMessage() {}
+
+func (x *ServiceTransportBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ServiceTransportBinding.ProtoReflect.Descriptor instead.
+func (*ServiceTransportBinding) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ServiceTransportBinding) GetEntity() string {
+	if x != nil {
+		return x.Entity
+	}
+	return ""
+}
+
+func (x *ServiceTransportBinding) GetServicePackage() string {
+	if x != nil {
+		return x.ServicePackage
+	}
+	return ""
+}
+
+func (x *ServiceTransportBinding) GetServiceName() string {
+	if x != nil {
+		return x.ServiceName
+	}
+	return ""
+}
+
+func (x *ServiceTransportBinding) GetOperations() []Operation {
+	if x != nil {
+		return x.Operations
+	}
+	return nil
+}
+
+func (x *ServiceTransportBinding) GetTransportKind() TransportKind {
+	if x != nil {
+		return x.TransportKind
+	}
+	return TransportKind_TRANSPORT_KIND_UNSPECIFIED
+}
+
+func (x *ServiceTransportBinding) GetScopeAuthority() ScopeAuthority {
+	if x != nil {
+		return x.ScopeAuthority
+	}
+	return ScopeAuthority_SCOPE_AUTHORITY_UNSPECIFIED
+}
+
+func (x *ServiceTransportBinding) GetPagination() PaginationKind {
+	if x != nil {
+		return x.Pagination
+	}
+	return PaginationKind_PAGINATION_KIND_UNSPECIFIED
+}
+
+func (x *ServiceTransportBinding) GetRepoInterfaceId() string {
+	if x != nil {
+		return x.RepoInterfaceId
+	}
+	return ""
+}
+
 var File_experience_v1_experience_proto protoreflect.FileDescriptor
 
 const file_experience_v1_experience_proto_rawDesc = "" +
@@ -407,7 +745,7 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x10\x14\"p\n" +
 	"\x17SurfaceRegistryManifest\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\tR\x0fcontractVersion\x12*\n" +
-	"\x11known_surface_ids\x18\x02 \x03(\tR\x0fknownSurfaceIds\"\xeb\x03\n" +
+	"\x11known_surface_ids\x18\x02 \x03(\tR\x0fknownSurfaceIds\"\xaf\x04\n" +
 	"\x0eExperienceSpec\x12.\n" +
 	"\x13spec_schema_version\x18\x01 \x01(\tR\x11specSchemaVersion\x128\n" +
 	"\x18surface_contract_version\x18\x02 \x01(\tR\x16surfaceContractVersion\x12!\n" +
@@ -418,12 +756,46 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x06org_id\x18\a \x01(\tR\x05orgId\x124\n" +
 	"\x16referenced_surface_ids\x18\n" +
 	" \x03(\tR\x14referencedSurfaceIds\x12Y\n" +
-	"\x16unknown_surface_policy\x18\v \x01(\x0e2#.experience.v1.UnknownSurfacePolicyR\x14unknownSurfacePolicyJ\x04\b\f\x10\x14J\x04\b\x14\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102J\x04\b2\x10<J\x04\b<\x10FJ\x04\bF\x10PJ\x04\bP\x10Z*\xb7\x01\n" +
+	"\x16unknown_surface_policy\x18\v \x01(\x0e2#.experience.v1.UnknownSurfacePolicyR\x14unknownSurfacePolicy\x12B\n" +
+	"\bbindings\x182 \x03(\v2&.experience.v1.ServiceTransportBindingR\bbindingsJ\x04\b\f\x10\x14J\x04\b\x14\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102J\x04\b3\x10<J\x04\b<\x10FJ\x04\bF\x10PJ\x04\bP\x10Z\"\xaf\x03\n" +
+	"\x17ServiceTransportBinding\x12\x16\n" +
+	"\x06entity\x18\x01 \x01(\tR\x06entity\x12'\n" +
+	"\x0fservice_package\x18\x02 \x01(\tR\x0eservicePackage\x12!\n" +
+	"\fservice_name\x18\x03 \x01(\tR\vserviceName\x128\n" +
+	"\n" +
+	"operations\x18\x04 \x03(\x0e2\x18.experience.v1.OperationR\n" +
+	"operations\x12C\n" +
+	"\x0etransport_kind\x18\x05 \x01(\x0e2\x1c.experience.v1.TransportKindR\rtransportKind\x12F\n" +
+	"\x0fscope_authority\x18\x06 \x01(\x0e2\x1d.experience.v1.ScopeAuthorityR\x0escopeAuthority\x12=\n" +
+	"\n" +
+	"pagination\x18\a \x01(\x0e2\x1d.experience.v1.PaginationKindR\n" +
+	"pagination\x12*\n" +
+	"\x11repo_interface_id\x18\b \x01(\tR\x0frepoInterfaceId*\xb7\x01\n" +
 	"\x14UnknownSurfacePolicy\x12&\n" +
 	"\"UNKNOWN_SURFACE_POLICY_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dUNKNOWN_SURFACE_POLICY_IGNORE\x10\x01\x12(\n" +
 	"$UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE\x10\x02\x12*\n" +
-	"&UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
+	"&UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED\x10\x03*l\n" +
+	"\rTransportKind\x12\x1e\n" +
+	"\x1aTRANSPORT_KIND_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16TRANSPORT_KIND_CONNECT\x10\x01\x12\x1f\n" +
+	"\x1bTRANSPORT_KIND_REST_OPENAPI\x10\x02*g\n" +
+	"\x0eScopeAuthority\x12\x1f\n" +
+	"\x1bSCOPE_AUTHORITY_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17SCOPE_AUTHORITY_COMPANY\x10\x01\x12\x17\n" +
+	"\x13SCOPE_AUTHORITY_ORG\x10\x02*\x8f\x01\n" +
+	"\tOperation\x12\x19\n" +
+	"\x15OPERATION_UNSPECIFIED\x10\x00\x12\x11\n" +
+	"\rOPERATION_GET\x10\x01\x12\x12\n" +
+	"\x0eOPERATION_LIST\x10\x02\x12\x14\n" +
+	"\x10OPERATION_CREATE\x10\x03\x12\x14\n" +
+	"\x10OPERATION_UPDATE\x10\x04\x12\x14\n" +
+	"\x10OPERATION_DELETE\x10\x05*\x83\x01\n" +
+	"\x0ePaginationKind\x12\x1f\n" +
+	"\x1bPAGINATION_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14PAGINATION_KIND_NONE\x10\x01\x12\x1a\n" +
+	"\x16PAGINATION_KIND_CURSOR\x10\x02\x12\x1a\n" +
+	"\x16PAGINATION_KIND_OFFSET\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
 
 var (
 	file_experience_v1_experience_proto_rawDescOnce sync.Once
@@ -437,24 +809,34 @@ func file_experience_v1_experience_proto_rawDescGZIP() []byte {
 	return file_experience_v1_experience_proto_rawDescData
 }
 
-var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_experience_v1_experience_proto_goTypes = []any{
 	(UnknownSurfacePolicy)(0),       // 0: experience.v1.UnknownSurfacePolicy
-	(*AppDefinition)(nil),           // 1: experience.v1.AppDefinition
-	(*AppMeta)(nil),                 // 2: experience.v1.AppMeta
-	(*SurfaceRegistryManifest)(nil), // 3: experience.v1.SurfaceRegistryManifest
-	(*ExperienceSpec)(nil),          // 4: experience.v1.ExperienceSpec
+	(TransportKind)(0),              // 1: experience.v1.TransportKind
+	(ScopeAuthority)(0),             // 2: experience.v1.ScopeAuthority
+	(Operation)(0),                  // 3: experience.v1.Operation
+	(PaginationKind)(0),             // 4: experience.v1.PaginationKind
+	(*AppDefinition)(nil),           // 5: experience.v1.AppDefinition
+	(*AppMeta)(nil),                 // 6: experience.v1.AppMeta
+	(*SurfaceRegistryManifest)(nil), // 7: experience.v1.SurfaceRegistryManifest
+	(*ExperienceSpec)(nil),          // 8: experience.v1.ExperienceSpec
+	(*ServiceTransportBinding)(nil), // 9: experience.v1.ServiceTransportBinding
 }
 var file_experience_v1_experience_proto_depIdxs = []int32{
-	2, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
-	4, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
+	6, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
+	8, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
 	0, // 2: experience.v1.ExperienceSpec.unknown_surface_policy:type_name -> experience.v1.UnknownSurfacePolicy
-	3, // [3:3] is the sub-list for method output_type
-	3, // [3:3] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	9, // 3: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
+	3, // 4: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
+	1, // 5: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
+	2, // 6: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
+	4, // 7: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
+	8, // [8:8] is the sub-list for method output_type
+	8, // [8:8] is the sub-list for method input_type
+	8, // [8:8] is the sub-list for extension type_name
+	8, // [8:8] is the sub-list for extension extendee
+	0, // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_experience_v1_experience_proto_init() }
@@ -467,8 +849,8 @@ func file_experience_v1_experience_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_experience_v1_experience_proto_rawDesc), len(file_experience_v1_experience_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   4,
+			NumEnums:      5,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
