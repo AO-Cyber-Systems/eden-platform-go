@@ -32,6 +32,29 @@ message AppMeta {
   reserved 10 to 19;   // icon/brand/store-listing fields (later)
 }
 
+// UnknownSurfacePolicy: how a running binary handles a resolved spec that
+// references a FeatureSurface it does NOT know (i.e. not in the binary's
+// compiled-in SurfaceRegistryManifest.known_surface_ids). IRREVERSIBLE: a v1
+// spec carries this, and an old binary's behavior on a newer spec is frozen
+// the moment a device caches that spec. UNSPECIFIED fails SAFE (block) so an
+// unset policy can never silently render a surface the binary cannot handle.
+enum UnknownSurfacePolicy {
+  UNKNOWN_SURFACE_POLICY_UNSPECIFIED = 0;  // fail-safe -> treated as BLOCK_UPGRADE
+  UNKNOWN_SURFACE_POLICY_IGNORE = 1;            // drop the unknown surface, render the rest
+  UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE = 2;     // block + prompt the user to upgrade the binary
+  UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED = 3;   // render the unknown surface with a degraded marker
+}
+
+// SurfaceRegistryManifest: the artifact a BINARY compiles in and negotiates a
+// resolved ExperienceSpec against. It is NOT served on the spec — it is the
+// binary's own statement of which surfaces it can render + which
+// surface_contract_version it speaks. version_negotiation reads
+// known_surface_ids to decide ignore/block/degrade for unknown surfaces.
+message SurfaceRegistryManifest {
+  string contract_version = 1;          // surface contract version the binary speaks
+  repeated string known_surface_ids = 2; // surfaces this binary can render
+}
+
 // ExperienceSpec: server-authoritative, content-hashed, client-cacheable spec
 // resolved per {role,entitlements,form_factor,tenant,org}. The 3 version axes
 // are ORTHOGONAL; bumping one must not change another's serialized value.
@@ -44,7 +67,11 @@ message ExperienceSpec {
   // Tenancy: RESERVED here, ENFORCED in 140-08/09 (company scope + aocore org scope).
   string tenant_id = 6;
   string org_id = 7;
-  reserved 10 to 19;   // SurfaceRegistryManifest + granted surfaces  (140-03)
+  // 140-03 un-reserved 10..11 from the "SurfaceRegistryManifest + granted
+  // surfaces" range; 12..19 stay reserved for granted-surface refs.
+  repeated string referenced_surface_ids = 10;    // surface ids this spec references (negotiated vs the binary's manifest)
+  UnknownSurfacePolicy unknown_surface_policy = 11; // how the binary handles a referenced surface it does not know
+  reserved 12 to 19;   // granted-surface refs (later)
   reserved 20 to 29;   // NavGraph                                    (140-05)
   reserved 30 to 39;   // ThemeSpec + TermSet + LocaleSpec            (140-06)
   reserved 40 to 49;   // per-surface OfflineSpec                     (140-06)

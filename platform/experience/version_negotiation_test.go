@@ -35,7 +35,7 @@ func TestNegotiate_AllKnown_BinarySatisfiesFloor_Renders(t *testing.T) {
 	spec := fixtures.NewSpec(
 		fixtures.WithReferencedSurfaces("home", "orders"),
 		fixtures.WithMinBinaryVersion("1.0.0"),
-		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_IGNORE),
+		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_IGNORE),
 	)
 	manifest := fixtures.NewManifest("1.0.0", "home", "orders", "settings")
 
@@ -76,7 +76,7 @@ func TestSurfaceRegistryManifest_RoundTrips(t *testing.T) {
 func TestNegotiate_UnknownSurface_Ignore_Drops(t *testing.T) {
 	spec := fixtures.NewSpec(
 		fixtures.WithReferencedSurfaces("home", "future_surface"),
-		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_IGNORE),
+		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_IGNORE),
 	)
 	manifest := fixtures.NewManifest("1.0.0", "home")
 
@@ -97,7 +97,7 @@ func TestNegotiate_UnknownSurface_Ignore_Drops(t *testing.T) {
 func TestNegotiate_UnknownSurface_RenderDegraded_Degrades(t *testing.T) {
 	spec := fixtures.NewSpec(
 		fixtures.WithReferencedSurfaces("home", "future_surface"),
-		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_RENDER_DEGRADED),
+		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED),
 	)
 	manifest := fixtures.NewManifest("1.0.0", "home")
 
@@ -119,7 +119,7 @@ func TestNegotiate_UnknownSurface_RenderDegraded_Degrades(t *testing.T) {
 func TestNegotiate_UnknownSurface_BlockUpgrade_Blocks(t *testing.T) {
 	spec := fixtures.NewSpec(
 		fixtures.WithReferencedSurfaces("home", "future_surface"),
-		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_BLOCK_UPGRADE),
+		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE),
 	)
 	manifest := fixtures.NewManifest("1.0.0", "home")
 
@@ -157,7 +157,7 @@ func TestNegotiate_MinBinaryVersionTooNew_Blocks(t *testing.T) {
 	spec := fixtures.NewSpec(
 		fixtures.WithReferencedSurfaces("home"),
 		fixtures.WithMinBinaryVersion("2.0.0"), // floor above the running 1.0.0
-		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_IGNORE),
+		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_IGNORE),
 	)
 	manifest := fixtures.NewManifest("1.0.0", "home")
 
@@ -176,7 +176,7 @@ func TestNegotiate_BinaryExactlyAtFloor_Renders(t *testing.T) {
 	spec := fixtures.NewSpec(
 		fixtures.WithReferencedSurfaces("home"),
 		fixtures.WithMinBinaryVersion("1.0.0"),
-		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_IGNORE),
+		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_IGNORE),
 	)
 	manifest := fixtures.NewManifest("1.0.0", "home")
 
@@ -197,13 +197,13 @@ func TestNegotiate_SpecSchemaBump_DoesNotAffectSurfaceNegotiation(t *testing.T) 
 
 	base := fixtures.NewSpec(
 		fixtures.WithReferencedSurfaces("home", "orders"),
-		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_BLOCK_UPGRADE),
+		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE),
 	)
 	base.SpecSchemaVersion = "1.0.0"
 
 	bumped := fixtures.NewSpec(
 		fixtures.WithReferencedSurfaces("home", "orders"),
-		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_BLOCK_UPGRADE),
+		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE),
 	)
 	bumped.SpecSchemaVersion = "9.9.9" // bump ONLY the schema axis
 
@@ -230,7 +230,7 @@ func TestNegotiate_SpecSchemaBump_DoesNotAffectSurfaceNegotiation(t *testing.T) 
 func TestNegotiate_WrongTenant_ScopesToRequesterAndPreservesScope(t *testing.T) {
 	baseline := fixtures.NewSpec(
 		fixtures.WithReferencedSurfaces("home", "orders"),
-		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_IGNORE),
+		fixtures.WithUnknownSurfacePolicy(experiencev1.UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_IGNORE),
 	)
 	wrong := fixtures.WrongTenant(baseline)
 

@@ -28,6 +28,64 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// UnknownSurfacePolicy: how a running binary handles a resolved spec that
+// references a FeatureSurface it does NOT know (i.e. not in the binary's
+// compiled-in SurfaceRegistryManifest.known_surface_ids). IRREVERSIBLE: a v1
+// spec carries this, and an old binary's behavior on a newer spec is frozen
+// the moment a device caches that spec. UNSPECIFIED fails SAFE (block) so an
+// unset policy can never silently render a surface the binary cannot handle.
+type UnknownSurfacePolicy int32
+
+const (
+	UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_UNSPECIFIED     UnknownSurfacePolicy = 0 // fail-safe -> treated as BLOCK_UPGRADE
+	UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_IGNORE          UnknownSurfacePolicy = 1 // drop the unknown surface, render the rest
+	UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE   UnknownSurfacePolicy = 2 // block + prompt the user to upgrade the binary
+	UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED UnknownSurfacePolicy = 3 // render the unknown surface with a degraded marker
+)
+
+// Enum value maps for UnknownSurfacePolicy.
+var (
+	UnknownSurfacePolicy_name = map[int32]string{
+		0: "UNKNOWN_SURFACE_POLICY_UNSPECIFIED",
+		1: "UNKNOWN_SURFACE_POLICY_IGNORE",
+		2: "UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE",
+		3: "UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED",
+	}
+	UnknownSurfacePolicy_value = map[string]int32{
+		"UNKNOWN_SURFACE_POLICY_UNSPECIFIED":     0,
+		"UNKNOWN_SURFACE_POLICY_IGNORE":          1,
+		"UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE":   2,
+		"UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED": 3,
+	}
+)
+
+func (x UnknownSurfacePolicy) Enum() *UnknownSurfacePolicy {
+	p := new(UnknownSurfacePolicy)
+	*p = x
+	return p
+}
+
+func (x UnknownSurfacePolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (UnknownSurfacePolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[0].Descriptor()
+}
+
+func (UnknownSurfacePolicy) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[0]
+}
+
+func (x UnknownSurfacePolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use UnknownSurfacePolicy.Descriptor instead.
+func (UnknownSurfacePolicy) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{0}
+}
+
 // AppDefinition: build-time definition feeding BOTH the runtime resolver AND
 // the per-company native build pipeline (layered output).
 type AppDefinition struct {
@@ -160,6 +218,63 @@ func (x *AppMeta) GetBundleId() string {
 	return ""
 }
 
+// SurfaceRegistryManifest: the artifact a BINARY compiles in and negotiates a
+// resolved ExperienceSpec against. It is NOT served on the spec — it is the
+// binary's own statement of which surfaces it can render + which
+// surface_contract_version it speaks. version_negotiation reads
+// known_surface_ids to decide ignore/block/degrade for unknown surfaces.
+type SurfaceRegistryManifest struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	ContractVersion string                 `protobuf:"bytes,1,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`   // surface contract version the binary speaks
+	KnownSurfaceIds []string               `protobuf:"bytes,2,rep,name=known_surface_ids,json=knownSurfaceIds,proto3" json:"known_surface_ids,omitempty"` // surfaces this binary can render
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *SurfaceRegistryManifest) Reset() {
+	*x = SurfaceRegistryManifest{}
+	mi := &file_experience_v1_experience_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SurfaceRegistryManifest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SurfaceRegistryManifest) ProtoMessage() {}
+
+func (x *SurfaceRegistryManifest) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SurfaceRegistryManifest.ProtoReflect.Descriptor instead.
+func (*SurfaceRegistryManifest) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *SurfaceRegistryManifest) GetContractVersion() string {
+	if x != nil {
+		return x.ContractVersion
+	}
+	return ""
+}
+
+func (x *SurfaceRegistryManifest) GetKnownSurfaceIds() []string {
+	if x != nil {
+		return x.KnownSurfaceIds
+	}
+	return nil
+}
+
 // ExperienceSpec: server-authoritative, content-hashed, client-cacheable spec
 // resolved per {role,entitlements,form_factor,tenant,org}. The 3 version axes
 // are ORTHOGONAL; bumping one must not change another's serialized value.
@@ -171,15 +286,19 @@ type ExperienceSpec struct {
 	ContractVersion        string                 `protobuf:"bytes,4,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`                        // experience.v1 contract version (140-12 compat signal)
 	MinBinaryVersion       string                 `protobuf:"bytes,5,opt,name=min_binary_version,json=minBinaryVersion,proto3" json:"min_binary_version,omitempty"`                   // floor binary version that can render this spec
 	// Tenancy: RESERVED here, ENFORCED in 140-08/09 (company scope + aocore org scope).
-	TenantId      string `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	OrgId         string `protobuf:"bytes,7,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TenantId string `protobuf:"bytes,6,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	OrgId    string `protobuf:"bytes,7,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	// 140-03 un-reserved 10..11 from the "SurfaceRegistryManifest + granted
+	// surfaces" range; 12..19 stay reserved for granted-surface refs.
+	ReferencedSurfaceIds []string             `protobuf:"bytes,10,rep,name=referenced_surface_ids,json=referencedSurfaceIds,proto3" json:"referenced_surface_ids,omitempty"`                                          // surface ids this spec references (negotiated vs the binary's manifest)
+	UnknownSurfacePolicy UnknownSurfacePolicy `protobuf:"varint,11,opt,name=unknown_surface_policy,json=unknownSurfacePolicy,proto3,enum=experience.v1.UnknownSurfacePolicy" json:"unknown_surface_policy,omitempty"` // how the binary handles a referenced surface it does not know
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *ExperienceSpec) Reset() {
 	*x = ExperienceSpec{}
-	mi := &file_experience_v1_experience_proto_msgTypes[2]
+	mi := &file_experience_v1_experience_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -191,7 +310,7 @@ func (x *ExperienceSpec) String() string {
 func (*ExperienceSpec) ProtoMessage() {}
 
 func (x *ExperienceSpec) ProtoReflect() protoreflect.Message {
-	mi := &file_experience_v1_experience_proto_msgTypes[2]
+	mi := &file_experience_v1_experience_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -204,7 +323,7 @@ func (x *ExperienceSpec) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExperienceSpec.ProtoReflect.Descriptor instead.
 func (*ExperienceSpec) Descriptor() ([]byte, []int) {
-	return file_experience_v1_experience_proto_rawDescGZIP(), []int{2}
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ExperienceSpec) GetSpecSchemaVersion() string {
@@ -256,6 +375,20 @@ func (x *ExperienceSpec) GetOrgId() string {
 	return ""
 }
 
+func (x *ExperienceSpec) GetReferencedSurfaceIds() []string {
+	if x != nil {
+		return x.ReferencedSurfaceIds
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetUnknownSurfacePolicy() UnknownSurfacePolicy {
+	if x != nil {
+		return x.UnknownSurfacePolicy
+	}
+	return UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_UNSPECIFIED
+}
+
 var File_experience_v1_experience_proto protoreflect.FileDescriptor
 
 const file_experience_v1_experience_proto_rawDesc = "" +
@@ -271,7 +404,10 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\aAppMeta\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
 	"\tbundle_id\x18\x02 \x01(\tR\bbundleIdJ\x04\b\n" +
-	"\x10\x14\"\xda\x02\n" +
+	"\x10\x14\"p\n" +
+	"\x17SurfaceRegistryManifest\x12)\n" +
+	"\x10contract_version\x18\x01 \x01(\tR\x0fcontractVersion\x12*\n" +
+	"\x11known_surface_ids\x18\x02 \x03(\tR\x0fknownSurfaceIds\"\xeb\x03\n" +
 	"\x0eExperienceSpec\x12.\n" +
 	"\x13spec_schema_version\x18\x01 \x01(\tR\x11specSchemaVersion\x128\n" +
 	"\x18surface_contract_version\x18\x02 \x01(\tR\x16surfaceContractVersion\x12!\n" +
@@ -279,8 +415,15 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x10contract_version\x18\x04 \x01(\tR\x0fcontractVersion\x12,\n" +
 	"\x12min_binary_version\x18\x05 \x01(\tR\x10minBinaryVersion\x12\x1b\n" +
 	"\ttenant_id\x18\x06 \x01(\tR\btenantId\x12\x15\n" +
-	"\x06org_id\x18\a \x01(\tR\x05orgIdJ\x04\b\n" +
-	"\x10\x14J\x04\b\x14\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102J\x04\b2\x10<J\x04\b<\x10FJ\x04\bF\x10PJ\x04\bP\x10ZBNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
+	"\x06org_id\x18\a \x01(\tR\x05orgId\x124\n" +
+	"\x16referenced_surface_ids\x18\n" +
+	" \x03(\tR\x14referencedSurfaceIds\x12Y\n" +
+	"\x16unknown_surface_policy\x18\v \x01(\x0e2#.experience.v1.UnknownSurfacePolicyR\x14unknownSurfacePolicyJ\x04\b\f\x10\x14J\x04\b\x14\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102J\x04\b2\x10<J\x04\b<\x10FJ\x04\bF\x10PJ\x04\bP\x10Z*\xb7\x01\n" +
+	"\x14UnknownSurfacePolicy\x12&\n" +
+	"\"UNKNOWN_SURFACE_POLICY_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dUNKNOWN_SURFACE_POLICY_IGNORE\x10\x01\x12(\n" +
+	"$UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE\x10\x02\x12*\n" +
+	"&UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
 
 var (
 	file_experience_v1_experience_proto_rawDescOnce sync.Once
@@ -294,20 +437,24 @@ func file_experience_v1_experience_proto_rawDescGZIP() []byte {
 	return file_experience_v1_experience_proto_rawDescData
 }
 
-var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_experience_v1_experience_proto_goTypes = []any{
-	(*AppDefinition)(nil),  // 0: experience.v1.AppDefinition
-	(*AppMeta)(nil),        // 1: experience.v1.AppMeta
-	(*ExperienceSpec)(nil), // 2: experience.v1.ExperienceSpec
+	(UnknownSurfacePolicy)(0),       // 0: experience.v1.UnknownSurfacePolicy
+	(*AppDefinition)(nil),           // 1: experience.v1.AppDefinition
+	(*AppMeta)(nil),                 // 2: experience.v1.AppMeta
+	(*SurfaceRegistryManifest)(nil), // 3: experience.v1.SurfaceRegistryManifest
+	(*ExperienceSpec)(nil),          // 4: experience.v1.ExperienceSpec
 }
 var file_experience_v1_experience_proto_depIdxs = []int32{
-	1, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
-	2, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
-	2, // [2:2] is the sub-list for method output_type
-	2, // [2:2] is the sub-list for method input_type
-	2, // [2:2] is the sub-list for extension type_name
-	2, // [2:2] is the sub-list for extension extendee
-	0, // [0:2] is the sub-list for field type_name
+	2, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
+	4, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
+	0, // 2: experience.v1.ExperienceSpec.unknown_surface_policy:type_name -> experience.v1.UnknownSurfacePolicy
+	3, // [3:3] is the sub-list for method output_type
+	3, // [3:3] is the sub-list for method input_type
+	3, // [3:3] is the sub-list for extension type_name
+	3, // [3:3] is the sub-list for extension extendee
+	0, // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_experience_v1_experience_proto_init() }
@@ -320,13 +467,14 @@ func file_experience_v1_experience_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_experience_v1_experience_proto_rawDesc), len(file_experience_v1_experience_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   3,
+			NumEnums:      1,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_experience_v1_experience_proto_goTypes,
 		DependencyIndexes: file_experience_v1_experience_proto_depIdxs,
+		EnumInfos:         file_experience_v1_experience_proto_enumTypes,
 		MessageInfos:      file_experience_v1_experience_proto_msgTypes,
 	}.Build()
 	File_experience_v1_experience_proto = out.File
