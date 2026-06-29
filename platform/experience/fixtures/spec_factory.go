@@ -81,6 +81,61 @@ func NewManifest(contractVersion string, knownSurfaceIDs ...string) *experiencev
 	}
 }
 
+// --- 140-04 ServiceTransportBinding + AOID-scope factory options ----------
+//
+// These GROW the factory for the ServiceTransportBinding message group (proto
+// field 50 on ExperienceSpec, un-reserved from the 50-59 binding range). A
+// binding is transport- AND scope-agnostic: the SAME spec can carry a
+// CONNECT/COMPANY binding (eden-biz) AND a REST_OPENAPI/ORG binding (aocore).
+//
+// AOID NOTE: scope_authority is the proto-level mapping of ONE AOID identity to
+// each backend's tenant scope (COMPANY=biz, ORG=aocore). The projection itself
+// is runtime (binding.ResolveScope), not a proto field -- there is NO
+// device-side multi-credential store.
+
+// AllOperations is the full read+write operation set (get/list/create/update/
+// delete) a binding can declare -- proves writes are first-class, not read-only.
+func AllOperations() []experiencev1.Operation {
+	return []experiencev1.Operation{
+		experiencev1.Operation_OPERATION_GET,
+		experiencev1.Operation_OPERATION_LIST,
+		experiencev1.Operation_OPERATION_CREATE,
+		experiencev1.Operation_OPERATION_UPDATE,
+		experiencev1.Operation_OPERATION_DELETE,
+	}
+}
+
+// NewBinding builds a ServiceTransportBinding with the given transport + scope +
+// operations. service_package/service_name/repo_interface_id are derived from
+// the entity so a fixture is self-consistent without per-call boilerplate.
+func NewBinding(
+	entity string,
+	transport experiencev1.TransportKind,
+	scope experiencev1.ScopeAuthority,
+	pagination experiencev1.PaginationKind,
+	operations ...experiencev1.Operation,
+) *experiencev1.ServiceTransportBinding {
+	return &experiencev1.ServiceTransportBinding{
+		Entity:          entity,
+		ServicePackage:  "experience.v1." + entity,
+		ServiceName:     entity + "Service",
+		Operations:      operations,
+		TransportKind:   transport,
+		ScopeAuthority:  scope,
+		Pagination:      pagination,
+		RepoInterfaceId: entity + "Repository",
+	}
+}
+
+// WithBinding appends a ServiceTransportBinding to the spec. Compose it twice to
+// build the two-transport proof (a CONNECT/COMPANY and a REST_OPENAPI/ORG
+// binding on ONE spec).
+func WithBinding(b *experiencev1.ServiceTransportBinding) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) {
+		s.Bindings = append(s.Bindings, b)
+	}
+}
+
 // NewSpec returns a valid, marshalable ExperienceSpec with sane defaults,
 // then applies the supplied options in order. Each call returns a fresh,
 // independent (non-aliased) struct.
