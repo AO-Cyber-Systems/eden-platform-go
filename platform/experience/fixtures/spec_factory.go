@@ -42,6 +42,45 @@ const (
 // SpecOpt mutates an ExperienceSpec in place. Compose them in NewSpec.
 type SpecOpt func(*experiencev1.ExperienceSpec)
 
+// --- 140-03 version-negotiation factory options ---------------------------
+//
+// These GROW the factory for the SurfaceRegistryManifest + UnknownSurfacePolicy
+// + version-negotiation surface this TRD adds. Per the scope-discipline note
+// above, they reference only fields that the generated contract carries once
+// 140-03's proto lands (UnknownSurfacePolicy enum, referenced_surface_ids,
+// unknown_surface_policy on ExperienceSpec).
+
+// WithSurfaceContractVersion overrides the surface_contract_version axis.
+func WithSurfaceContractVersion(v string) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) { s.SurfaceContractVersion = v }
+}
+
+// WithMinBinaryVersion overrides the min_binary_version floor the spec demands.
+func WithMinBinaryVersion(v string) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) { s.MinBinaryVersion = v }
+}
+
+// WithReferencedSurfaces sets the surface ids the spec references — these are
+// negotiated against the binary's compiled-in SurfaceRegistryManifest.
+func WithReferencedSurfaces(ids ...string) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) { s.ReferencedSurfaceIds = ids }
+}
+
+// WithUnknownSurfacePolicy sets the policy a binary applies when the spec
+// references a surface it does not know about.
+func WithUnknownSurfacePolicy(p experiencev1.UnknownSurfacePolicy) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) { s.UnknownSurfacePolicy = p }
+}
+
+// NewManifest builds a SurfaceRegistryManifest a binary compiles in: the
+// contract version it speaks + the surface ids it knows how to render.
+func NewManifest(contractVersion string, knownSurfaceIDs ...string) *experiencev1.SurfaceRegistryManifest {
+	return &experiencev1.SurfaceRegistryManifest{
+		ContractVersion: contractVersion,
+		KnownSurfaceIds: knownSurfaceIDs,
+	}
+}
+
 // NewSpec returns a valid, marshalable ExperienceSpec with sane defaults,
 // then applies the supplied options in order. Each call returns a fresh,
 // independent (non-aliased) struct.
