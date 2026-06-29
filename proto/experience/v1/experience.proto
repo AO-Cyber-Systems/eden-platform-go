@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+// Package experience.v1 is the Eden Experience Platform keystone contract.
+// FROZEN-CONTRACT DISCIPLINE: a v1 proto is forever (offline-cached + store-
+// submitted binaries can't migrate). Every load-bearing value is a TYPED field
+// (never a JSONB/config_json blob); field-number ranges are RESERVED generously
+// for later TRDs (140-03..07). TRD 140-01 owns ONLY the envelope + 3 version
+// axes (must-have #1, the most irreversible decision).
+package experience.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1";
+
+// AppDefinition: build-time definition feeding BOTH the runtime resolver AND
+// the per-company native build pipeline (layered output).
+message AppDefinition {
+  string id = 1;
+  AppMeta meta = 2;
+  ExperienceSpec spec = 3;
+  // Min app binary version that can render specs from this definition (IRREVERSIBLE floor).
+  string min_binary_version = 4;
+  // Version of the experience.v1 contract this definition conforms to.
+  string contract_version = 5;
+  reserved 10 to 19;   // NavGraph + DeepLinkSpec        (140-05)
+  reserved 20 to 29;   // SigningSpec (per-platform)      (140-07)
+  reserved 30 to 39;   // app-service-slot refs           (140-07/10)
+  reserved 40 to 49;   // distribution / signing_ref seam (140-07)
+}
+
+message AppMeta {
+  string name = 1;
+  string bundle_id = 2;
+  reserved 10 to 19;   // icon/brand/store-listing fields (later)
+}
+
+// ExperienceSpec: server-authoritative, content-hashed, client-cacheable spec
+// resolved per {role,entitlements,form_factor,tenant,org}. The 3 version axes
+// are ORTHOGONAL; bumping one must not change another's serialized value.
+message ExperienceSpec {
+  string spec_schema_version = 1;       // schema version of THIS message
+  string surface_contract_version = 2;  // FeatureSurface contract version
+  string content_hash = 3;              // hash of resolved spec (rollback id + cache key)
+  string contract_version = 4;          // experience.v1 contract version (140-12 compat signal)
+  string min_binary_version = 5;        // floor binary version that can render this spec
+  // Tenancy: RESERVED here, ENFORCED in 140-08/09 (company scope + aocore org scope).
+  string tenant_id = 6;
+  string org_id = 7;
+  reserved 10 to 19;   // SurfaceRegistryManifest + granted surfaces  (140-03)
+  reserved 20 to 29;   // NavGraph                                    (140-05)
+  reserved 30 to 39;   // ThemeSpec + TermSet + LocaleSpec            (140-06)
+  reserved 40 to 49;   // per-surface OfflineSpec                     (140-06)
+  reserved 50 to 59;   // ServiceTransportBinding (+ AOID scope)      (140-04)
+  reserved 60 to 69;   // ToolDefinition / AgentNode                  (140-07)
+  reserved 70 to 79;   // telemetry / ResolutionContext / LockedSurface (140-07/08/09)
+  reserved 80 to 89;   // flag_overrides / variant / declared_states / customFields / RulePolicy (140-07)
+}
