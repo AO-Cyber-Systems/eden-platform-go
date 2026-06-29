@@ -20,7 +20,12 @@ message AppDefinition {
   string min_binary_version = 4;
   // Version of the experience.v1 contract this definition conforms to.
   string contract_version = 5;
-  reserved 10 to 19;   // NavGraph + DeepLinkSpec        (140-05)
+  // 140-05 un-reserved field 10 from the 10-19 nav range for DeepLinkSpec;
+  // 11..19 stay reserved. DeepLink lives HERE (not on the spec) because a store
+  // binary commits to its url scheme + route templates at submit time and can't
+  // change them post-submit -- it is a BUILD-time, not a resolved-spec, value.
+  DeepLinkSpec deep_link = 10;
+  reserved 11 to 19;   // remaining build-time nav seam   (140-05)
   reserved 20 to 29;   // SigningSpec (per-platform)      (140-07)
   reserved 30 to 39;   // app-service-slot refs           (140-07/10)
   reserved 40 to 49;   // distribution / signing_ref seam (140-07)
@@ -72,7 +77,10 @@ message ExperienceSpec {
   repeated string referenced_surface_ids = 10;    // surface ids this spec references (negotiated vs the binary's manifest)
   UnknownSurfacePolicy unknown_surface_policy = 11; // how the binary handles a referenced surface it does not know
   reserved 12 to 19;   // granted-surface refs (later)
-  reserved 20 to 29;   // NavGraph                                    (140-05)
+  // 140-05 un-reserved field 20 from the 20-29 nav range for the NavGraph;
+  // 21..29 stay reserved for later nav seams.
+  NavGraph nav_graph = 20;
+  reserved 21 to 29;   // additional nav seams                        (140-05)
   reserved 30 to 39;   // ThemeSpec + TermSet + LocaleSpec            (140-06)
   reserved 40 to 49;   // per-surface OfflineSpec                     (140-06)
   // 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
@@ -158,4 +166,67 @@ message ServiceTransportBinding {
   ScopeAuthority scope_authority = 6; // COMPANY (biz) | ORG (aocore) projection target
   PaginationKind pagination = 7;      // LIST pagination contract
   string repo_interface_id = 8;       // Repository abstraction id (140-11 two-transport proof)
+}
+
+// --- 140-05 NavGraph + DeepLinkSpec (must-have #2) -------------------------
+//
+// NavGraph is a GRAPH, not a flat repeated surface_id list. The builder must be
+// able to express the customer->invoice->payment FLOW, not just a launcher of
+// disconnected surfaces. Three typed pieces make it a graph:
+//   - NavSlot     places a surface at a Placement (primary nav vs overflow vs
+//                 detail-only) with an order -- the visible navigation chrome.
+//   - NavEdge     a TYPED inter-surface transition carrying param_bindings: the
+//                 selection passed across the hop (e.g. {customerId} from the
+//                 customer surface into the invoice surface). This is the
+//                 flow-passing proof -- an edge is not a bare launcher link.
+//   - NavGraph    landing surface + the slots + the edges.
+//
+// Coherence (<=5 PRIMARY, landing exists, edge endpoints exist, surface
+// entitlement) is MACHINE-CHECKED in navgraph.go (ValidateNavGraph), not
+// enforced as a proto constraint -- the data can EXPRESS an incoherent graph so
+// the validator (and the 140-09 M0 validator) has something to reject.
+
+// Placement is where a NavSlot's surface sits in the navigation chrome.
+// UNSPECIFIED=0 is fail-safe (an unplaced slot is treated as not-shown rather
+// than silently promoted into primary nav).
+enum Placement {
+  PLACEMENT_UNSPECIFIED = 0;  // unset -- not shown in primary/overflow nav
+  PLACEMENT_PRIMARY = 1;      // primary navigation (the <=5-slot rail/tab bar)
+  PLACEMENT_MORE = 2;         // overflow / "More" menu
+  PLACEMENT_DETAIL_ONLY = 3;  // reachable only via an edge, never in the chrome
+}
+
+// NavSlot places one surface in the navigation at a Placement + order.
+message NavSlot {
+  string surface_id = 1;     // the FeatureSurface this slot shows
+  Placement placement = 2;   // primary / more / detail-only
+  int32 order = 3;           // sort order within the placement
+}
+
+// NavEdge is a TYPED transition from one surface to another carrying the
+// selection passed across the hop. param_bindings maps a target input name to a
+// source selection expression (e.g. {"customerId": "$selection.id"}); trigger
+// names the gesture/event that fires the edge (e.g. "onSelect"). This typed
+// param-passing is what makes the graph compose FLOWS, not a launcher.
+message NavEdge {
+  string from_surface_id = 1;            // source surface
+  string to_surface_id = 2;              // target surface
+  map<string, string> param_bindings = 3; // target input <- source selection expr
+  string trigger = 4;                    // gesture/event that fires the edge
+}
+
+// NavGraph is the typed navigation graph for a resolved ExperienceSpec.
+message NavGraph {
+  string landing_surface_id = 1;  // the surface shown first (must be a slot)
+  repeated NavSlot slots = 2;     // placed surfaces (the nav chrome)
+  repeated NavEdge edges = 3;     // typed inter-surface transitions
+}
+
+// DeepLinkSpec is the url scheme + route templates a store binary commits to at
+// submit time. It lives on AppDefinition (BUILD-time), never on a resolved
+// ExperienceSpec, because a published store binary CANNOT change these
+// post-submit -- they are frozen the moment the binary ships.
+message DeepLinkSpec {
+  string url_scheme = 1;               // e.g. "edenbiz" (edenbiz://...)
+  repeated string route_templates = 2; // e.g. "/customers/:id", "/invoices/:id/pay"
 }

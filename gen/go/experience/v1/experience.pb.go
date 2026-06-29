@@ -305,6 +305,61 @@ func (PaginationKind) EnumDescriptor() ([]byte, []int) {
 	return file_experience_v1_experience_proto_rawDescGZIP(), []int{4}
 }
 
+// Placement is where a NavSlot's surface sits in the navigation chrome.
+// UNSPECIFIED=0 is fail-safe (an unplaced slot is treated as not-shown rather
+// than silently promoted into primary nav).
+type Placement int32
+
+const (
+	Placement_PLACEMENT_UNSPECIFIED Placement = 0 // unset -- not shown in primary/overflow nav
+	Placement_PLACEMENT_PRIMARY     Placement = 1 // primary navigation (the <=5-slot rail/tab bar)
+	Placement_PLACEMENT_MORE        Placement = 2 // overflow / "More" menu
+	Placement_PLACEMENT_DETAIL_ONLY Placement = 3 // reachable only via an edge, never in the chrome
+)
+
+// Enum value maps for Placement.
+var (
+	Placement_name = map[int32]string{
+		0: "PLACEMENT_UNSPECIFIED",
+		1: "PLACEMENT_PRIMARY",
+		2: "PLACEMENT_MORE",
+		3: "PLACEMENT_DETAIL_ONLY",
+	}
+	Placement_value = map[string]int32{
+		"PLACEMENT_UNSPECIFIED": 0,
+		"PLACEMENT_PRIMARY":     1,
+		"PLACEMENT_MORE":        2,
+		"PLACEMENT_DETAIL_ONLY": 3,
+	}
+)
+
+func (x Placement) Enum() *Placement {
+	p := new(Placement)
+	*p = x
+	return p
+}
+
+func (x Placement) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Placement) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[5].Descriptor()
+}
+
+func (Placement) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[5]
+}
+
+func (x Placement) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Placement.Descriptor instead.
+func (Placement) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{5}
+}
+
 // AppDefinition: build-time definition feeding BOTH the runtime resolver AND
 // the per-company native build pipeline (layered output).
 type AppDefinition struct {
@@ -316,8 +371,13 @@ type AppDefinition struct {
 	MinBinaryVersion string `protobuf:"bytes,4,opt,name=min_binary_version,json=minBinaryVersion,proto3" json:"min_binary_version,omitempty"`
 	// Version of the experience.v1 contract this definition conforms to.
 	ContractVersion string `protobuf:"bytes,5,opt,name=contract_version,json=contractVersion,proto3" json:"contract_version,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// 140-05 un-reserved field 10 from the 10-19 nav range for DeepLinkSpec;
+	// 11..19 stay reserved. DeepLink lives HERE (not on the spec) because a store
+	// binary commits to its url scheme + route templates at submit time and can't
+	// change them post-submit -- it is a BUILD-time, not a resolved-spec, value.
+	DeepLink      *DeepLinkSpec `protobuf:"bytes,10,opt,name=deep_link,json=deepLink,proto3" json:"deep_link,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AppDefinition) Reset() {
@@ -383,6 +443,13 @@ func (x *AppDefinition) GetContractVersion() string {
 		return x.ContractVersion
 	}
 	return ""
+}
+
+func (x *AppDefinition) GetDeepLink() *DeepLinkSpec {
+	if x != nil {
+		return x.DeepLink
+	}
+	return nil
 }
 
 type AppMeta struct {
@@ -511,6 +578,9 @@ type ExperienceSpec struct {
 	// surfaces" range; 12..19 stay reserved for granted-surface refs.
 	ReferencedSurfaceIds []string             `protobuf:"bytes,10,rep,name=referenced_surface_ids,json=referencedSurfaceIds,proto3" json:"referenced_surface_ids,omitempty"`                                          // surface ids this spec references (negotiated vs the binary's manifest)
 	UnknownSurfacePolicy UnknownSurfacePolicy `protobuf:"varint,11,opt,name=unknown_surface_policy,json=unknownSurfacePolicy,proto3,enum=experience.v1.UnknownSurfacePolicy" json:"unknown_surface_policy,omitempty"` // how the binary handles a referenced surface it does not know
+	// 140-05 un-reserved field 20 from the 20-29 nav range for the NavGraph;
+	// 21..29 stay reserved for later nav seams.
+	NavGraph *NavGraph `protobuf:"bytes,20,opt,name=nav_graph,json=navGraph,proto3" json:"nav_graph,omitempty"`
 	// 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
 	Bindings      []*ServiceTransportBinding `protobuf:"bytes,50,rep,name=bindings,proto3" json:"bindings,omitempty"` // service<->transport bindings (transport- AND scope-agnostic)
 	unknownFields protoimpl.UnknownFields
@@ -608,6 +678,13 @@ func (x *ExperienceSpec) GetUnknownSurfacePolicy() UnknownSurfacePolicy {
 		return x.UnknownSurfacePolicy
 	}
 	return UnknownSurfacePolicy_UNKNOWN_SURFACE_POLICY_UNSPECIFIED
+}
+
+func (x *ExperienceSpec) GetNavGraph() *NavGraph {
+	if x != nil {
+		return x.NavGraph
+	}
+	return nil
 }
 
 func (x *ExperienceSpec) GetBindings() []*ServiceTransportBinding {
@@ -727,25 +804,277 @@ func (x *ServiceTransportBinding) GetRepoInterfaceId() string {
 	return ""
 }
 
+// NavSlot places one surface in the navigation at a Placement + order.
+type NavSlot struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SurfaceId     string                 `protobuf:"bytes,1,opt,name=surface_id,json=surfaceId,proto3" json:"surface_id,omitempty"`              // the FeatureSurface this slot shows
+	Placement     Placement              `protobuf:"varint,2,opt,name=placement,proto3,enum=experience.v1.Placement" json:"placement,omitempty"` // primary / more / detail-only
+	Order         int32                  `protobuf:"varint,3,opt,name=order,proto3" json:"order,omitempty"`                                      // sort order within the placement
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NavSlot) Reset() {
+	*x = NavSlot{}
+	mi := &file_experience_v1_experience_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NavSlot) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NavSlot) ProtoMessage() {}
+
+func (x *NavSlot) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NavSlot.ProtoReflect.Descriptor instead.
+func (*NavSlot) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *NavSlot) GetSurfaceId() string {
+	if x != nil {
+		return x.SurfaceId
+	}
+	return ""
+}
+
+func (x *NavSlot) GetPlacement() Placement {
+	if x != nil {
+		return x.Placement
+	}
+	return Placement_PLACEMENT_UNSPECIFIED
+}
+
+func (x *NavSlot) GetOrder() int32 {
+	if x != nil {
+		return x.Order
+	}
+	return 0
+}
+
+// NavEdge is a TYPED transition from one surface to another carrying the
+// selection passed across the hop. param_bindings maps a target input name to a
+// source selection expression (e.g. {"customerId": "$selection.id"}); trigger
+// names the gesture/event that fires the edge (e.g. "onSelect"). This typed
+// param-passing is what makes the graph compose FLOWS, not a launcher.
+type NavEdge struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	FromSurfaceId string                 `protobuf:"bytes,1,opt,name=from_surface_id,json=fromSurfaceId,proto3" json:"from_surface_id,omitempty"`                                                                         // source surface
+	ToSurfaceId   string                 `protobuf:"bytes,2,opt,name=to_surface_id,json=toSurfaceId,proto3" json:"to_surface_id,omitempty"`                                                                               // target surface
+	ParamBindings map[string]string      `protobuf:"bytes,3,rep,name=param_bindings,json=paramBindings,proto3" json:"param_bindings,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // target input <- source selection expr
+	Trigger       string                 `protobuf:"bytes,4,opt,name=trigger,proto3" json:"trigger,omitempty"`                                                                                                            // gesture/event that fires the edge
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NavEdge) Reset() {
+	*x = NavEdge{}
+	mi := &file_experience_v1_experience_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NavEdge) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NavEdge) ProtoMessage() {}
+
+func (x *NavEdge) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NavEdge.ProtoReflect.Descriptor instead.
+func (*NavEdge) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *NavEdge) GetFromSurfaceId() string {
+	if x != nil {
+		return x.FromSurfaceId
+	}
+	return ""
+}
+
+func (x *NavEdge) GetToSurfaceId() string {
+	if x != nil {
+		return x.ToSurfaceId
+	}
+	return ""
+}
+
+func (x *NavEdge) GetParamBindings() map[string]string {
+	if x != nil {
+		return x.ParamBindings
+	}
+	return nil
+}
+
+func (x *NavEdge) GetTrigger() string {
+	if x != nil {
+		return x.Trigger
+	}
+	return ""
+}
+
+// NavGraph is the typed navigation graph for a resolved ExperienceSpec.
+type NavGraph struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	LandingSurfaceId string                 `protobuf:"bytes,1,opt,name=landing_surface_id,json=landingSurfaceId,proto3" json:"landing_surface_id,omitempty"` // the surface shown first (must be a slot)
+	Slots            []*NavSlot             `protobuf:"bytes,2,rep,name=slots,proto3" json:"slots,omitempty"`                                                 // placed surfaces (the nav chrome)
+	Edges            []*NavEdge             `protobuf:"bytes,3,rep,name=edges,proto3" json:"edges,omitempty"`                                                 // typed inter-surface transitions
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *NavGraph) Reset() {
+	*x = NavGraph{}
+	mi := &file_experience_v1_experience_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NavGraph) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NavGraph) ProtoMessage() {}
+
+func (x *NavGraph) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NavGraph.ProtoReflect.Descriptor instead.
+func (*NavGraph) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *NavGraph) GetLandingSurfaceId() string {
+	if x != nil {
+		return x.LandingSurfaceId
+	}
+	return ""
+}
+
+func (x *NavGraph) GetSlots() []*NavSlot {
+	if x != nil {
+		return x.Slots
+	}
+	return nil
+}
+
+func (x *NavGraph) GetEdges() []*NavEdge {
+	if x != nil {
+		return x.Edges
+	}
+	return nil
+}
+
+// DeepLinkSpec is the url scheme + route templates a store binary commits to at
+// submit time. It lives on AppDefinition (BUILD-time), never on a resolved
+// ExperienceSpec, because a published store binary CANNOT change these
+// post-submit -- they are frozen the moment the binary ships.
+type DeepLinkSpec struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	UrlScheme      string                 `protobuf:"bytes,1,opt,name=url_scheme,json=urlScheme,proto3" json:"url_scheme,omitempty"`                // e.g. "edenbiz" (edenbiz://...)
+	RouteTemplates []string               `protobuf:"bytes,2,rep,name=route_templates,json=routeTemplates,proto3" json:"route_templates,omitempty"` // e.g. "/customers/:id", "/invoices/:id/pay"
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *DeepLinkSpec) Reset() {
+	*x = DeepLinkSpec{}
+	mi := &file_experience_v1_experience_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeepLinkSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeepLinkSpec) ProtoMessage() {}
+
+func (x *DeepLinkSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeepLinkSpec.ProtoReflect.Descriptor instead.
+func (*DeepLinkSpec) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *DeepLinkSpec) GetUrlScheme() string {
+	if x != nil {
+		return x.UrlScheme
+	}
+	return ""
+}
+
+func (x *DeepLinkSpec) GetRouteTemplates() []string {
+	if x != nil {
+		return x.RouteTemplates
+	}
+	return nil
+}
+
 var File_experience_v1_experience_proto protoreflect.FileDescriptor
 
 const file_experience_v1_experience_proto_rawDesc = "" +
 	"\n" +
-	"\x1eexperience/v1/experience.proto\x12\rexperience.v1\"\xef\x01\n" +
+	"\x1eexperience/v1/experience.proto\x12\rexperience.v1\"\xa9\x02\n" +
 	"\rAppDefinition\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x04meta\x18\x02 \x01(\v2\x16.experience.v1.AppMetaR\x04meta\x121\n" +
 	"\x04spec\x18\x03 \x01(\v2\x1d.experience.v1.ExperienceSpecR\x04spec\x12,\n" +
 	"\x12min_binary_version\x18\x04 \x01(\tR\x10minBinaryVersion\x12)\n" +
-	"\x10contract_version\x18\x05 \x01(\tR\x0fcontractVersionJ\x04\b\n" +
-	"\x10\x14J\x04\b\x14\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102\"@\n" +
+	"\x10contract_version\x18\x05 \x01(\tR\x0fcontractVersion\x128\n" +
+	"\tdeep_link\x18\n" +
+	" \x01(\v2\x1b.experience.v1.DeepLinkSpecR\bdeepLinkJ\x04\b\v\x10\x14J\x04\b\x14\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102\"@\n" +
 	"\aAppMeta\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
 	"\tbundle_id\x18\x02 \x01(\tR\bbundleIdJ\x04\b\n" +
 	"\x10\x14\"p\n" +
 	"\x17SurfaceRegistryManifest\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\tR\x0fcontractVersion\x12*\n" +
-	"\x11known_surface_ids\x18\x02 \x03(\tR\x0fknownSurfaceIds\"\xaf\x04\n" +
+	"\x11known_surface_ids\x18\x02 \x03(\tR\x0fknownSurfaceIds\"\xe5\x04\n" +
 	"\x0eExperienceSpec\x12.\n" +
 	"\x13spec_schema_version\x18\x01 \x01(\tR\x11specSchemaVersion\x128\n" +
 	"\x18surface_contract_version\x18\x02 \x01(\tR\x16surfaceContractVersion\x12!\n" +
@@ -756,8 +1085,9 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x06org_id\x18\a \x01(\tR\x05orgId\x124\n" +
 	"\x16referenced_surface_ids\x18\n" +
 	" \x03(\tR\x14referencedSurfaceIds\x12Y\n" +
-	"\x16unknown_surface_policy\x18\v \x01(\x0e2#.experience.v1.UnknownSurfacePolicyR\x14unknownSurfacePolicy\x12B\n" +
-	"\bbindings\x182 \x03(\v2&.experience.v1.ServiceTransportBindingR\bbindingsJ\x04\b\f\x10\x14J\x04\b\x14\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102J\x04\b3\x10<J\x04\b<\x10FJ\x04\bF\x10PJ\x04\bP\x10Z\"\xaf\x03\n" +
+	"\x16unknown_surface_policy\x18\v \x01(\x0e2#.experience.v1.UnknownSurfacePolicyR\x14unknownSurfacePolicy\x124\n" +
+	"\tnav_graph\x18\x14 \x01(\v2\x17.experience.v1.NavGraphR\bnavGraph\x12B\n" +
+	"\bbindings\x182 \x03(\v2&.experience.v1.ServiceTransportBindingR\bbindingsJ\x04\b\f\x10\x14J\x04\b\x15\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102J\x04\b3\x10<J\x04\b<\x10FJ\x04\bF\x10PJ\x04\bP\x10Z\"\xaf\x03\n" +
 	"\x17ServiceTransportBinding\x12\x16\n" +
 	"\x06entity\x18\x01 \x01(\tR\x06entity\x12'\n" +
 	"\x0fservice_package\x18\x02 \x01(\tR\x0eservicePackage\x12!\n" +
@@ -770,7 +1100,28 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\n" +
 	"pagination\x18\a \x01(\x0e2\x1d.experience.v1.PaginationKindR\n" +
 	"pagination\x12*\n" +
-	"\x11repo_interface_id\x18\b \x01(\tR\x0frepoInterfaceId*\xb7\x01\n" +
+	"\x11repo_interface_id\x18\b \x01(\tR\x0frepoInterfaceId\"v\n" +
+	"\aNavSlot\x12\x1d\n" +
+	"\n" +
+	"surface_id\x18\x01 \x01(\tR\tsurfaceId\x126\n" +
+	"\tplacement\x18\x02 \x01(\x0e2\x18.experience.v1.PlacementR\tplacement\x12\x14\n" +
+	"\x05order\x18\x03 \x01(\x05R\x05order\"\x83\x02\n" +
+	"\aNavEdge\x12&\n" +
+	"\x0ffrom_surface_id\x18\x01 \x01(\tR\rfromSurfaceId\x12\"\n" +
+	"\rto_surface_id\x18\x02 \x01(\tR\vtoSurfaceId\x12P\n" +
+	"\x0eparam_bindings\x18\x03 \x03(\v2).experience.v1.NavEdge.ParamBindingsEntryR\rparamBindings\x12\x18\n" +
+	"\atrigger\x18\x04 \x01(\tR\atrigger\x1a@\n" +
+	"\x12ParamBindingsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x94\x01\n" +
+	"\bNavGraph\x12,\n" +
+	"\x12landing_surface_id\x18\x01 \x01(\tR\x10landingSurfaceId\x12,\n" +
+	"\x05slots\x18\x02 \x03(\v2\x16.experience.v1.NavSlotR\x05slots\x12,\n" +
+	"\x05edges\x18\x03 \x03(\v2\x16.experience.v1.NavEdgeR\x05edges\"V\n" +
+	"\fDeepLinkSpec\x12\x1d\n" +
+	"\n" +
+	"url_scheme\x18\x01 \x01(\tR\turlScheme\x12'\n" +
+	"\x0froute_templates\x18\x02 \x03(\tR\x0erouteTemplates*\xb7\x01\n" +
 	"\x14UnknownSurfacePolicy\x12&\n" +
 	"\"UNKNOWN_SURFACE_POLICY_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dUNKNOWN_SURFACE_POLICY_IGNORE\x10\x01\x12(\n" +
@@ -795,7 +1146,12 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x1bPAGINATION_KIND_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14PAGINATION_KIND_NONE\x10\x01\x12\x1a\n" +
 	"\x16PAGINATION_KIND_CURSOR\x10\x02\x12\x1a\n" +
-	"\x16PAGINATION_KIND_OFFSET\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
+	"\x16PAGINATION_KIND_OFFSET\x10\x03*l\n" +
+	"\tPlacement\x12\x19\n" +
+	"\x15PLACEMENT_UNSPECIFIED\x10\x00\x12\x15\n" +
+	"\x11PLACEMENT_PRIMARY\x10\x01\x12\x12\n" +
+	"\x0ePLACEMENT_MORE\x10\x02\x12\x19\n" +
+	"\x15PLACEMENT_DETAIL_ONLY\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
 
 var (
 	file_experience_v1_experience_proto_rawDescOnce sync.Once
@@ -809,34 +1165,46 @@ func file_experience_v1_experience_proto_rawDescGZIP() []byte {
 	return file_experience_v1_experience_proto_rawDescData
 }
 
-var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_experience_v1_experience_proto_goTypes = []any{
 	(UnknownSurfacePolicy)(0),       // 0: experience.v1.UnknownSurfacePolicy
 	(TransportKind)(0),              // 1: experience.v1.TransportKind
 	(ScopeAuthority)(0),             // 2: experience.v1.ScopeAuthority
 	(Operation)(0),                  // 3: experience.v1.Operation
 	(PaginationKind)(0),             // 4: experience.v1.PaginationKind
-	(*AppDefinition)(nil),           // 5: experience.v1.AppDefinition
-	(*AppMeta)(nil),                 // 6: experience.v1.AppMeta
-	(*SurfaceRegistryManifest)(nil), // 7: experience.v1.SurfaceRegistryManifest
-	(*ExperienceSpec)(nil),          // 8: experience.v1.ExperienceSpec
-	(*ServiceTransportBinding)(nil), // 9: experience.v1.ServiceTransportBinding
+	(Placement)(0),                  // 5: experience.v1.Placement
+	(*AppDefinition)(nil),           // 6: experience.v1.AppDefinition
+	(*AppMeta)(nil),                 // 7: experience.v1.AppMeta
+	(*SurfaceRegistryManifest)(nil), // 8: experience.v1.SurfaceRegistryManifest
+	(*ExperienceSpec)(nil),          // 9: experience.v1.ExperienceSpec
+	(*ServiceTransportBinding)(nil), // 10: experience.v1.ServiceTransportBinding
+	(*NavSlot)(nil),                 // 11: experience.v1.NavSlot
+	(*NavEdge)(nil),                 // 12: experience.v1.NavEdge
+	(*NavGraph)(nil),                // 13: experience.v1.NavGraph
+	(*DeepLinkSpec)(nil),            // 14: experience.v1.DeepLinkSpec
+	nil,                             // 15: experience.v1.NavEdge.ParamBindingsEntry
 }
 var file_experience_v1_experience_proto_depIdxs = []int32{
-	6, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
-	8, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
-	0, // 2: experience.v1.ExperienceSpec.unknown_surface_policy:type_name -> experience.v1.UnknownSurfacePolicy
-	9, // 3: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
-	3, // 4: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
-	1, // 5: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
-	2, // 6: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
-	4, // 7: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
-	8, // [8:8] is the sub-list for method output_type
-	8, // [8:8] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	7,  // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
+	9,  // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
+	14, // 2: experience.v1.AppDefinition.deep_link:type_name -> experience.v1.DeepLinkSpec
+	0,  // 3: experience.v1.ExperienceSpec.unknown_surface_policy:type_name -> experience.v1.UnknownSurfacePolicy
+	13, // 4: experience.v1.ExperienceSpec.nav_graph:type_name -> experience.v1.NavGraph
+	10, // 5: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
+	3,  // 6: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
+	1,  // 7: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
+	2,  // 8: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
+	4,  // 9: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
+	5,  // 10: experience.v1.NavSlot.placement:type_name -> experience.v1.Placement
+	15, // 11: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
+	11, // 12: experience.v1.NavGraph.slots:type_name -> experience.v1.NavSlot
+	12, // 13: experience.v1.NavGraph.edges:type_name -> experience.v1.NavEdge
+	14, // [14:14] is the sub-list for method output_type
+	14, // [14:14] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_experience_v1_experience_proto_init() }
@@ -849,8 +1217,8 @@ func file_experience_v1_experience_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_experience_v1_experience_proto_rawDesc), len(file_experience_v1_experience_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   5,
+			NumEnums:      6,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
