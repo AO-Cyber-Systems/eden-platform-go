@@ -205,6 +205,94 @@ func NewDeepLink(urlScheme string, routeTemplates ...string) *experiencev1.DeepL
 	}
 }
 
+// --- 140-06 ThemeSpec + TermSet + LocaleSpec + per-surface OfflineSpec ----
+//
+// These GROW the factory for must-haves #5 + #6: the presentation/runtime-policy
+// message group. ThemeSpec/TermSet/LocaleSpec land on ExperienceSpec fields
+// 30/31/32 (un-reserved from the 30-39 presentation range); the per-surface
+// OfflineSpec map lands on field 40 (un-reserved from the 40-49 offline range),
+// keyed by surface_id so offline policy is PER-SURFACE, never one global bool.
+//
+// LocaleSpec.timezone is the net-new load-bearing field (absent everywhere
+// today, required for scheduling/field surfaces) -- modeled as an IANA tz string.
+// TermSet is PRESENTATION-only (Job->Visit relabeling); it MUST NOT be load-
+// bearing for any logic -- the offering keys off surface/entity ids, never the
+// displayed term.
+
+// DefaultLocale / DefaultCurrency / DefaultTimezone are the sane LocaleSpec
+// defaults a freshly built locale carries. Currency is NOT hardcoded to USD at
+// the contract level -- it is a LocaleSpec field; these are merely the fixture
+// baseline so a locale-less spec still has a coherent default to diverge from.
+const (
+	DefaultLocale   = "en-US"
+	DefaultCurrency = "USD"
+	DefaultTimezone = "America/New_York"
+)
+
+// WithTheme sets the spec's ThemeSpec: a brand preset + logo ref + color
+// override map + density token. color_overrides is a map so a builder can
+// override an arbitrary set of brand tokens without a fixed schema.
+func WithTheme(brandPreset, logoRef, density string, colorOverrides map[string]string) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) {
+		s.Theme = &experiencev1.ThemeSpec{
+			BrandPreset:    brandPreset,
+			LogoRef:        logoRef,
+			ColorOverrides: colorOverrides,
+			Density:        density,
+		}
+	}
+}
+
+// WithTermSet sets the spec's TermSet: a presentation-only term-override map
+// (e.g. {"job": "visit"}). PRESENTATION-only -- never load-bearing for logic.
+func WithTermSet(overrides map[string]string) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) {
+		s.Terms = &experiencev1.TermSet{Overrides: overrides}
+	}
+}
+
+// WithLocale sets the spec's LocaleSpec: locale + currency + IANA timezone.
+// timezone is load-bearing for scheduling/field surfaces and is a first-class
+// typed field here (it is absent everywhere else today).
+func WithLocale(locale, currency, timezone string) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) {
+		s.Locale = &experiencev1.LocaleSpec{
+			Locale:   locale,
+			Currency: currency,
+			Timezone: timezone,
+		}
+	}
+}
+
+// NewOfflineSpec builds a single per-surface OfflineSpec: the offline policy +
+// cache TTL + conflict policy + read-only grace window. NOT a bare bool -- the
+// structure is what lets gates G1/G5 reason about conflict + grace later.
+func NewOfflineSpec(
+	policy experiencev1.OfflinePolicy,
+	cacheTTLSeconds uint32,
+	conflict experiencev1.ConflictPolicy,
+	readOnlyGraceSeconds uint32,
+) *experiencev1.OfflineSpec {
+	return &experiencev1.OfflineSpec{
+		Policy:               policy,
+		CacheTtlSeconds:      cacheTTLSeconds,
+		ConflictPolicy:       conflict,
+		ReadOnlyGraceSeconds: readOnlyGraceSeconds,
+	}
+}
+
+// WithSurfaceOffline attaches an OfflineSpec to ONE surface in the spec's
+// surface_offline map (keyed by surface_id). Compose it twice with DIFFERENT
+// surface ids + policies to prove offline is per-surface, not one global bool.
+func WithSurfaceOffline(surfaceID string, offline *experiencev1.OfflineSpec) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) {
+		if s.SurfaceOffline == nil {
+			s.SurfaceOffline = make(map[string]*experiencev1.OfflineSpec)
+		}
+		s.SurfaceOffline[surfaceID] = offline
+	}
+}
+
 // NewSpec returns a valid, marshalable ExperienceSpec with sane defaults,
 // then applies the supplied options in order. Each call returns a fresh,
 // independent (non-aliased) struct.
