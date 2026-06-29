@@ -1,0 +1,72 @@
+{
+  "description": "Recorded org-scoped aocore REST/OpenAPI exchanges (140-11 transport-agnostic binding proof). aocore has NO protobuf/Connect: it is REST/OpenAPI, org-scoped, edge-signed (APIKey OrganizationID derived from the AOEdge identity-context, NEVER from the request body). These routes are replayed by an in-process httptest server so the aocore-REST Repository stub round-trips Get/List/Create/Update/Delete with ZERO live aocore calls. Re-record once if the upstream OpenAPI contract changes, then commit. The org scope on every route is org-fixture-0001 (fixtures.DefaultOrgID); a request projected to any other org collapses to a single permission-denied with no existence oracle.",
+  "org_id": "org-fixture-0001",
+  "routes": [
+    {
+      "operation": "GET",
+      "method": "GET",
+      "path": "/v1/orgs/org-fixture-0001/tenants/tenant-aocore-1",
+      "status": 200,
+      "body": {
+        "id": "tenant-aocore-1",
+        "org_id": "org-fixture-0001",
+        "name": "Recorded Org Tenant",
+        "kind": "aocore-rest"
+      }
+    },
+    {
+      "operation": "LIST",
+      "method": "GET",
+      "path": "/v1/orgs/org-fixture-0001/tenants",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "id": "tenant-aocore-1",
+            "org_id": "org-fixture-0001",
+            "name": "Recorded Org Tenant",
+            "kind": "aocore-rest"
+          },
+          {
+            "id": "tenant-aocore-2",
+            "org_id": "org-fixture-0001",
+            "name": "Recorded Org Tenant Two",
+            "kind": "aocore-rest"
+          }
+        ],
+        "next_cursor": "cursor-page-2"
+      }
+    },
+    {
+      "operation": "CREATE",
+      "method": "POST",
+      "path": "/v1/orgs/org-fixture-0001/tenants",
+      "status": 201,
+      "body": {
+        "id": "tenant-aocore-created",
+        "org_id": "org-fixture-0001",
+        "name": "Created Via REST",
+        "kind": "aocore-rest"
+      }
+    },
+    {
+      "operation": "UPDATE",
+      "method": "PUT",
+      "path": "/v1/orgs/org-fixture-0001/tenants/tenant-aocore-1",
+      "status": 200,
+      "body": {
+        "id": "tenant-aocore-1",
+        "org_id": "org-fixture-0001",
+        "name": "Updated Via REST",
+        "kind": "aocore-rest"
+      }
+    },
+    {
+      "operation": "DELETE",
+      "method": "DELETE",
+      "path": "/v1/orgs/org-fixture-0001/tenants/tenant-aocore-1",
+      "status": 204,
+      "body": null
+    }
+  ]
+}
