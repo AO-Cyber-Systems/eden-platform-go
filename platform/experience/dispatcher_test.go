@@ -138,7 +138,11 @@ func TestStubDispatch_WriteTool_GatedDistinctFromRead(t *testing.T) {
 	}
 
 	// And a READ tool must NOT be write-gated -- the two are distinguishable.
-	readRes, err := d.Dispatch(context.Background(), node /*reuse*/, fixtures.NewTool(), defaultScope(), input)
+	// (Use a node that binds the READ tool's adapter; the write node above only
+	// binds the create_invoice adapter.)
+	readTool := fixtures.NewTool()
+	readNode := fixtures.NewAgentNodeForTool(readTool)
+	readRes, err := d.Dispatch(context.Background(), readNode, readTool, defaultScope(), input)
 	if err != nil {
 		t.Fatalf("read dispatch for distinctness: %v", err)
 	}
