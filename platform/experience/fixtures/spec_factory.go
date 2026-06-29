@@ -293,6 +293,115 @@ func WithSurfaceOffline(surfaceID string, offline *experiencev1.OfflineSpec) Spe
 	}
 }
 
+// --- 140-08 resolution-tuple + granted-entitlements factory options -------
+//
+// These GROW the factory for must-have #4: the server-side resolution FILTER.
+// Resolve(spec, tuple) is decided against the tuple's GRANTED entitlement set
+// (the single-source entitlements service's answer), NEVER against entitlement
+// RULES. The tuple {role, entitlements, form_factor, tenant, org} is what the
+// content-hash preimage commits to -- so these options exist to construct the
+// distinct-tuple / identical-tuple proofs the hash-preimage test needs.
+//
+// ResolutionTuple is a Go-only value (NOT a proto field): the resolved spec
+// ships the RESULT (granted surfaces + LockedSurfaces + ResolutionContext),
+// never the tuple's entitlement rules. The tuple lives only server-side, in the
+// hash preimage and the resolver call.
+
+// DefaultRole / DefaultFormFactor are the baseline resolution-tuple axes a
+// fixture tuple carries so a tuple-less test still has a coherent baseline to
+// diverge from (mirrors Default{Tenant,Org}ID for the scope axes).
+const (
+	DefaultRole       = "role-fixture-owner"
+	DefaultFormFactor = "form-factor-mobile"
+)
+
+// ResolutionTuple is the server-side resolution input: the FULL cache-key shape
+// {role, entitlements, form_factor, tenant, org}. Granted is the set of surface
+// ids the single-source entitlements service GRANTS this tuple -- the resolver
+// filters the spec's referenced surfaces against it. The tuple is the hash
+// preimage's identity: any axis change MUST change the content hash.
+//
+// Granted is a SET (map to struct{}) so membership is the only question asked --
+// the resolver never sees, stores, or ships the underlying entitlement RULES,
+// only their already-evaluated grant result.
+type ResolutionTuple struct {
+	Role        string
+	FormFactor  string
+	TenantID    string
+	OrgID       string
+	Entitlement string // the entitlement-set identity (plan/tier key) -- a tuple axis
+	Granted     map[string]struct{}
+}
+
+// NewTuple builds a baseline ResolutionTuple with the fixture defaults, then
+// applies the options. Granted starts empty; use WithGrantedEntitlements to add
+// the surfaces the entitlements service grants this tuple.
+func NewTuple(opts ...TupleOpt) ResolutionTuple {
+	t := ResolutionTuple{
+		Role:        DefaultRole,
+		FormFactor:  DefaultFormFactor,
+		TenantID:    DefaultTenantID,
+		OrgID:       DefaultOrgID,
+		Entitlement: "entitlement-set-fixture-base",
+		Granted:     map[string]struct{}{},
+	}
+	for _, opt := range opts {
+		opt(&t)
+	}
+	return t
+}
+
+// TupleOpt mutates a ResolutionTuple in place. Compose them in NewTuple.
+type TupleOpt func(*ResolutionTuple)
+
+// WithResolutionTuple sets the role / entitlement-set / form_factor / tenant /
+// org axes in one call -- the FULL cache-key shape the content-hash preimage
+// commits to. Use it to construct two tuples that differ in exactly one axis to
+// prove that axis is in the preimage.
+func WithResolutionTuple(role, entitlementSet, formFactor, tenant, org string) TupleOpt {
+	return func(t *ResolutionTuple) {
+		t.Role = role
+		t.Entitlement = entitlementSet
+		t.FormFactor = formFactor
+		t.TenantID = tenant
+		t.OrgID = org
+	}
+}
+
+// WithGrantedEntitlements sets the surface ids the entitlements service GRANTS
+// this tuple (the single-source grant result). A spec surface in this set
+// resolves through; one outside it becomes a LockedSurface.
+func WithGrantedEntitlements(surfaceIDs ...string) TupleOpt {
+	return func(t *ResolutionTuple) {
+		t.Granted = make(map[string]struct{}, len(surfaceIDs))
+		for _, id := range surfaceIDs {
+			t.Granted[id] = struct{}{}
+		}
+	}
+}
+
+// WrongTenantTuple returns a divergent-scope COPY of baseline whose tenant AND
+// org differ -- the tuple analogue of fixtures.WrongTenant. Every cross-tenant
+// resolution test pairs WrongTenant(spec) with WrongTenantTuple(tuple) so the
+// scope axes diverge on BOTH the spec and the resolution input. Granted is
+// deep-copied so mutating the baseline's grant set never bleeds across.
+func WrongTenantTuple(baseline ResolutionTuple) ResolutionTuple {
+	clone := baseline
+	clone.TenantID = WrongTenantID
+	clone.OrgID = WrongOrgID
+	if clone.TenantID == baseline.TenantID {
+		clone.TenantID = WrongTenantID + "-alt"
+	}
+	if clone.OrgID == baseline.OrgID {
+		clone.OrgID = WrongOrgID + "-alt"
+	}
+	clone.Granted = make(map[string]struct{}, len(baseline.Granted))
+	for k := range baseline.Granted {
+		clone.Granted[k] = struct{}{}
+	}
+	return clone
+}
+
 // NewSpec returns a valid, marshalable ExperienceSpec with sane defaults,
 // then applies the supplied options in order. Each call returns a fresh,
 // independent (non-aliased) struct.
