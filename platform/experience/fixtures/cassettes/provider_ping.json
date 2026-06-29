@@ -1,0 +1,14 @@
+{
+  "description": "Recorded provider health-check response. Replayed by NewCassetteServer in tests; NO live external call is ever made. Re-record once if the upstream contract changes, then commit.",
+  "request": {
+    "method": "GET",
+    "path": "/ping"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"status\":\"ok\",\"provider\":\"fixture\",\"recorded\":true}"
+  }
+}
