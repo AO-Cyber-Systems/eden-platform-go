@@ -81,8 +81,22 @@ message ExperienceSpec {
   // 21..29 stay reserved for later nav seams.
   NavGraph nav_graph = 20;
   reserved 21 to 29;   // additional nav seams                        (140-05)
-  reserved 30 to 39;   // ThemeSpec + TermSet + LocaleSpec            (140-06)
-  reserved 40 to 49;   // per-surface OfflineSpec                     (140-06)
+  // 140-06 un-reserved 30/31/32 from the 30-39 presentation range for the
+  // typed presentation surface (ThemeSpec + TermSet + LocaleSpec); 33..39 stay
+  // reserved. LocaleSpec.timezone is the net-new LOAD-BEARING field (absent
+  // everywhere today, required for scheduling/field). TermSet is PRESENTATION-
+  // ONLY -- a Job->Visit relabel for display; logic keys off entity/surface ids,
+  // never the displayed term.
+  ThemeSpec theme = 30;    // brand preset + logo + color overrides + density
+  TermSet terms = 31;      // presentation-only term overrides (e.g. job->visit)
+  LocaleSpec locale = 32;  // locale + currency + IANA timezone (tz load-bearing)
+  reserved 33 to 39;   // remaining presentation seam                 (140-06)
+  // 140-06 un-reserved field 40 from the 40-49 offline range for the PER-SURFACE
+  // OfflineSpec map (keyed by surface_id); 41..49 stay reserved. Offline is
+  // per-surface and STRUCTURED (policy/cache_ttl/conflict_policy/grace), NEVER a
+  // bare global offlineCapable bool -- gates G1/G5 reason over the structure.
+  map<string, OfflineSpec> surface_offline = 40;  // per-surface offline policy, keyed by surface_id
+  reserved 41 to 49;   // remaining offline seam                      (140-06)
   // 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
   repeated ServiceTransportBinding bindings = 50;  // service<->transport bindings (transport- AND scope-agnostic)
   reserved 51 to 59;   // additional binding seams                     (140-04)
@@ -229,4 +243,78 @@ message NavGraph {
 message DeepLinkSpec {
   string url_scheme = 1;               // e.g. "edenbiz" (edenbiz://...)
   repeated string route_templates = 2; // e.g. "/customers/:id", "/invoices/:id/pay"
+}
+
+// --- 140-06 ThemeSpec + TermSet + LocaleSpec + per-surface OfflineSpec ------
+//
+// Must-haves #5 + #6: the presentation + runtime-offline-policy surface. All
+// load-bearing values are TYPED fields (frozen-contract discipline). Coherence
+// (timezone-required-for-offline-scheduling, conflict-policy-coherence) is
+// MACHINE-CHECKED in presentation.go (ValidatePresentation), NOT a proto
+// constraint -- the data can EXPRESS an incoherent presentation so the validator
+// (and the 140-09 M0 validator) has something to reject.
+
+// ThemeSpec is the per-company brand surface: a named brand_preset, a logo_ref,
+// an arbitrary color-override map (token -> hex, no fixed schema so a builder can
+// override any subset of brand tokens), and a density token.
+message ThemeSpec {
+  string brand_preset = 1;                  // named brand preset the build starts from
+  string logo_ref = 2;                      // asset ref for the company logo
+  map<string, string> color_overrides = 3;  // brand token -> value (e.g. "primary" -> "#0A84FF")
+  string density = 4;                       // density token (e.g. "comfortable" | "compact")
+}
+
+// TermSet is the PRESENTATION-ONLY term-override map (e.g. {"job": "visit"}).
+// IMPORTANT: it is a DISPLAY relabel only -- it MUST NEVER be load-bearing for
+// logic. The runtime keys off the logical entity/surface id (the map KEY), and
+// the value is purely the label shown to the user. The TermResolver (build-spec
+// section 9) routes every displayed string through this map; no branch ever
+// keys off the resolved label.
+message TermSet {
+  map<string, string> overrides = 1;  // logical term -> displayed label (presentation-only)
+}
+
+// LocaleSpec is the per-resolution locale surface. timezone is the net-new
+// LOAD-BEARING field: it is absent everywhere in the product today and is
+// required to resolve local appointment times on scheduling/field surfaces.
+// Modeled as an IANA tz string (e.g. "America/New_York"). currency is a field
+// here -- it is NEVER hardcoded to USD at the contract level.
+message LocaleSpec {
+  string locale = 1;    // BCP-47 locale (e.g. "en-US")
+  string currency = 2;  // ISO-4217 currency (e.g. "USD") -- NOT hardcoded
+  string timezone = 3;  // IANA timezone (e.g. "America/New_York") -- load-bearing for scheduling
+}
+
+// OfflinePolicy is the per-surface offline behavior. UNSPECIFIED=0 fails SAFE
+// (treated as NONE -- no offline). NONE = online-only. READ_CACHE = serve cached
+// reads offline, no writes. READ_WRITE_QUEUE = cache reads AND queue writes for
+// later sync (the field-service offline-first mode).
+enum OfflinePolicy {
+  OFFLINE_POLICY_UNSPECIFIED = 0;        // fail-safe -> treated as NONE
+  OFFLINE_POLICY_NONE = 1;               // online-only, no offline behavior
+  OFFLINE_POLICY_READ_CACHE = 2;         // serve cached reads offline; no writes
+  OFFLINE_POLICY_READ_WRITE_QUEUE = 3;   // cache reads + queue writes for later sync
+}
+
+// ConflictPolicy is how a queued offline write reconciles against server state
+// at sync time. UNSPECIFIED=0 fails SAFE (treated as MANUAL_RECONCILE -- never
+// silently drop a conflicting write). LAST_WRITE_WINS = the later timestamp
+// wins. SERVER_WINS = the server copy wins, the queued write is discarded.
+// MANUAL_RECONCILE = surface the conflict to the user.
+enum ConflictPolicy {
+  CONFLICT_POLICY_UNSPECIFIED = 0;       // fail-safe -> treated as MANUAL_RECONCILE
+  CONFLICT_POLICY_LAST_WRITE_WINS = 1;   // later write wins
+  CONFLICT_POLICY_SERVER_WINS = 2;       // server copy wins, queued write discarded
+  CONFLICT_POLICY_MANUAL_RECONCILE = 3;  // surface the conflict to the user
+}
+
+// OfflineSpec is the STRUCTURED per-surface offline policy -- NOT a bare bool. A
+// bare offlineCapable bool cannot express a conflict strategy or a grace window;
+// gates G1/G5 reason over these four typed fields. Attached PER-SURFACE via
+// ExperienceSpec.surface_offline (keyed by surface_id), never one global flag.
+message OfflineSpec {
+  OfflinePolicy policy = 1;            // offline behavior for this surface
+  uint32 cache_ttl_seconds = 2;        // how long cached reads stay valid offline
+  ConflictPolicy conflict_policy = 3;  // how a queued write reconciles at sync
+  uint32 read_only_grace_seconds = 4;  // grace window the surface stays read-only after going offline
 }

@@ -360,6 +360,119 @@ func (Placement) EnumDescriptor() ([]byte, []int) {
 	return file_experience_v1_experience_proto_rawDescGZIP(), []int{5}
 }
 
+// OfflinePolicy is the per-surface offline behavior. UNSPECIFIED=0 fails SAFE
+// (treated as NONE -- no offline). NONE = online-only. READ_CACHE = serve cached
+// reads offline, no writes. READ_WRITE_QUEUE = cache reads AND queue writes for
+// later sync (the field-service offline-first mode).
+type OfflinePolicy int32
+
+const (
+	OfflinePolicy_OFFLINE_POLICY_UNSPECIFIED      OfflinePolicy = 0 // fail-safe -> treated as NONE
+	OfflinePolicy_OFFLINE_POLICY_NONE             OfflinePolicy = 1 // online-only, no offline behavior
+	OfflinePolicy_OFFLINE_POLICY_READ_CACHE       OfflinePolicy = 2 // serve cached reads offline; no writes
+	OfflinePolicy_OFFLINE_POLICY_READ_WRITE_QUEUE OfflinePolicy = 3 // cache reads + queue writes for later sync
+)
+
+// Enum value maps for OfflinePolicy.
+var (
+	OfflinePolicy_name = map[int32]string{
+		0: "OFFLINE_POLICY_UNSPECIFIED",
+		1: "OFFLINE_POLICY_NONE",
+		2: "OFFLINE_POLICY_READ_CACHE",
+		3: "OFFLINE_POLICY_READ_WRITE_QUEUE",
+	}
+	OfflinePolicy_value = map[string]int32{
+		"OFFLINE_POLICY_UNSPECIFIED":      0,
+		"OFFLINE_POLICY_NONE":             1,
+		"OFFLINE_POLICY_READ_CACHE":       2,
+		"OFFLINE_POLICY_READ_WRITE_QUEUE": 3,
+	}
+)
+
+func (x OfflinePolicy) Enum() *OfflinePolicy {
+	p := new(OfflinePolicy)
+	*p = x
+	return p
+}
+
+func (x OfflinePolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (OfflinePolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[6].Descriptor()
+}
+
+func (OfflinePolicy) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[6]
+}
+
+func (x OfflinePolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use OfflinePolicy.Descriptor instead.
+func (OfflinePolicy) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{6}
+}
+
+// ConflictPolicy is how a queued offline write reconciles against server state
+// at sync time. UNSPECIFIED=0 fails SAFE (treated as MANUAL_RECONCILE -- never
+// silently drop a conflicting write). LAST_WRITE_WINS = the later timestamp
+// wins. SERVER_WINS = the server copy wins, the queued write is discarded.
+// MANUAL_RECONCILE = surface the conflict to the user.
+type ConflictPolicy int32
+
+const (
+	ConflictPolicy_CONFLICT_POLICY_UNSPECIFIED      ConflictPolicy = 0 // fail-safe -> treated as MANUAL_RECONCILE
+	ConflictPolicy_CONFLICT_POLICY_LAST_WRITE_WINS  ConflictPolicy = 1 // later write wins
+	ConflictPolicy_CONFLICT_POLICY_SERVER_WINS      ConflictPolicy = 2 // server copy wins, queued write discarded
+	ConflictPolicy_CONFLICT_POLICY_MANUAL_RECONCILE ConflictPolicy = 3 // surface the conflict to the user
+)
+
+// Enum value maps for ConflictPolicy.
+var (
+	ConflictPolicy_name = map[int32]string{
+		0: "CONFLICT_POLICY_UNSPECIFIED",
+		1: "CONFLICT_POLICY_LAST_WRITE_WINS",
+		2: "CONFLICT_POLICY_SERVER_WINS",
+		3: "CONFLICT_POLICY_MANUAL_RECONCILE",
+	}
+	ConflictPolicy_value = map[string]int32{
+		"CONFLICT_POLICY_UNSPECIFIED":      0,
+		"CONFLICT_POLICY_LAST_WRITE_WINS":  1,
+		"CONFLICT_POLICY_SERVER_WINS":      2,
+		"CONFLICT_POLICY_MANUAL_RECONCILE": 3,
+	}
+)
+
+func (x ConflictPolicy) Enum() *ConflictPolicy {
+	p := new(ConflictPolicy)
+	*p = x
+	return p
+}
+
+func (x ConflictPolicy) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ConflictPolicy) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[7].Descriptor()
+}
+
+func (ConflictPolicy) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[7]
+}
+
+func (x ConflictPolicy) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ConflictPolicy.Descriptor instead.
+func (ConflictPolicy) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{7}
+}
+
 // AppDefinition: build-time definition feeding BOTH the runtime resolver AND
 // the per-company native build pipeline (layered output).
 type AppDefinition struct {
@@ -581,6 +694,20 @@ type ExperienceSpec struct {
 	// 140-05 un-reserved field 20 from the 20-29 nav range for the NavGraph;
 	// 21..29 stay reserved for later nav seams.
 	NavGraph *NavGraph `protobuf:"bytes,20,opt,name=nav_graph,json=navGraph,proto3" json:"nav_graph,omitempty"`
+	// 140-06 un-reserved 30/31/32 from the 30-39 presentation range for the
+	// typed presentation surface (ThemeSpec + TermSet + LocaleSpec); 33..39 stay
+	// reserved. LocaleSpec.timezone is the net-new LOAD-BEARING field (absent
+	// everywhere today, required for scheduling/field). TermSet is PRESENTATION-
+	// ONLY -- a Job->Visit relabel for display; logic keys off entity/surface ids,
+	// never the displayed term.
+	Theme  *ThemeSpec  `protobuf:"bytes,30,opt,name=theme,proto3" json:"theme,omitempty"`   // brand preset + logo + color overrides + density
+	Terms  *TermSet    `protobuf:"bytes,31,opt,name=terms,proto3" json:"terms,omitempty"`   // presentation-only term overrides (e.g. job->visit)
+	Locale *LocaleSpec `protobuf:"bytes,32,opt,name=locale,proto3" json:"locale,omitempty"` // locale + currency + IANA timezone (tz load-bearing)
+	// 140-06 un-reserved field 40 from the 40-49 offline range for the PER-SURFACE
+	// OfflineSpec map (keyed by surface_id); 41..49 stay reserved. Offline is
+	// per-surface and STRUCTURED (policy/cache_ttl/conflict_policy/grace), NEVER a
+	// bare global offlineCapable bool -- gates G1/G5 reason over the structure.
+	SurfaceOffline map[string]*OfflineSpec `protobuf:"bytes,40,rep,name=surface_offline,json=surfaceOffline,proto3" json:"surface_offline,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // per-surface offline policy, keyed by surface_id
 	// 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
 	Bindings      []*ServiceTransportBinding `protobuf:"bytes,50,rep,name=bindings,proto3" json:"bindings,omitempty"` // service<->transport bindings (transport- AND scope-agnostic)
 	unknownFields protoimpl.UnknownFields
@@ -683,6 +810,34 @@ func (x *ExperienceSpec) GetUnknownSurfacePolicy() UnknownSurfacePolicy {
 func (x *ExperienceSpec) GetNavGraph() *NavGraph {
 	if x != nil {
 		return x.NavGraph
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetTheme() *ThemeSpec {
+	if x != nil {
+		return x.Theme
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetTerms() *TermSet {
+	if x != nil {
+		return x.Terms
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetLocale() *LocaleSpec {
+	if x != nil {
+		return x.Locale
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetSurfaceOffline() map[string]*OfflineSpec {
+	if x != nil {
+		return x.SurfaceOffline
 	}
 	return nil
 }
@@ -1055,6 +1210,264 @@ func (x *DeepLinkSpec) GetRouteTemplates() []string {
 	return nil
 }
 
+// ThemeSpec is the per-company brand surface: a named brand_preset, a logo_ref,
+// an arbitrary color-override map (token -> hex, no fixed schema so a builder can
+// override any subset of brand tokens), and a density token.
+type ThemeSpec struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	BrandPreset    string                 `protobuf:"bytes,1,opt,name=brand_preset,json=brandPreset,proto3" json:"brand_preset,omitempty"`                                                                                    // named brand preset the build starts from
+	LogoRef        string                 `protobuf:"bytes,2,opt,name=logo_ref,json=logoRef,proto3" json:"logo_ref,omitempty"`                                                                                                // asset ref for the company logo
+	ColorOverrides map[string]string      `protobuf:"bytes,3,rep,name=color_overrides,json=colorOverrides,proto3" json:"color_overrides,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // brand token -> value (e.g. "primary" -> "#0A84FF")
+	Density        string                 `protobuf:"bytes,4,opt,name=density,proto3" json:"density,omitempty"`                                                                                                               // density token (e.g. "comfortable" | "compact")
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ThemeSpec) Reset() {
+	*x = ThemeSpec{}
+	mi := &file_experience_v1_experience_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ThemeSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ThemeSpec) ProtoMessage() {}
+
+func (x *ThemeSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ThemeSpec.ProtoReflect.Descriptor instead.
+func (*ThemeSpec) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ThemeSpec) GetBrandPreset() string {
+	if x != nil {
+		return x.BrandPreset
+	}
+	return ""
+}
+
+func (x *ThemeSpec) GetLogoRef() string {
+	if x != nil {
+		return x.LogoRef
+	}
+	return ""
+}
+
+func (x *ThemeSpec) GetColorOverrides() map[string]string {
+	if x != nil {
+		return x.ColorOverrides
+	}
+	return nil
+}
+
+func (x *ThemeSpec) GetDensity() string {
+	if x != nil {
+		return x.Density
+	}
+	return ""
+}
+
+// TermSet is the PRESENTATION-ONLY term-override map (e.g. {"job": "visit"}).
+// IMPORTANT: it is a DISPLAY relabel only -- it MUST NEVER be load-bearing for
+// logic. The runtime keys off the logical entity/surface id (the map KEY), and
+// the value is purely the label shown to the user. The TermResolver (build-spec
+// section 9) routes every displayed string through this map; no branch ever
+// keys off the resolved label.
+type TermSet struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Overrides     map[string]string      `protobuf:"bytes,1,rep,name=overrides,proto3" json:"overrides,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // logical term -> displayed label (presentation-only)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TermSet) Reset() {
+	*x = TermSet{}
+	mi := &file_experience_v1_experience_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TermSet) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TermSet) ProtoMessage() {}
+
+func (x *TermSet) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TermSet.ProtoReflect.Descriptor instead.
+func (*TermSet) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *TermSet) GetOverrides() map[string]string {
+	if x != nil {
+		return x.Overrides
+	}
+	return nil
+}
+
+// LocaleSpec is the per-resolution locale surface. timezone is the net-new
+// LOAD-BEARING field: it is absent everywhere in the product today and is
+// required to resolve local appointment times on scheduling/field surfaces.
+// Modeled as an IANA tz string (e.g. "America/New_York"). currency is a field
+// here -- it is NEVER hardcoded to USD at the contract level.
+type LocaleSpec struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Locale        string                 `protobuf:"bytes,1,opt,name=locale,proto3" json:"locale,omitempty"`     // BCP-47 locale (e.g. "en-US")
+	Currency      string                 `protobuf:"bytes,2,opt,name=currency,proto3" json:"currency,omitempty"` // ISO-4217 currency (e.g. "USD") -- NOT hardcoded
+	Timezone      string                 `protobuf:"bytes,3,opt,name=timezone,proto3" json:"timezone,omitempty"` // IANA timezone (e.g. "America/New_York") -- load-bearing for scheduling
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LocaleSpec) Reset() {
+	*x = LocaleSpec{}
+	mi := &file_experience_v1_experience_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LocaleSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LocaleSpec) ProtoMessage() {}
+
+func (x *LocaleSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LocaleSpec.ProtoReflect.Descriptor instead.
+func (*LocaleSpec) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *LocaleSpec) GetLocale() string {
+	if x != nil {
+		return x.Locale
+	}
+	return ""
+}
+
+func (x *LocaleSpec) GetCurrency() string {
+	if x != nil {
+		return x.Currency
+	}
+	return ""
+}
+
+func (x *LocaleSpec) GetTimezone() string {
+	if x != nil {
+		return x.Timezone
+	}
+	return ""
+}
+
+// OfflineSpec is the STRUCTURED per-surface offline policy -- NOT a bare bool. A
+// bare offlineCapable bool cannot express a conflict strategy or a grace window;
+// gates G1/G5 reason over these four typed fields. Attached PER-SURFACE via
+// ExperienceSpec.surface_offline (keyed by surface_id), never one global flag.
+type OfflineSpec struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	Policy               OfflinePolicy          `protobuf:"varint,1,opt,name=policy,proto3,enum=experience.v1.OfflinePolicy" json:"policy,omitempty"`                                        // offline behavior for this surface
+	CacheTtlSeconds      uint32                 `protobuf:"varint,2,opt,name=cache_ttl_seconds,json=cacheTtlSeconds,proto3" json:"cache_ttl_seconds,omitempty"`                              // how long cached reads stay valid offline
+	ConflictPolicy       ConflictPolicy         `protobuf:"varint,3,opt,name=conflict_policy,json=conflictPolicy,proto3,enum=experience.v1.ConflictPolicy" json:"conflict_policy,omitempty"` // how a queued write reconciles at sync
+	ReadOnlyGraceSeconds uint32                 `protobuf:"varint,4,opt,name=read_only_grace_seconds,json=readOnlyGraceSeconds,proto3" json:"read_only_grace_seconds,omitempty"`             // grace window the surface stays read-only after going offline
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *OfflineSpec) Reset() {
+	*x = OfflineSpec{}
+	mi := &file_experience_v1_experience_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OfflineSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OfflineSpec) ProtoMessage() {}
+
+func (x *OfflineSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OfflineSpec.ProtoReflect.Descriptor instead.
+func (*OfflineSpec) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *OfflineSpec) GetPolicy() OfflinePolicy {
+	if x != nil {
+		return x.Policy
+	}
+	return OfflinePolicy_OFFLINE_POLICY_UNSPECIFIED
+}
+
+func (x *OfflineSpec) GetCacheTtlSeconds() uint32 {
+	if x != nil {
+		return x.CacheTtlSeconds
+	}
+	return 0
+}
+
+func (x *OfflineSpec) GetConflictPolicy() ConflictPolicy {
+	if x != nil {
+		return x.ConflictPolicy
+	}
+	return ConflictPolicy_CONFLICT_POLICY_UNSPECIFIED
+}
+
+func (x *OfflineSpec) GetReadOnlyGraceSeconds() uint32 {
+	if x != nil {
+		return x.ReadOnlyGraceSeconds
+	}
+	return 0
+}
+
 var File_experience_v1_experience_proto protoreflect.FileDescriptor
 
 const file_experience_v1_experience_proto_rawDesc = "" +
@@ -1074,7 +1487,7 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x10\x14\"p\n" +
 	"\x17SurfaceRegistryManifest\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\tR\x0fcontractVersion\x12*\n" +
-	"\x11known_surface_ids\x18\x02 \x03(\tR\x0fknownSurfaceIds\"\xe5\x04\n" +
+	"\x11known_surface_ids\x18\x02 \x03(\tR\x0fknownSurfaceIds\"\xb1\a\n" +
 	"\x0eExperienceSpec\x12.\n" +
 	"\x13spec_schema_version\x18\x01 \x01(\tR\x11specSchemaVersion\x128\n" +
 	"\x18surface_contract_version\x18\x02 \x01(\tR\x16surfaceContractVersion\x12!\n" +
@@ -1086,8 +1499,15 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x16referenced_surface_ids\x18\n" +
 	" \x03(\tR\x14referencedSurfaceIds\x12Y\n" +
 	"\x16unknown_surface_policy\x18\v \x01(\x0e2#.experience.v1.UnknownSurfacePolicyR\x14unknownSurfacePolicy\x124\n" +
-	"\tnav_graph\x18\x14 \x01(\v2\x17.experience.v1.NavGraphR\bnavGraph\x12B\n" +
-	"\bbindings\x182 \x03(\v2&.experience.v1.ServiceTransportBindingR\bbindingsJ\x04\b\f\x10\x14J\x04\b\x15\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102J\x04\b3\x10<J\x04\b<\x10FJ\x04\bF\x10PJ\x04\bP\x10Z\"\xaf\x03\n" +
+	"\tnav_graph\x18\x14 \x01(\v2\x17.experience.v1.NavGraphR\bnavGraph\x12.\n" +
+	"\x05theme\x18\x1e \x01(\v2\x18.experience.v1.ThemeSpecR\x05theme\x12,\n" +
+	"\x05terms\x18\x1f \x01(\v2\x16.experience.v1.TermSetR\x05terms\x121\n" +
+	"\x06locale\x18  \x01(\v2\x19.experience.v1.LocaleSpecR\x06locale\x12Z\n" +
+	"\x0fsurface_offline\x18( \x03(\v21.experience.v1.ExperienceSpec.SurfaceOfflineEntryR\x0esurfaceOffline\x12B\n" +
+	"\bbindings\x182 \x03(\v2&.experience.v1.ServiceTransportBindingR\bbindings\x1a]\n" +
+	"\x13SurfaceOfflineEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.experience.v1.OfflineSpecR\x05value:\x028\x01J\x04\b\f\x10\x14J\x04\b\x15\x10\x1eJ\x04\b!\x10(J\x04\b)\x102J\x04\b3\x10<J\x04\b<\x10FJ\x04\bF\x10PJ\x04\bP\x10Z\"\xaf\x03\n" +
 	"\x17ServiceTransportBinding\x12\x16\n" +
 	"\x06entity\x18\x01 \x01(\tR\x06entity\x12'\n" +
 	"\x0fservice_package\x18\x02 \x01(\tR\x0eservicePackage\x12!\n" +
@@ -1121,7 +1541,30 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\fDeepLinkSpec\x12\x1d\n" +
 	"\n" +
 	"url_scheme\x18\x01 \x01(\tR\turlScheme\x12'\n" +
-	"\x0froute_templates\x18\x02 \x03(\tR\x0erouteTemplates*\xb7\x01\n" +
+	"\x0froute_templates\x18\x02 \x03(\tR\x0erouteTemplates\"\xfd\x01\n" +
+	"\tThemeSpec\x12!\n" +
+	"\fbrand_preset\x18\x01 \x01(\tR\vbrandPreset\x12\x19\n" +
+	"\blogo_ref\x18\x02 \x01(\tR\alogoRef\x12U\n" +
+	"\x0fcolor_overrides\x18\x03 \x03(\v2,.experience.v1.ThemeSpec.ColorOverridesEntryR\x0ecolorOverrides\x12\x18\n" +
+	"\adensity\x18\x04 \x01(\tR\adensity\x1aA\n" +
+	"\x13ColorOverridesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\x8c\x01\n" +
+	"\aTermSet\x12C\n" +
+	"\toverrides\x18\x01 \x03(\v2%.experience.v1.TermSet.OverridesEntryR\toverrides\x1a<\n" +
+	"\x0eOverridesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\\\n" +
+	"\n" +
+	"LocaleSpec\x12\x16\n" +
+	"\x06locale\x18\x01 \x01(\tR\x06locale\x12\x1a\n" +
+	"\bcurrency\x18\x02 \x01(\tR\bcurrency\x12\x1a\n" +
+	"\btimezone\x18\x03 \x01(\tR\btimezone\"\xee\x01\n" +
+	"\vOfflineSpec\x124\n" +
+	"\x06policy\x18\x01 \x01(\x0e2\x1c.experience.v1.OfflinePolicyR\x06policy\x12*\n" +
+	"\x11cache_ttl_seconds\x18\x02 \x01(\rR\x0fcacheTtlSeconds\x12F\n" +
+	"\x0fconflict_policy\x18\x03 \x01(\x0e2\x1d.experience.v1.ConflictPolicyR\x0econflictPolicy\x125\n" +
+	"\x17read_only_grace_seconds\x18\x04 \x01(\rR\x14readOnlyGraceSeconds*\xb7\x01\n" +
 	"\x14UnknownSurfacePolicy\x12&\n" +
 	"\"UNKNOWN_SURFACE_POLICY_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dUNKNOWN_SURFACE_POLICY_IGNORE\x10\x01\x12(\n" +
@@ -1151,7 +1594,17 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x15PLACEMENT_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11PLACEMENT_PRIMARY\x10\x01\x12\x12\n" +
 	"\x0ePLACEMENT_MORE\x10\x02\x12\x19\n" +
-	"\x15PLACEMENT_DETAIL_ONLY\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
+	"\x15PLACEMENT_DETAIL_ONLY\x10\x03*\x8c\x01\n" +
+	"\rOfflinePolicy\x12\x1e\n" +
+	"\x1aOFFLINE_POLICY_UNSPECIFIED\x10\x00\x12\x17\n" +
+	"\x13OFFLINE_POLICY_NONE\x10\x01\x12\x1d\n" +
+	"\x19OFFLINE_POLICY_READ_CACHE\x10\x02\x12#\n" +
+	"\x1fOFFLINE_POLICY_READ_WRITE_QUEUE\x10\x03*\x9d\x01\n" +
+	"\x0eConflictPolicy\x12\x1f\n" +
+	"\x1bCONFLICT_POLICY_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fCONFLICT_POLICY_LAST_WRITE_WINS\x10\x01\x12\x1f\n" +
+	"\x1bCONFLICT_POLICY_SERVER_WINS\x10\x02\x12$\n" +
+	" CONFLICT_POLICY_MANUAL_RECONCILE\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
 
 var (
 	file_experience_v1_experience_proto_rawDescOnce sync.Once
@@ -1165,8 +1618,8 @@ func file_experience_v1_experience_proto_rawDescGZIP() []byte {
 	return file_experience_v1_experience_proto_rawDescData
 }
 
-var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
+var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_experience_v1_experience_proto_goTypes = []any{
 	(UnknownSurfacePolicy)(0),       // 0: experience.v1.UnknownSurfacePolicy
 	(TransportKind)(0),              // 1: experience.v1.TransportKind
@@ -1174,37 +1627,55 @@ var file_experience_v1_experience_proto_goTypes = []any{
 	(Operation)(0),                  // 3: experience.v1.Operation
 	(PaginationKind)(0),             // 4: experience.v1.PaginationKind
 	(Placement)(0),                  // 5: experience.v1.Placement
-	(*AppDefinition)(nil),           // 6: experience.v1.AppDefinition
-	(*AppMeta)(nil),                 // 7: experience.v1.AppMeta
-	(*SurfaceRegistryManifest)(nil), // 8: experience.v1.SurfaceRegistryManifest
-	(*ExperienceSpec)(nil),          // 9: experience.v1.ExperienceSpec
-	(*ServiceTransportBinding)(nil), // 10: experience.v1.ServiceTransportBinding
-	(*NavSlot)(nil),                 // 11: experience.v1.NavSlot
-	(*NavEdge)(nil),                 // 12: experience.v1.NavEdge
-	(*NavGraph)(nil),                // 13: experience.v1.NavGraph
-	(*DeepLinkSpec)(nil),            // 14: experience.v1.DeepLinkSpec
-	nil,                             // 15: experience.v1.NavEdge.ParamBindingsEntry
+	(OfflinePolicy)(0),              // 6: experience.v1.OfflinePolicy
+	(ConflictPolicy)(0),             // 7: experience.v1.ConflictPolicy
+	(*AppDefinition)(nil),           // 8: experience.v1.AppDefinition
+	(*AppMeta)(nil),                 // 9: experience.v1.AppMeta
+	(*SurfaceRegistryManifest)(nil), // 10: experience.v1.SurfaceRegistryManifest
+	(*ExperienceSpec)(nil),          // 11: experience.v1.ExperienceSpec
+	(*ServiceTransportBinding)(nil), // 12: experience.v1.ServiceTransportBinding
+	(*NavSlot)(nil),                 // 13: experience.v1.NavSlot
+	(*NavEdge)(nil),                 // 14: experience.v1.NavEdge
+	(*NavGraph)(nil),                // 15: experience.v1.NavGraph
+	(*DeepLinkSpec)(nil),            // 16: experience.v1.DeepLinkSpec
+	(*ThemeSpec)(nil),               // 17: experience.v1.ThemeSpec
+	(*TermSet)(nil),                 // 18: experience.v1.TermSet
+	(*LocaleSpec)(nil),              // 19: experience.v1.LocaleSpec
+	(*OfflineSpec)(nil),             // 20: experience.v1.OfflineSpec
+	nil,                             // 21: experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	nil,                             // 22: experience.v1.NavEdge.ParamBindingsEntry
+	nil,                             // 23: experience.v1.ThemeSpec.ColorOverridesEntry
+	nil,                             // 24: experience.v1.TermSet.OverridesEntry
 }
 var file_experience_v1_experience_proto_depIdxs = []int32{
-	7,  // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
-	9,  // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
-	14, // 2: experience.v1.AppDefinition.deep_link:type_name -> experience.v1.DeepLinkSpec
+	9,  // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
+	11, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
+	16, // 2: experience.v1.AppDefinition.deep_link:type_name -> experience.v1.DeepLinkSpec
 	0,  // 3: experience.v1.ExperienceSpec.unknown_surface_policy:type_name -> experience.v1.UnknownSurfacePolicy
-	13, // 4: experience.v1.ExperienceSpec.nav_graph:type_name -> experience.v1.NavGraph
-	10, // 5: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
-	3,  // 6: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
-	1,  // 7: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
-	2,  // 8: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
-	4,  // 9: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
-	5,  // 10: experience.v1.NavSlot.placement:type_name -> experience.v1.Placement
-	15, // 11: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
-	11, // 12: experience.v1.NavGraph.slots:type_name -> experience.v1.NavSlot
-	12, // 13: experience.v1.NavGraph.edges:type_name -> experience.v1.NavEdge
-	14, // [14:14] is the sub-list for method output_type
-	14, // [14:14] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	15, // 4: experience.v1.ExperienceSpec.nav_graph:type_name -> experience.v1.NavGraph
+	17, // 5: experience.v1.ExperienceSpec.theme:type_name -> experience.v1.ThemeSpec
+	18, // 6: experience.v1.ExperienceSpec.terms:type_name -> experience.v1.TermSet
+	19, // 7: experience.v1.ExperienceSpec.locale:type_name -> experience.v1.LocaleSpec
+	21, // 8: experience.v1.ExperienceSpec.surface_offline:type_name -> experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	12, // 9: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
+	3,  // 10: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
+	1,  // 11: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
+	2,  // 12: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
+	4,  // 13: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
+	5,  // 14: experience.v1.NavSlot.placement:type_name -> experience.v1.Placement
+	22, // 15: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
+	13, // 16: experience.v1.NavGraph.slots:type_name -> experience.v1.NavSlot
+	14, // 17: experience.v1.NavGraph.edges:type_name -> experience.v1.NavEdge
+	23, // 18: experience.v1.ThemeSpec.color_overrides:type_name -> experience.v1.ThemeSpec.ColorOverridesEntry
+	24, // 19: experience.v1.TermSet.overrides:type_name -> experience.v1.TermSet.OverridesEntry
+	6,  // 20: experience.v1.OfflineSpec.policy:type_name -> experience.v1.OfflinePolicy
+	7,  // 21: experience.v1.OfflineSpec.conflict_policy:type_name -> experience.v1.ConflictPolicy
+	20, // 22: experience.v1.ExperienceSpec.SurfaceOfflineEntry.value:type_name -> experience.v1.OfflineSpec
+	23, // [23:23] is the sub-list for method output_type
+	23, // [23:23] is the sub-list for method input_type
+	23, // [23:23] is the sub-list for extension type_name
+	23, // [23:23] is the sub-list for extension extendee
+	0,  // [0:23] is the sub-list for field type_name
 }
 
 func init() { file_experience_v1_experience_proto_init() }
@@ -1217,8 +1688,8 @@ func file_experience_v1_experience_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_experience_v1_experience_proto_rawDesc), len(file_experience_v1_experience_proto_rawDesc)),
-			NumEnums:      6,
-			NumMessages:   10,
+			NumEnums:      8,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
