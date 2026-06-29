@@ -2197,6 +2197,392 @@ func (x *ActionGate) GetEntitlementKey() string {
 	return ""
 }
 
+// StoreSpecRequest stores an AppDefinition (carrying its ExperienceSpec) under
+// the AUTHENTICATED principal's scope. The app_definition's tenant_id/org_id (on
+// its nested spec) are OVERWRITTEN by the principal scope server-side -- a body
+// value cannot plant a spec under another tenant.
+type StoreSpecRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AppDefinition *AppDefinition         `protobuf:"bytes,1,opt,name=app_definition,json=appDefinition,proto3" json:"app_definition,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StoreSpecRequest) Reset() {
+	*x = StoreSpecRequest{}
+	mi := &file_experience_v1_experience_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StoreSpecRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StoreSpecRequest) ProtoMessage() {}
+
+func (x *StoreSpecRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StoreSpecRequest.ProtoReflect.Descriptor instead.
+func (*StoreSpecRequest) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *StoreSpecRequest) GetAppDefinition() *AppDefinition {
+	if x != nil {
+		return x.AppDefinition
+	}
+	return nil
+}
+
+// StoreSpecResponse returns the stored spec's identity + content hash/version so
+// the caller can address it later (ResolveSpec / ValidateSpec by app_def_id).
+type StoreSpecResponse struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	AppDefId          string                 `protobuf:"bytes,1,opt,name=app_def_id,json=appDefId,proto3" json:"app_def_id,omitempty"`
+	ContentHash       string                 `protobuf:"bytes,2,opt,name=content_hash,json=contentHash,proto3" json:"content_hash,omitempty"`
+	SpecSchemaVersion string                 `protobuf:"bytes,3,opt,name=spec_schema_version,json=specSchemaVersion,proto3" json:"spec_schema_version,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
+}
+
+func (x *StoreSpecResponse) Reset() {
+	*x = StoreSpecResponse{}
+	mi := &file_experience_v1_experience_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StoreSpecResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StoreSpecResponse) ProtoMessage() {}
+
+func (x *StoreSpecResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StoreSpecResponse.ProtoReflect.Descriptor instead.
+func (*StoreSpecResponse) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *StoreSpecResponse) GetAppDefId() string {
+	if x != nil {
+		return x.AppDefId
+	}
+	return ""
+}
+
+func (x *StoreSpecResponse) GetContentHash() string {
+	if x != nil {
+		return x.ContentHash
+	}
+	return ""
+}
+
+func (x *StoreSpecResponse) GetSpecSchemaVersion() string {
+	if x != nil {
+		return x.SpecSchemaVersion
+	}
+	return ""
+}
+
+// ResolveSpecRequest asks the server to resolve a stored spec for the
+// principal's scope, role, and form_factor. The tuple's tenant/org come from the
+// authenticated principal -- NOT from this message. role + form_factor are the
+// non-authority resolution axes the caller legitimately supplies.
+type ResolveSpecRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AppDefId      string                 `protobuf:"bytes,1,opt,name=app_def_id,json=appDefId,proto3" json:"app_def_id,omitempty"`
+	Role          string                 `protobuf:"bytes,2,opt,name=role,proto3" json:"role,omitempty"`
+	FormFactor    string                 `protobuf:"bytes,3,opt,name=form_factor,json=formFactor,proto3" json:"form_factor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveSpecRequest) Reset() {
+	*x = ResolveSpecRequest{}
+	mi := &file_experience_v1_experience_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveSpecRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveSpecRequest) ProtoMessage() {}
+
+func (x *ResolveSpecRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveSpecRequest.ProtoReflect.Descriptor instead.
+func (*ResolveSpecRequest) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *ResolveSpecRequest) GetAppDefId() string {
+	if x != nil {
+		return x.AppDefId
+	}
+	return ""
+}
+
+func (x *ResolveSpecRequest) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *ResolveSpecRequest) GetFormFactor() string {
+	if x != nil {
+		return x.FormFactor
+	}
+	return ""
+}
+
+// ResolveSpecResponse carries the filtered + content-hashed ResolvedSpec (only
+// the surfaces the principal's entitlement set GRANTS; ungranted surfaces become
+// locked_surfaces on the spec).
+type ResolveSpecResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ResolvedSpec  *ExperienceSpec        `protobuf:"bytes,1,opt,name=resolved_spec,json=resolvedSpec,proto3" json:"resolved_spec,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResolveSpecResponse) Reset() {
+	*x = ResolveSpecResponse{}
+	mi := &file_experience_v1_experience_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolveSpecResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolveSpecResponse) ProtoMessage() {}
+
+func (x *ResolveSpecResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolveSpecResponse.ProtoReflect.Descriptor instead.
+func (*ResolveSpecResponse) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ResolveSpecResponse) GetResolvedSpec() *ExperienceSpec {
+	if x != nil {
+		return x.ResolvedSpec
+	}
+	return nil
+}
+
+// ValidateSpecRequest validates an AppDefinition's spec for coherence (140-05
+// nav rules) + version conformance (140-03) under the principal's scope. The
+// spec's scope is overwritten by the principal scope before validation.
+type ValidateSpecRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AppDefinition *AppDefinition         `protobuf:"bytes,1,opt,name=app_definition,json=appDefinition,proto3" json:"app_definition,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidateSpecRequest) Reset() {
+	*x = ValidateSpecRequest{}
+	mi := &file_experience_v1_experience_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateSpecRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateSpecRequest) ProtoMessage() {}
+
+func (x *ValidateSpecRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateSpecRequest.ProtoReflect.Descriptor instead.
+func (*ValidateSpecRequest) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *ValidateSpecRequest) GetAppDefinition() *AppDefinition {
+	if x != nil {
+		return x.AppDefinition
+	}
+	return nil
+}
+
+// ValidationProblem is one machine-checked coherence/version violation. code is
+// a stable token (e.g. nav.too_many_primary) so clients branch without string
+// matching; surface_id names the offending surface when surface-scoped.
+type ValidationProblem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
+	SurfaceId     string                 `protobuf:"bytes,2,opt,name=surface_id,json=surfaceId,proto3" json:"surface_id,omitempty"`
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidationProblem) Reset() {
+	*x = ValidationProblem{}
+	mi := &file_experience_v1_experience_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidationProblem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidationProblem) ProtoMessage() {}
+
+func (x *ValidationProblem) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidationProblem.ProtoReflect.Descriptor instead.
+func (*ValidationProblem) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *ValidationProblem) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *ValidationProblem) GetSurfaceId() string {
+	if x != nil {
+		return x.SurfaceId
+	}
+	return ""
+}
+
+func (x *ValidationProblem) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+// ValidateSpecResponse returns valid + the accumulated problems (empty when
+// coherent -- the validator never short-circuits, so the builder sees every
+// problem at once).
+type ValidateSpecResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Valid         bool                   `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
+	Problems      []*ValidationProblem   `protobuf:"bytes,2,rep,name=problems,proto3" json:"problems,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ValidateSpecResponse) Reset() {
+	*x = ValidateSpecResponse{}
+	mi := &file_experience_v1_experience_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ValidateSpecResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ValidateSpecResponse) ProtoMessage() {}
+
+func (x *ValidateSpecResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ValidateSpecResponse.ProtoReflect.Descriptor instead.
+func (*ValidateSpecResponse) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *ValidateSpecResponse) GetValid() bool {
+	if x != nil {
+		return x.Valid
+	}
+	return false
+}
+
+func (x *ValidateSpecResponse) GetProblems() []*ValidationProblem {
+	if x != nil {
+		return x.Problems
+	}
+	return nil
+}
+
 var File_experience_v1_experience_proto protoreflect.FileDescriptor
 
 const file_experience_v1_experience_proto_rawDesc = "" +
@@ -2367,7 +2753,32 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\n" +
 	"ActionGate\x12\x1b\n" +
 	"\taction_id\x18\x01 \x01(\tR\bactionId\x12'\n" +
-	"\x0fentitlement_key\x18\x02 \x01(\tR\x0eentitlementKey*\xb7\x01\n" +
+	"\x0fentitlement_key\x18\x02 \x01(\tR\x0eentitlementKey\"W\n" +
+	"\x10StoreSpecRequest\x12C\n" +
+	"\x0eapp_definition\x18\x01 \x01(\v2\x1c.experience.v1.AppDefinitionR\rappDefinition\"\x84\x01\n" +
+	"\x11StoreSpecResponse\x12\x1c\n" +
+	"\n" +
+	"app_def_id\x18\x01 \x01(\tR\bappDefId\x12!\n" +
+	"\fcontent_hash\x18\x02 \x01(\tR\vcontentHash\x12.\n" +
+	"\x13spec_schema_version\x18\x03 \x01(\tR\x11specSchemaVersion\"g\n" +
+	"\x12ResolveSpecRequest\x12\x1c\n" +
+	"\n" +
+	"app_def_id\x18\x01 \x01(\tR\bappDefId\x12\x12\n" +
+	"\x04role\x18\x02 \x01(\tR\x04role\x12\x1f\n" +
+	"\vform_factor\x18\x03 \x01(\tR\n" +
+	"formFactor\"Y\n" +
+	"\x13ResolveSpecResponse\x12B\n" +
+	"\rresolved_spec\x18\x01 \x01(\v2\x1d.experience.v1.ExperienceSpecR\fresolvedSpec\"Z\n" +
+	"\x13ValidateSpecRequest\x12C\n" +
+	"\x0eapp_definition\x18\x01 \x01(\v2\x1c.experience.v1.AppDefinitionR\rappDefinition\"`\n" +
+	"\x11ValidationProblem\x12\x12\n" +
+	"\x04code\x18\x01 \x01(\tR\x04code\x12\x1d\n" +
+	"\n" +
+	"surface_id\x18\x02 \x01(\tR\tsurfaceId\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\"j\n" +
+	"\x14ValidateSpecResponse\x12\x14\n" +
+	"\x05valid\x18\x01 \x01(\bR\x05valid\x12<\n" +
+	"\bproblems\x18\x02 \x03(\v2 .experience.v1.ValidationProblemR\bproblems*\xb7\x01\n" +
 	"\x14UnknownSurfacePolicy\x12&\n" +
 	"\"UNKNOWN_SURFACE_POLICY_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dUNKNOWN_SURFACE_POLICY_IGNORE\x10\x01\x12(\n" +
@@ -2413,7 +2824,11 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x17SIDE_EFFECT_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10SIDE_EFFECT_READ\x10\x01\x12\x15\n" +
 	"\x11SIDE_EFFECT_WRITE\x10\x02\x12\x18\n" +
-	"\x14SIDE_EFFECT_EXTERNAL\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
+	"\x14SIDE_EFFECT_EXTERNAL\x10\x032\x92\x02\n" +
+	"\x11ExperienceService\x12N\n" +
+	"\tStoreSpec\x12\x1f.experience.v1.StoreSpecRequest\x1a .experience.v1.StoreSpecResponse\x12T\n" +
+	"\vResolveSpec\x12!.experience.v1.ResolveSpecRequest\x1a\".experience.v1.ResolveSpecResponse\x12W\n" +
+	"\fValidateSpec\x12\".experience.v1.ValidateSpecRequest\x1a#.experience.v1.ValidateSpecResponseBNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
 
 var (
 	file_experience_v1_experience_proto_rawDescOnce sync.Once
@@ -2428,7 +2843,7 @@ func file_experience_v1_experience_proto_rawDescGZIP() []byte {
 }
 
 var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
 var file_experience_v1_experience_proto_goTypes = []any{
 	(UnknownSurfacePolicy)(0),       // 0: experience.v1.UnknownSurfacePolicy
 	(TransportKind)(0),              // 1: experience.v1.TransportKind
@@ -2460,14 +2875,21 @@ var file_experience_v1_experience_proto_goTypes = []any{
 	(*ResolutionContext)(nil),       // 27: experience.v1.ResolutionContext
 	(*LockedSurface)(nil),           // 28: experience.v1.LockedSurface
 	(*ActionGate)(nil),              // 29: experience.v1.ActionGate
-	nil,                             // 30: experience.v1.ExperienceSpec.SurfaceOfflineEntry
-	nil,                             // 31: experience.v1.ExperienceSpec.FlagOverridesEntry
-	nil,                             // 32: experience.v1.ExperienceSpec.CustomFieldsEntry
-	nil,                             // 33: experience.v1.ExperienceSpec.RulePolicyEntry
-	nil,                             // 34: experience.v1.NavEdge.ParamBindingsEntry
-	nil,                             // 35: experience.v1.ThemeSpec.ColorOverridesEntry
-	nil,                             // 36: experience.v1.TermSet.OverridesEntry
-	nil,                             // 37: experience.v1.SigningSpec.ByPlatformEntry
+	(*StoreSpecRequest)(nil),        // 30: experience.v1.StoreSpecRequest
+	(*StoreSpecResponse)(nil),       // 31: experience.v1.StoreSpecResponse
+	(*ResolveSpecRequest)(nil),      // 32: experience.v1.ResolveSpecRequest
+	(*ResolveSpecResponse)(nil),     // 33: experience.v1.ResolveSpecResponse
+	(*ValidateSpecRequest)(nil),     // 34: experience.v1.ValidateSpecRequest
+	(*ValidationProblem)(nil),       // 35: experience.v1.ValidationProblem
+	(*ValidateSpecResponse)(nil),    // 36: experience.v1.ValidateSpecResponse
+	nil,                             // 37: experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	nil,                             // 38: experience.v1.ExperienceSpec.FlagOverridesEntry
+	nil,                             // 39: experience.v1.ExperienceSpec.CustomFieldsEntry
+	nil,                             // 40: experience.v1.ExperienceSpec.RulePolicyEntry
+	nil,                             // 41: experience.v1.NavEdge.ParamBindingsEntry
+	nil,                             // 42: experience.v1.ThemeSpec.ColorOverridesEntry
+	nil,                             // 43: experience.v1.TermSet.OverridesEntry
+	nil,                             // 44: experience.v1.SigningSpec.ByPlatformEntry
 }
 var file_experience_v1_experience_proto_depIdxs = []int32{
 	10, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
@@ -2479,37 +2901,47 @@ var file_experience_v1_experience_proto_depIdxs = []int32{
 	18, // 6: experience.v1.ExperienceSpec.theme:type_name -> experience.v1.ThemeSpec
 	19, // 7: experience.v1.ExperienceSpec.terms:type_name -> experience.v1.TermSet
 	20, // 8: experience.v1.ExperienceSpec.locale:type_name -> experience.v1.LocaleSpec
-	30, // 9: experience.v1.ExperienceSpec.surface_offline:type_name -> experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	37, // 9: experience.v1.ExperienceSpec.surface_offline:type_name -> experience.v1.ExperienceSpec.SurfaceOfflineEntry
 	13, // 10: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
 	22, // 11: experience.v1.ExperienceSpec.tools:type_name -> experience.v1.ToolDefinition
 	23, // 12: experience.v1.ExperienceSpec.agent_nodes:type_name -> experience.v1.AgentNode
 	27, // 13: experience.v1.ExperienceSpec.resolution_context:type_name -> experience.v1.ResolutionContext
 	28, // 14: experience.v1.ExperienceSpec.locked_surfaces:type_name -> experience.v1.LockedSurface
 	29, // 15: experience.v1.ExperienceSpec.action_gates:type_name -> experience.v1.ActionGate
-	31, // 16: experience.v1.ExperienceSpec.flag_overrides:type_name -> experience.v1.ExperienceSpec.FlagOverridesEntry
-	32, // 17: experience.v1.ExperienceSpec.custom_fields:type_name -> experience.v1.ExperienceSpec.CustomFieldsEntry
-	33, // 18: experience.v1.ExperienceSpec.rule_policy:type_name -> experience.v1.ExperienceSpec.RulePolicyEntry
+	38, // 16: experience.v1.ExperienceSpec.flag_overrides:type_name -> experience.v1.ExperienceSpec.FlagOverridesEntry
+	39, // 17: experience.v1.ExperienceSpec.custom_fields:type_name -> experience.v1.ExperienceSpec.CustomFieldsEntry
+	40, // 18: experience.v1.ExperienceSpec.rule_policy:type_name -> experience.v1.ExperienceSpec.RulePolicyEntry
 	3,  // 19: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
 	1,  // 20: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
 	2,  // 21: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
 	4,  // 22: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
 	5,  // 23: experience.v1.NavSlot.placement:type_name -> experience.v1.Placement
-	34, // 24: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
+	41, // 24: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
 	14, // 25: experience.v1.NavGraph.slots:type_name -> experience.v1.NavSlot
 	15, // 26: experience.v1.NavGraph.edges:type_name -> experience.v1.NavEdge
-	35, // 27: experience.v1.ThemeSpec.color_overrides:type_name -> experience.v1.ThemeSpec.ColorOverridesEntry
-	36, // 28: experience.v1.TermSet.overrides:type_name -> experience.v1.TermSet.OverridesEntry
+	42, // 27: experience.v1.ThemeSpec.color_overrides:type_name -> experience.v1.ThemeSpec.ColorOverridesEntry
+	43, // 28: experience.v1.TermSet.overrides:type_name -> experience.v1.TermSet.OverridesEntry
 	6,  // 29: experience.v1.OfflineSpec.policy:type_name -> experience.v1.OfflinePolicy
 	7,  // 30: experience.v1.OfflineSpec.conflict_policy:type_name -> experience.v1.ConflictPolicy
 	8,  // 31: experience.v1.ToolDefinition.side_effect:type_name -> experience.v1.SideEffect
-	37, // 32: experience.v1.SigningSpec.by_platform:type_name -> experience.v1.SigningSpec.ByPlatformEntry
-	21, // 33: experience.v1.ExperienceSpec.SurfaceOfflineEntry.value:type_name -> experience.v1.OfflineSpec
-	24, // 34: experience.v1.SigningSpec.ByPlatformEntry.value:type_name -> experience.v1.CredentialRef
-	35, // [35:35] is the sub-list for method output_type
-	35, // [35:35] is the sub-list for method input_type
-	35, // [35:35] is the sub-list for extension type_name
-	35, // [35:35] is the sub-list for extension extendee
-	0,  // [0:35] is the sub-list for field type_name
+	44, // 32: experience.v1.SigningSpec.by_platform:type_name -> experience.v1.SigningSpec.ByPlatformEntry
+	9,  // 33: experience.v1.StoreSpecRequest.app_definition:type_name -> experience.v1.AppDefinition
+	12, // 34: experience.v1.ResolveSpecResponse.resolved_spec:type_name -> experience.v1.ExperienceSpec
+	9,  // 35: experience.v1.ValidateSpecRequest.app_definition:type_name -> experience.v1.AppDefinition
+	35, // 36: experience.v1.ValidateSpecResponse.problems:type_name -> experience.v1.ValidationProblem
+	21, // 37: experience.v1.ExperienceSpec.SurfaceOfflineEntry.value:type_name -> experience.v1.OfflineSpec
+	24, // 38: experience.v1.SigningSpec.ByPlatformEntry.value:type_name -> experience.v1.CredentialRef
+	30, // 39: experience.v1.ExperienceService.StoreSpec:input_type -> experience.v1.StoreSpecRequest
+	32, // 40: experience.v1.ExperienceService.ResolveSpec:input_type -> experience.v1.ResolveSpecRequest
+	34, // 41: experience.v1.ExperienceService.ValidateSpec:input_type -> experience.v1.ValidateSpecRequest
+	31, // 42: experience.v1.ExperienceService.StoreSpec:output_type -> experience.v1.StoreSpecResponse
+	33, // 43: experience.v1.ExperienceService.ResolveSpec:output_type -> experience.v1.ResolveSpecResponse
+	36, // 44: experience.v1.ExperienceService.ValidateSpec:output_type -> experience.v1.ValidateSpecResponse
+	42, // [42:45] is the sub-list for method output_type
+	39, // [39:42] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_experience_v1_experience_proto_init() }
@@ -2523,9 +2955,9 @@ func file_experience_v1_experience_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_experience_v1_experience_proto_rawDesc), len(file_experience_v1_experience_proto_rawDesc)),
 			NumEnums:      9,
-			NumMessages:   29,
+			NumMessages:   36,
 			NumExtensions: 0,
-			NumServices:   0,
+			NumServices:   1,
 		},
 		GoTypes:           file_experience_v1_experience_proto_goTypes,
 		DependencyIndexes: file_experience_v1_experience_proto_depIdxs,

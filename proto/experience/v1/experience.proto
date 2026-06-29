@@ -461,3 +461,87 @@ message ActionGate {
   string action_id = 1;
   string entitlement_key = 2;
 }
+
+// --- 140-09 ExperienceService (M0 server surface) --------------------------
+//
+// ADDITIVE-ONLY: this block adds a NEW service + NEW request/response wrapper
+// messages (their own field numbers). It does NOT modify any frozen message
+// shape (AppDefinition / ExperienceSpec / their nested types are untouched).
+// Adding rpcs + new messages is a non-breaking change to a frozen v1 contract.
+//
+// TENANCY CHOKEPOINT (the keystone of this TRD): tenant_id / org_id are NEVER
+// bound from a request body -- they are derived from the AUTHENTICATED principal
+// (JWT claims) at the handler. A request that carries tenant_id / org_id is
+// IGNORED for authority; the body value cannot override identity. The wrapper
+// request messages below therefore DO NOT carry a tenant_id/org_id authority
+// field -- the absence is deliberate (mirrors the json:"-" authority lesson).
+//
+// NON-LEAKING DENIAL: a resolution whose principal scope diverges from the
+// stored spec's scope returns a SINGLE permission-denied code, identical whether
+// the spec exists for another tenant/org or does not exist at all (no oracle).
+
+// StoreSpecRequest stores an AppDefinition (carrying its ExperienceSpec) under
+// the AUTHENTICATED principal's scope. The app_definition's tenant_id/org_id (on
+// its nested spec) are OVERWRITTEN by the principal scope server-side -- a body
+// value cannot plant a spec under another tenant.
+message StoreSpecRequest {
+  AppDefinition app_definition = 1;
+}
+
+// StoreSpecResponse returns the stored spec's identity + content hash/version so
+// the caller can address it later (ResolveSpec / ValidateSpec by app_def_id).
+message StoreSpecResponse {
+  string app_def_id = 1;
+  string content_hash = 2;
+  string spec_schema_version = 3;
+}
+
+// ResolveSpecRequest asks the server to resolve a stored spec for the
+// principal's scope, role, and form_factor. The tuple's tenant/org come from the
+// authenticated principal -- NOT from this message. role + form_factor are the
+// non-authority resolution axes the caller legitimately supplies.
+message ResolveSpecRequest {
+  string app_def_id = 1;
+  string role = 2;
+  string form_factor = 3;
+}
+
+// ResolveSpecResponse carries the filtered + content-hashed ResolvedSpec (only
+// the surfaces the principal's entitlement set GRANTS; ungranted surfaces become
+// locked_surfaces on the spec).
+message ResolveSpecResponse {
+  ExperienceSpec resolved_spec = 1;
+}
+
+// ValidateSpecRequest validates an AppDefinition's spec for coherence (140-05
+// nav rules) + version conformance (140-03) under the principal's scope. The
+// spec's scope is overwritten by the principal scope before validation.
+message ValidateSpecRequest {
+  AppDefinition app_definition = 1;
+}
+
+// ValidationProblem is one machine-checked coherence/version violation. code is
+// a stable token (e.g. nav.too_many_primary) so clients branch without string
+// matching; surface_id names the offending surface when surface-scoped.
+message ValidationProblem {
+  string code = 1;
+  string surface_id = 2;
+  string message = 3;
+}
+
+// ValidateSpecResponse returns valid + the accumulated problems (empty when
+// coherent -- the validator never short-circuits, so the builder sees every
+// problem at once).
+message ValidateSpecResponse {
+  bool valid = 1;
+  repeated ValidationProblem problems = 2;
+}
+
+// ExperienceService is the M0 server surface every consumer calls: store a spec,
+// resolve it per principal scope, validate it. Tenancy is enforced at the
+// service chokepoint (principal-derived scope), never from a request body.
+service ExperienceService {
+  rpc StoreSpec(StoreSpecRequest) returns (StoreSpecResponse);
+  rpc ResolveSpec(ResolveSpecRequest) returns (ResolveSpecResponse);
+  rpc ValidateSpec(ValidateSpecRequest) returns (ValidateSpecResponse);
+}
