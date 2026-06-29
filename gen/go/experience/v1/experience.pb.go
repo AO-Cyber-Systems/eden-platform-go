@@ -473,6 +473,62 @@ func (ConflictPolicy) EnumDescriptor() ([]byte, []int) {
 	return file_experience_v1_experience_proto_rawDescGZIP(), []int{7}
 }
 
+// SideEffect gates the tool dispatcher. UNSPECIFIED=0 is fail-closed (an
+// unclassified tool is not dispatchable). READ = pure read. WRITE = mutates
+// tenant data (idempotency_key load-bearing). EXTERNAL = outbound (webhooks etc.)
+// -- representable but DEFERRED (out of scope; ValidateTooling warn-flags it).
+type SideEffect int32
+
+const (
+	SideEffect_SIDE_EFFECT_UNSPECIFIED SideEffect = 0 // fail-closed -- not dispatchable
+	SideEffect_SIDE_EFFECT_READ        SideEffect = 1 // pure read
+	SideEffect_SIDE_EFFECT_WRITE       SideEffect = 2 // mutates tenant data (idempotency_key matters)
+	SideEffect_SIDE_EFFECT_EXTERNAL    SideEffect = 3 // outbound (webhooks) -- DEFERRED, representable
+)
+
+// Enum value maps for SideEffect.
+var (
+	SideEffect_name = map[int32]string{
+		0: "SIDE_EFFECT_UNSPECIFIED",
+		1: "SIDE_EFFECT_READ",
+		2: "SIDE_EFFECT_WRITE",
+		3: "SIDE_EFFECT_EXTERNAL",
+	}
+	SideEffect_value = map[string]int32{
+		"SIDE_EFFECT_UNSPECIFIED": 0,
+		"SIDE_EFFECT_READ":        1,
+		"SIDE_EFFECT_WRITE":       2,
+		"SIDE_EFFECT_EXTERNAL":    3,
+	}
+)
+
+func (x SideEffect) Enum() *SideEffect {
+	p := new(SideEffect)
+	*p = x
+	return p
+}
+
+func (x SideEffect) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (SideEffect) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[8].Descriptor()
+}
+
+func (SideEffect) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[8]
+}
+
+func (x SideEffect) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use SideEffect.Descriptor instead.
+func (SideEffect) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{8}
+}
+
 // AppDefinition: build-time definition feeding BOTH the runtime resolver AND
 // the per-company native build pipeline (layered output).
 type AppDefinition struct {
@@ -488,9 +544,18 @@ type AppDefinition struct {
 	// 11..19 stay reserved. DeepLink lives HERE (not on the spec) because a store
 	// binary commits to its url scheme + route templates at submit time and can't
 	// change them post-submit -- it is a BUILD-time, not a resolved-spec, value.
-	DeepLink      *DeepLinkSpec `protobuf:"bytes,10,opt,name=deep_link,json=deepLink,proto3" json:"deep_link,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	DeepLink *DeepLinkSpec `protobuf:"bytes,10,opt,name=deep_link,json=deepLink,proto3" json:"deep_link,omitempty"`
+	// 140-07 un-reserved field 20 from the 20-29 signing range for SigningSpec;
+	// 21..29 stay reserved. Signing lives HERE (BUILD-time, like DeepLinkSpec) --
+	// a store binary commits to its signing identity at submit time. SigningSpec
+	// stores a per-platform CredentialRef (ref + custody), NEVER inline material.
+	Signing *SigningSpec `protobuf:"bytes,20,opt,name=signing,proto3" json:"signing,omitempty"`
+	// 140-07 un-reserved field 30 from the 30-39 app-service-slot range for the
+	// build-time service-slot refs (search/notify/export/attach/print/audit);
+	// 31..39 stay reserved.
+	AppServiceSlots []string `protobuf:"bytes,30,rep,name=app_service_slots,json=appServiceSlots,proto3" json:"app_service_slots,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *AppDefinition) Reset() {
@@ -561,6 +626,20 @@ func (x *AppDefinition) GetContractVersion() string {
 func (x *AppDefinition) GetDeepLink() *DeepLinkSpec {
 	if x != nil {
 		return x.DeepLink
+	}
+	return nil
+}
+
+func (x *AppDefinition) GetSigning() *SigningSpec {
+	if x != nil {
+		return x.Signing
+	}
+	return nil
+}
+
+func (x *AppDefinition) GetAppServiceSlots() []string {
+	if x != nil {
+		return x.AppServiceSlots
 	}
 	return nil
 }
@@ -709,9 +788,36 @@ type ExperienceSpec struct {
 	// bare global offlineCapable bool -- gates G1/G5 reason over the structure.
 	SurfaceOffline map[string]*OfflineSpec `protobuf:"bytes,40,rep,name=surface_offline,json=surfaceOffline,proto3" json:"surface_offline,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // per-surface offline policy, keyed by surface_id
 	// 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
-	Bindings      []*ServiceTransportBinding `protobuf:"bytes,50,rep,name=bindings,proto3" json:"bindings,omitempty"` // service<->transport bindings (transport- AND scope-agnostic)
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Bindings []*ServiceTransportBinding `protobuf:"bytes,50,rep,name=bindings,proto3" json:"bindings,omitempty"` // service<->transport bindings (transport- AND scope-agnostic)
+	// 140-07 un-reserved 60/61 from the 60-69 tool/agent range; 62..69 stay
+	// reserved. ToolDefinition is TYPED (adapter allowlist FK + JSON-Schema
+	// envelopes + side_effect + idempotency_key), NEVER a config_json blob.
+	// AgentNode carries a typed io_envelope_schema -- the swap-stable seam the
+	// real LLM dispatcher (obj 144) plugs into without a contract change.
+	Tools      []*ToolDefinition `protobuf:"bytes,60,rep,name=tools,proto3" json:"tools,omitempty"`                             // curated-allowlist-bound tools
+	AgentNodes []*AgentNode      `protobuf:"bytes,61,rep,name=agent_nodes,json=agentNodes,proto3" json:"agent_nodes,omitempty"` // agent nodes (io-envelope-preserving)
+	// 140-07 un-reserved 70/71 from the 70-79 telemetry/resolution range; 72..79
+	// stay reserved. ResolutionContext is the provenance of THIS resolution
+	// (tenant/org + resolved_at + resolver_version); LockedSurface carries an
+	// upsell_reason for a surface gated behind an entitlement. The TelemetryEnvelope
+	// message itself is a top-level message (emitted on the runtime wire, not a
+	// resolved-spec field) -- only resolution_context + locked_surfaces live here.
+	ResolutionContext *ResolutionContext `protobuf:"bytes,70,opt,name=resolution_context,json=resolutionContext,proto3" json:"resolution_context,omitempty"` // provenance of this resolution
+	LockedSurfaces    []*LockedSurface   `protobuf:"bytes,71,rep,name=locked_surfaces,json=lockedSurfaces,proto3" json:"locked_surfaces,omitempty"`          // surfaces gated behind an upsell
+	// 140-07 un-reserved 80..86 from the 80-89 reserved-cheap range; 87..89 stay
+	// reserved. These are reserved-NOW-cheap seams: typed-but-empty-friendly fields
+	// a frozen-forever proto must reserve up front rather than migrate to add.
+	// server_killable (86) is the REQUIRED fast-rollback kill flag for the
+	// generated fleet (a customer-own store account gives no kill switch otherwise).
+	ActionGates    []*ActionGate     `protobuf:"bytes,80,rep,name=action_gates,json=actionGates,proto3" json:"action_gates,omitempty"`                                                                                 // per-action entitlement gates
+	FlagOverrides  map[string]string `protobuf:"bytes,81,rep,name=flag_overrides,json=flagOverrides,proto3" json:"flag_overrides,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // feature-flag overrides
+	Variant        string            `protobuf:"bytes,82,opt,name=variant,proto3" json:"variant,omitempty"`                                                                                                            // A/B or cohort variant
+	DeclaredStates []string          `protobuf:"bytes,83,rep,name=declared_states,json=declaredStates,proto3" json:"declared_states,omitempty"`                                                                        // render states (populated/empty/error/...)
+	CustomFields   map[string]string `protobuf:"bytes,84,rep,name=custom_fields,json=customFields,proto3" json:"custom_fields,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`    // vertical/builder custom fields
+	RulePolicy     map[string]string `protobuf:"bytes,85,rep,name=rule_policy,json=rulePolicy,proto3" json:"rule_policy,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`          // rule-policy hints (e.g. refund -> approval)
+	ServerKillable bool              `protobuf:"varint,86,opt,name=server_killable,json=serverKillable,proto3" json:"server_killable,omitempty"`                                                                       // REQUIRED fast-rollback kill flag
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ExperienceSpec) Reset() {
@@ -847,6 +953,83 @@ func (x *ExperienceSpec) GetBindings() []*ServiceTransportBinding {
 		return x.Bindings
 	}
 	return nil
+}
+
+func (x *ExperienceSpec) GetTools() []*ToolDefinition {
+	if x != nil {
+		return x.Tools
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetAgentNodes() []*AgentNode {
+	if x != nil {
+		return x.AgentNodes
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetResolutionContext() *ResolutionContext {
+	if x != nil {
+		return x.ResolutionContext
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetLockedSurfaces() []*LockedSurface {
+	if x != nil {
+		return x.LockedSurfaces
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetActionGates() []*ActionGate {
+	if x != nil {
+		return x.ActionGates
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetFlagOverrides() map[string]string {
+	if x != nil {
+		return x.FlagOverrides
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetVariant() string {
+	if x != nil {
+		return x.Variant
+	}
+	return ""
+}
+
+func (x *ExperienceSpec) GetDeclaredStates() []string {
+	if x != nil {
+		return x.DeclaredStates
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetCustomFields() map[string]string {
+	if x != nil {
+		return x.CustomFields
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetRulePolicy() map[string]string {
+	if x != nil {
+		return x.RulePolicy
+	}
+	return nil
+}
+
+func (x *ExperienceSpec) GetServerKillable() bool {
+	if x != nil {
+		return x.ServerKillable
+	}
+	return false
 }
 
 // ServiceTransportBinding binds one entity's service to a transport + scope.
@@ -1468,11 +1651,557 @@ func (x *OfflineSpec) GetReadOnlyGraceSeconds() uint32 {
 	return 0
 }
 
+// ToolDefinition is the TYPED tool contract. adapter_id is a curated-allowlist FK
+// (NO arbitrary binding). input_schema/output_schema are JSON-Schema STRINGS (a
+// typed envelope), NOT a free config_json blob. side_effect gates the dispatcher.
+// idempotency_key is load-bearing for WRITE/EXTERNAL replays.
+type ToolDefinition struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	AdapterId      string                 `protobuf:"bytes,1,opt,name=adapter_id,json=adapterId,proto3" json:"adapter_id,omitempty"`                                   // curated-allowlist FK (no arbitrary RPC/SQL)
+	InputSchema    string                 `protobuf:"bytes,2,opt,name=input_schema,json=inputSchema,proto3" json:"input_schema,omitempty"`                             // JSON-Schema string (typed envelope, not a blob)
+	OutputSchema   string                 `protobuf:"bytes,3,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`                          // JSON-Schema string (typed envelope, not a blob)
+	SideEffect     SideEffect             `protobuf:"varint,4,opt,name=side_effect,json=sideEffect,proto3,enum=experience.v1.SideEffect" json:"side_effect,omitempty"` // dispatcher gate (read/write/external)
+	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`                    // replay key (load-bearing for write/external)
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ToolDefinition) Reset() {
+	*x = ToolDefinition{}
+	mi := &file_experience_v1_experience_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ToolDefinition) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ToolDefinition) ProtoMessage() {}
+
+func (x *ToolDefinition) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ToolDefinition.ProtoReflect.Descriptor instead.
+func (*ToolDefinition) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *ToolDefinition) GetAdapterId() string {
+	if x != nil {
+		return x.AdapterId
+	}
+	return ""
+}
+
+func (x *ToolDefinition) GetInputSchema() string {
+	if x != nil {
+		return x.InputSchema
+	}
+	return ""
+}
+
+func (x *ToolDefinition) GetOutputSchema() string {
+	if x != nil {
+		return x.OutputSchema
+	}
+	return ""
+}
+
+func (x *ToolDefinition) GetSideEffect() SideEffect {
+	if x != nil {
+		return x.SideEffect
+	}
+	return SideEffect_SIDE_EFFECT_UNSPECIFIED
+}
+
+func (x *ToolDefinition) GetIdempotencyKey() string {
+	if x != nil {
+		return x.IdempotencyKey
+	}
+	return ""
+}
+
+// AgentNode is an agent step binding a set of tool ids under a TYPED
+// io_envelope_schema. The io-envelope is the SWAP-STABLE seam: the stub
+// dispatcher AND the real LLM dispatcher (obj 144) both read/write THIS envelope,
+// so the dispatcher swap is envelope-preserving with NO contract change.
+type AgentNode struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	ToolIds          []string               `protobuf:"bytes,1,rep,name=tool_ids,json=toolIds,proto3" json:"tool_ids,omitempty"`                              // tool ids this node may call
+	IoEnvelopeSchema string                 `protobuf:"bytes,2,opt,name=io_envelope_schema,json=ioEnvelopeSchema,proto3" json:"io_envelope_schema,omitempty"` // JSON-Schema io envelope (swap-stable seam)
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AgentNode) Reset() {
+	*x = AgentNode{}
+	mi := &file_experience_v1_experience_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentNode) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentNode) ProtoMessage() {}
+
+func (x *AgentNode) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentNode.ProtoReflect.Descriptor instead.
+func (*AgentNode) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *AgentNode) GetToolIds() []string {
+	if x != nil {
+		return x.ToolIds
+	}
+	return nil
+}
+
+func (x *AgentNode) GetIoEnvelopeSchema() string {
+	if x != nil {
+		return x.IoEnvelopeSchema
+	}
+	return ""
+}
+
+// CredentialRef is a REFERENCE to signing material held in a custody system
+// (1Password / KMS), NEVER the material itself. ref is the pointer (e.g.
+// op://AOCyber/ios-dist-cert); custody names the system holding it.
+type CredentialRef struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ref           string                 `protobuf:"bytes,1,opt,name=ref,proto3" json:"ref,omitempty"`         // pointer into the custody system (op://..., kms://...)
+	Custody       string                 `protobuf:"bytes,2,opt,name=custody,proto3" json:"custody,omitempty"` // custody system name (e.g. "1password", "kms")
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CredentialRef) Reset() {
+	*x = CredentialRef{}
+	mi := &file_experience_v1_experience_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CredentialRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CredentialRef) ProtoMessage() {}
+
+func (x *CredentialRef) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CredentialRef.ProtoReflect.Descriptor instead.
+func (*CredentialRef) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *CredentialRef) GetRef() string {
+	if x != nil {
+		return x.Ref
+	}
+	return ""
+}
+
+func (x *CredentialRef) GetCustody() string {
+	if x != nil {
+		return x.Custody
+	}
+	return ""
+}
+
+// SigningSpec is the per-platform signing identity, keyed by platform
+// (ios|android). It carries CredentialRefs (ref + custody) for BOTH platforms,
+// NEVER inline cert/key bytes. Lives on AppDefinition (BUILD-time) -- a store
+// binary commits to its signing identity at submit time.
+type SigningSpec struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	ByPlatform    map[string]*CredentialRef `protobuf:"bytes,1,rep,name=by_platform,json=byPlatform,proto3" json:"by_platform,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"` // platform -> credential reference
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SigningSpec) Reset() {
+	*x = SigningSpec{}
+	mi := &file_experience_v1_experience_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SigningSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SigningSpec) ProtoMessage() {}
+
+func (x *SigningSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SigningSpec.ProtoReflect.Descriptor instead.
+func (*SigningSpec) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *SigningSpec) GetByPlatform() map[string]*CredentialRef {
+	if x != nil {
+		return x.ByPlatform
+	}
+	return nil
+}
+
+// TelemetryEnvelope carries every observability ID in-schema (NOT a free blob).
+// Emitted on the runtime telemetry wire. tenant_id is the REQUESTING tenant only
+// -- it is never an other-tenant id (no cross-tenant telemetry bleed).
+type TelemetryEnvelope struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	SpecId             string                 `protobuf:"bytes,1,opt,name=spec_id,json=specId,proto3" json:"spec_id,omitempty"`
+	SpecVersion        string                 `protobuf:"bytes,2,opt,name=spec_version,json=specVersion,proto3" json:"spec_version,omitempty"`
+	SurfaceId          string                 `protobuf:"bytes,3,opt,name=surface_id,json=surfaceId,proto3" json:"surface_id,omitempty"`
+	BindingId          string                 `protobuf:"bytes,4,opt,name=binding_id,json=bindingId,proto3" json:"binding_id,omitempty"`
+	EntitlementSetHash string                 `protobuf:"bytes,5,opt,name=entitlement_set_hash,json=entitlementSetHash,proto3" json:"entitlement_set_hash,omitempty"`
+	Brand              string                 `protobuf:"bytes,6,opt,name=brand,proto3" json:"brand,omitempty"`
+	ThemeProfile       string                 `protobuf:"bytes,7,opt,name=theme_profile,json=themeProfile,proto3" json:"theme_profile,omitempty"`
+	FormFactor         string                 `protobuf:"bytes,8,opt,name=form_factor,json=formFactor,proto3" json:"form_factor,omitempty"`
+	BuildSha           string                 `protobuf:"bytes,9,opt,name=build_sha,json=buildSha,proto3" json:"build_sha,omitempty"`
+	ComplianceProfile  string                 `protobuf:"bytes,10,opt,name=compliance_profile,json=complianceProfile,proto3" json:"compliance_profile,omitempty"`
+	TenantId           string                 `protobuf:"bytes,11,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"` // REQUESTING tenant only -- never another tenant's id
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *TelemetryEnvelope) Reset() {
+	*x = TelemetryEnvelope{}
+	mi := &file_experience_v1_experience_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TelemetryEnvelope) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TelemetryEnvelope) ProtoMessage() {}
+
+func (x *TelemetryEnvelope) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TelemetryEnvelope.ProtoReflect.Descriptor instead.
+func (*TelemetryEnvelope) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *TelemetryEnvelope) GetSpecId() string {
+	if x != nil {
+		return x.SpecId
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetSpecVersion() string {
+	if x != nil {
+		return x.SpecVersion
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetSurfaceId() string {
+	if x != nil {
+		return x.SurfaceId
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetBindingId() string {
+	if x != nil {
+		return x.BindingId
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetEntitlementSetHash() string {
+	if x != nil {
+		return x.EntitlementSetHash
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetBrand() string {
+	if x != nil {
+		return x.Brand
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetThemeProfile() string {
+	if x != nil {
+		return x.ThemeProfile
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetFormFactor() string {
+	if x != nil {
+		return x.FormFactor
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetBuildSha() string {
+	if x != nil {
+		return x.BuildSha
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetComplianceProfile() string {
+	if x != nil {
+		return x.ComplianceProfile
+	}
+	return ""
+}
+
+func (x *TelemetryEnvelope) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+// ResolutionContext is the provenance of a resolved ExperienceSpec: which
+// tenant/org it was resolved for, when, and by which resolver version. Lives on
+// ExperienceSpec.resolution_context (field 70).
+type ResolutionContext struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	TenantId        string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	OrgId           string                 `protobuf:"bytes,2,opt,name=org_id,json=orgId,proto3" json:"org_id,omitempty"`
+	ResolvedAt      string                 `protobuf:"bytes,3,opt,name=resolved_at,json=resolvedAt,proto3" json:"resolved_at,omitempty"`                // RFC3339 resolution timestamp
+	ResolverVersion string                 `protobuf:"bytes,4,opt,name=resolver_version,json=resolverVersion,proto3" json:"resolver_version,omitempty"` // resolver build/version that produced the spec
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *ResolutionContext) Reset() {
+	*x = ResolutionContext{}
+	mi := &file_experience_v1_experience_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResolutionContext) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResolutionContext) ProtoMessage() {}
+
+func (x *ResolutionContext) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResolutionContext.ProtoReflect.Descriptor instead.
+func (*ResolutionContext) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ResolutionContext) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *ResolutionContext) GetOrgId() string {
+	if x != nil {
+		return x.OrgId
+	}
+	return ""
+}
+
+func (x *ResolutionContext) GetResolvedAt() string {
+	if x != nil {
+		return x.ResolvedAt
+	}
+	return ""
+}
+
+func (x *ResolutionContext) GetResolverVersion() string {
+	if x != nil {
+		return x.ResolverVersion
+	}
+	return ""
+}
+
+// LockedSurface is a surface gated behind an entitlement upsell: the surface_id
+// the requesting scope is NOT entitled to + the upsell_reason shown to the user.
+type LockedSurface struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SurfaceId     string                 `protobuf:"bytes,1,opt,name=surface_id,json=surfaceId,proto3" json:"surface_id,omitempty"`
+	UpsellReason  string                 `protobuf:"bytes,2,opt,name=upsell_reason,json=upsellReason,proto3" json:"upsell_reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LockedSurface) Reset() {
+	*x = LockedSurface{}
+	mi := &file_experience_v1_experience_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LockedSurface) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LockedSurface) ProtoMessage() {}
+
+func (x *LockedSurface) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LockedSurface.ProtoReflect.Descriptor instead.
+func (*LockedSurface) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *LockedSurface) GetSurfaceId() string {
+	if x != nil {
+		return x.SurfaceId
+	}
+	return ""
+}
+
+func (x *LockedSurface) GetUpsellReason() string {
+	if x != nil {
+		return x.UpsellReason
+	}
+	return ""
+}
+
+// ActionGate gates a single action_id behind an entitlement_key. Reserved-cheap
+// seam on ExperienceSpec.action_gates (field 80) -- typed up front so the frozen
+// proto never has to migrate to add per-action entitlement gating.
+type ActionGate struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	ActionId       string                 `protobuf:"bytes,1,opt,name=action_id,json=actionId,proto3" json:"action_id,omitempty"`
+	EntitlementKey string                 `protobuf:"bytes,2,opt,name=entitlement_key,json=entitlementKey,proto3" json:"entitlement_key,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ActionGate) Reset() {
+	*x = ActionGate{}
+	mi := &file_experience_v1_experience_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ActionGate) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ActionGate) ProtoMessage() {}
+
+func (x *ActionGate) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ActionGate.ProtoReflect.Descriptor instead.
+func (*ActionGate) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *ActionGate) GetActionId() string {
+	if x != nil {
+		return x.ActionId
+	}
+	return ""
+}
+
+func (x *ActionGate) GetEntitlementKey() string {
+	if x != nil {
+		return x.EntitlementKey
+	}
+	return ""
+}
+
 var File_experience_v1_experience_proto protoreflect.FileDescriptor
 
 const file_experience_v1_experience_proto_rawDesc = "" +
 	"\n" +
-	"\x1eexperience/v1/experience.proto\x12\rexperience.v1\"\xa9\x02\n" +
+	"\x1eexperience/v1/experience.proto\x12\rexperience.v1\"\x8b\x03\n" +
 	"\rAppDefinition\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12*\n" +
 	"\x04meta\x18\x02 \x01(\v2\x16.experience.v1.AppMetaR\x04meta\x121\n" +
@@ -1480,14 +2209,16 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x12min_binary_version\x18\x04 \x01(\tR\x10minBinaryVersion\x12)\n" +
 	"\x10contract_version\x18\x05 \x01(\tR\x0fcontractVersion\x128\n" +
 	"\tdeep_link\x18\n" +
-	" \x01(\v2\x1b.experience.v1.DeepLinkSpecR\bdeepLinkJ\x04\b\v\x10\x14J\x04\b\x14\x10\x1eJ\x04\b\x1e\x10(J\x04\b(\x102\"@\n" +
+	" \x01(\v2\x1b.experience.v1.DeepLinkSpecR\bdeepLink\x124\n" +
+	"\asigning\x18\x14 \x01(\v2\x1a.experience.v1.SigningSpecR\asigning\x12*\n" +
+	"\x11app_service_slots\x18\x1e \x03(\tR\x0fappServiceSlotsJ\x04\b\v\x10\x14J\x04\b\x15\x10\x1eJ\x04\b\x1f\x10(J\x04\b(\x102\"@\n" +
 	"\aAppMeta\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x1b\n" +
 	"\tbundle_id\x18\x02 \x01(\tR\bbundleIdJ\x04\b\n" +
 	"\x10\x14\"p\n" +
 	"\x17SurfaceRegistryManifest\x12)\n" +
 	"\x10contract_version\x18\x01 \x01(\tR\x0fcontractVersion\x12*\n" +
-	"\x11known_surface_ids\x18\x02 \x03(\tR\x0fknownSurfaceIds\"\xb1\a\n" +
+	"\x11known_surface_ids\x18\x02 \x03(\tR\x0fknownSurfaceIds\"\xa4\x0e\n" +
 	"\x0eExperienceSpec\x12.\n" +
 	"\x13spec_schema_version\x18\x01 \x01(\tR\x11specSchemaVersion\x128\n" +
 	"\x18surface_contract_version\x18\x02 \x01(\tR\x16surfaceContractVersion\x12!\n" +
@@ -1504,10 +2235,32 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x05terms\x18\x1f \x01(\v2\x16.experience.v1.TermSetR\x05terms\x121\n" +
 	"\x06locale\x18  \x01(\v2\x19.experience.v1.LocaleSpecR\x06locale\x12Z\n" +
 	"\x0fsurface_offline\x18( \x03(\v21.experience.v1.ExperienceSpec.SurfaceOfflineEntryR\x0esurfaceOffline\x12B\n" +
-	"\bbindings\x182 \x03(\v2&.experience.v1.ServiceTransportBindingR\bbindings\x1a]\n" +
+	"\bbindings\x182 \x03(\v2&.experience.v1.ServiceTransportBindingR\bbindings\x123\n" +
+	"\x05tools\x18< \x03(\v2\x1d.experience.v1.ToolDefinitionR\x05tools\x129\n" +
+	"\vagent_nodes\x18= \x03(\v2\x18.experience.v1.AgentNodeR\n" +
+	"agentNodes\x12O\n" +
+	"\x12resolution_context\x18F \x01(\v2 .experience.v1.ResolutionContextR\x11resolutionContext\x12E\n" +
+	"\x0flocked_surfaces\x18G \x03(\v2\x1c.experience.v1.LockedSurfaceR\x0elockedSurfaces\x12<\n" +
+	"\faction_gates\x18P \x03(\v2\x19.experience.v1.ActionGateR\vactionGates\x12W\n" +
+	"\x0eflag_overrides\x18Q \x03(\v20.experience.v1.ExperienceSpec.FlagOverridesEntryR\rflagOverrides\x12\x18\n" +
+	"\avariant\x18R \x01(\tR\avariant\x12'\n" +
+	"\x0fdeclared_states\x18S \x03(\tR\x0edeclaredStates\x12T\n" +
+	"\rcustom_fields\x18T \x03(\v2/.experience.v1.ExperienceSpec.CustomFieldsEntryR\fcustomFields\x12N\n" +
+	"\vrule_policy\x18U \x03(\v2-.experience.v1.ExperienceSpec.RulePolicyEntryR\n" +
+	"rulePolicy\x12'\n" +
+	"\x0fserver_killable\x18V \x01(\bR\x0eserverKillable\x1a]\n" +
 	"\x13SurfaceOfflineEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x120\n" +
-	"\x05value\x18\x02 \x01(\v2\x1a.experience.v1.OfflineSpecR\x05value:\x028\x01J\x04\b\f\x10\x14J\x04\b\x15\x10\x1eJ\x04\b!\x10(J\x04\b)\x102J\x04\b3\x10<J\x04\b<\x10FJ\x04\bF\x10PJ\x04\bP\x10Z\"\xaf\x03\n" +
+	"\x05value\x18\x02 \x01(\v2\x1a.experience.v1.OfflineSpecR\x05value:\x028\x01\x1a@\n" +
+	"\x12FlagOverridesEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a?\n" +
+	"\x11CustomFieldsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\x1a=\n" +
+	"\x0fRulePolicyEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01J\x04\b\f\x10\x14J\x04\b\x15\x10\x1eJ\x04\b!\x10(J\x04\b)\x102J\x04\b3\x10<J\x04\b>\x10FJ\x04\bH\x10PJ\x04\bW\x10Z\"\xaf\x03\n" +
 	"\x17ServiceTransportBinding\x12\x16\n" +
 	"\x06entity\x18\x01 \x01(\tR\x06entity\x12'\n" +
 	"\x0fservice_package\x18\x02 \x01(\tR\x0eservicePackage\x12!\n" +
@@ -1564,7 +2317,57 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x06policy\x18\x01 \x01(\x0e2\x1c.experience.v1.OfflinePolicyR\x06policy\x12*\n" +
 	"\x11cache_ttl_seconds\x18\x02 \x01(\rR\x0fcacheTtlSeconds\x12F\n" +
 	"\x0fconflict_policy\x18\x03 \x01(\x0e2\x1d.experience.v1.ConflictPolicyR\x0econflictPolicy\x125\n" +
-	"\x17read_only_grace_seconds\x18\x04 \x01(\rR\x14readOnlyGraceSeconds*\xb7\x01\n" +
+	"\x17read_only_grace_seconds\x18\x04 \x01(\rR\x14readOnlyGraceSeconds\"\xdc\x01\n" +
+	"\x0eToolDefinition\x12\x1d\n" +
+	"\n" +
+	"adapter_id\x18\x01 \x01(\tR\tadapterId\x12!\n" +
+	"\finput_schema\x18\x02 \x01(\tR\vinputSchema\x12#\n" +
+	"\routput_schema\x18\x03 \x01(\tR\foutputSchema\x12:\n" +
+	"\vside_effect\x18\x04 \x01(\x0e2\x19.experience.v1.SideEffectR\n" +
+	"sideEffect\x12'\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"T\n" +
+	"\tAgentNode\x12\x19\n" +
+	"\btool_ids\x18\x01 \x03(\tR\atoolIds\x12,\n" +
+	"\x12io_envelope_schema\x18\x02 \x01(\tR\x10ioEnvelopeSchema\";\n" +
+	"\rCredentialRef\x12\x10\n" +
+	"\x03ref\x18\x01 \x01(\tR\x03ref\x12\x18\n" +
+	"\acustody\x18\x02 \x01(\tR\acustody\"\xb7\x01\n" +
+	"\vSigningSpec\x12K\n" +
+	"\vby_platform\x18\x01 \x03(\v2*.experience.v1.SigningSpec.ByPlatformEntryR\n" +
+	"byPlatform\x1a[\n" +
+	"\x0fByPlatformEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x122\n" +
+	"\x05value\x18\x02 \x01(\v2\x1c.experience.v1.CredentialRefR\x05value:\x028\x01\"\x84\x03\n" +
+	"\x11TelemetryEnvelope\x12\x17\n" +
+	"\aspec_id\x18\x01 \x01(\tR\x06specId\x12!\n" +
+	"\fspec_version\x18\x02 \x01(\tR\vspecVersion\x12\x1d\n" +
+	"\n" +
+	"surface_id\x18\x03 \x01(\tR\tsurfaceId\x12\x1d\n" +
+	"\n" +
+	"binding_id\x18\x04 \x01(\tR\tbindingId\x120\n" +
+	"\x14entitlement_set_hash\x18\x05 \x01(\tR\x12entitlementSetHash\x12\x14\n" +
+	"\x05brand\x18\x06 \x01(\tR\x05brand\x12#\n" +
+	"\rtheme_profile\x18\a \x01(\tR\fthemeProfile\x12\x1f\n" +
+	"\vform_factor\x18\b \x01(\tR\n" +
+	"formFactor\x12\x1b\n" +
+	"\tbuild_sha\x18\t \x01(\tR\bbuildSha\x12-\n" +
+	"\x12compliance_profile\x18\n" +
+	" \x01(\tR\x11complianceProfile\x12\x1b\n" +
+	"\ttenant_id\x18\v \x01(\tR\btenantId\"\x93\x01\n" +
+	"\x11ResolutionContext\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x15\n" +
+	"\x06org_id\x18\x02 \x01(\tR\x05orgId\x12\x1f\n" +
+	"\vresolved_at\x18\x03 \x01(\tR\n" +
+	"resolvedAt\x12)\n" +
+	"\x10resolver_version\x18\x04 \x01(\tR\x0fresolverVersion\"S\n" +
+	"\rLockedSurface\x12\x1d\n" +
+	"\n" +
+	"surface_id\x18\x01 \x01(\tR\tsurfaceId\x12#\n" +
+	"\rupsell_reason\x18\x02 \x01(\tR\fupsellReason\"R\n" +
+	"\n" +
+	"ActionGate\x12\x1b\n" +
+	"\taction_id\x18\x01 \x01(\tR\bactionId\x12'\n" +
+	"\x0fentitlement_key\x18\x02 \x01(\tR\x0eentitlementKey*\xb7\x01\n" +
 	"\x14UnknownSurfacePolicy\x12&\n" +
 	"\"UNKNOWN_SURFACE_POLICY_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dUNKNOWN_SURFACE_POLICY_IGNORE\x10\x01\x12(\n" +
@@ -1604,7 +2407,13 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x1bCONFLICT_POLICY_UNSPECIFIED\x10\x00\x12#\n" +
 	"\x1fCONFLICT_POLICY_LAST_WRITE_WINS\x10\x01\x12\x1f\n" +
 	"\x1bCONFLICT_POLICY_SERVER_WINS\x10\x02\x12$\n" +
-	" CONFLICT_POLICY_MANUAL_RECONCILE\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
+	" CONFLICT_POLICY_MANUAL_RECONCILE\x10\x03*p\n" +
+	"\n" +
+	"SideEffect\x12\x1b\n" +
+	"\x17SIDE_EFFECT_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10SIDE_EFFECT_READ\x10\x01\x12\x15\n" +
+	"\x11SIDE_EFFECT_WRITE\x10\x02\x12\x18\n" +
+	"\x14SIDE_EFFECT_EXTERNAL\x10\x03BNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
 
 var (
 	file_experience_v1_experience_proto_rawDescOnce sync.Once
@@ -1618,8 +2427,8 @@ func file_experience_v1_experience_proto_rawDescGZIP() []byte {
 	return file_experience_v1_experience_proto_rawDescData
 }
 
-var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 8)
-var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
+var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
+var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
 var file_experience_v1_experience_proto_goTypes = []any{
 	(UnknownSurfacePolicy)(0),       // 0: experience.v1.UnknownSurfacePolicy
 	(TransportKind)(0),              // 1: experience.v1.TransportKind
@@ -1629,53 +2438,78 @@ var file_experience_v1_experience_proto_goTypes = []any{
 	(Placement)(0),                  // 5: experience.v1.Placement
 	(OfflinePolicy)(0),              // 6: experience.v1.OfflinePolicy
 	(ConflictPolicy)(0),             // 7: experience.v1.ConflictPolicy
-	(*AppDefinition)(nil),           // 8: experience.v1.AppDefinition
-	(*AppMeta)(nil),                 // 9: experience.v1.AppMeta
-	(*SurfaceRegistryManifest)(nil), // 10: experience.v1.SurfaceRegistryManifest
-	(*ExperienceSpec)(nil),          // 11: experience.v1.ExperienceSpec
-	(*ServiceTransportBinding)(nil), // 12: experience.v1.ServiceTransportBinding
-	(*NavSlot)(nil),                 // 13: experience.v1.NavSlot
-	(*NavEdge)(nil),                 // 14: experience.v1.NavEdge
-	(*NavGraph)(nil),                // 15: experience.v1.NavGraph
-	(*DeepLinkSpec)(nil),            // 16: experience.v1.DeepLinkSpec
-	(*ThemeSpec)(nil),               // 17: experience.v1.ThemeSpec
-	(*TermSet)(nil),                 // 18: experience.v1.TermSet
-	(*LocaleSpec)(nil),              // 19: experience.v1.LocaleSpec
-	(*OfflineSpec)(nil),             // 20: experience.v1.OfflineSpec
-	nil,                             // 21: experience.v1.ExperienceSpec.SurfaceOfflineEntry
-	nil,                             // 22: experience.v1.NavEdge.ParamBindingsEntry
-	nil,                             // 23: experience.v1.ThemeSpec.ColorOverridesEntry
-	nil,                             // 24: experience.v1.TermSet.OverridesEntry
+	(SideEffect)(0),                 // 8: experience.v1.SideEffect
+	(*AppDefinition)(nil),           // 9: experience.v1.AppDefinition
+	(*AppMeta)(nil),                 // 10: experience.v1.AppMeta
+	(*SurfaceRegistryManifest)(nil), // 11: experience.v1.SurfaceRegistryManifest
+	(*ExperienceSpec)(nil),          // 12: experience.v1.ExperienceSpec
+	(*ServiceTransportBinding)(nil), // 13: experience.v1.ServiceTransportBinding
+	(*NavSlot)(nil),                 // 14: experience.v1.NavSlot
+	(*NavEdge)(nil),                 // 15: experience.v1.NavEdge
+	(*NavGraph)(nil),                // 16: experience.v1.NavGraph
+	(*DeepLinkSpec)(nil),            // 17: experience.v1.DeepLinkSpec
+	(*ThemeSpec)(nil),               // 18: experience.v1.ThemeSpec
+	(*TermSet)(nil),                 // 19: experience.v1.TermSet
+	(*LocaleSpec)(nil),              // 20: experience.v1.LocaleSpec
+	(*OfflineSpec)(nil),             // 21: experience.v1.OfflineSpec
+	(*ToolDefinition)(nil),          // 22: experience.v1.ToolDefinition
+	(*AgentNode)(nil),               // 23: experience.v1.AgentNode
+	(*CredentialRef)(nil),           // 24: experience.v1.CredentialRef
+	(*SigningSpec)(nil),             // 25: experience.v1.SigningSpec
+	(*TelemetryEnvelope)(nil),       // 26: experience.v1.TelemetryEnvelope
+	(*ResolutionContext)(nil),       // 27: experience.v1.ResolutionContext
+	(*LockedSurface)(nil),           // 28: experience.v1.LockedSurface
+	(*ActionGate)(nil),              // 29: experience.v1.ActionGate
+	nil,                             // 30: experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	nil,                             // 31: experience.v1.ExperienceSpec.FlagOverridesEntry
+	nil,                             // 32: experience.v1.ExperienceSpec.CustomFieldsEntry
+	nil,                             // 33: experience.v1.ExperienceSpec.RulePolicyEntry
+	nil,                             // 34: experience.v1.NavEdge.ParamBindingsEntry
+	nil,                             // 35: experience.v1.ThemeSpec.ColorOverridesEntry
+	nil,                             // 36: experience.v1.TermSet.OverridesEntry
+	nil,                             // 37: experience.v1.SigningSpec.ByPlatformEntry
 }
 var file_experience_v1_experience_proto_depIdxs = []int32{
-	9,  // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
-	11, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
-	16, // 2: experience.v1.AppDefinition.deep_link:type_name -> experience.v1.DeepLinkSpec
-	0,  // 3: experience.v1.ExperienceSpec.unknown_surface_policy:type_name -> experience.v1.UnknownSurfacePolicy
-	15, // 4: experience.v1.ExperienceSpec.nav_graph:type_name -> experience.v1.NavGraph
-	17, // 5: experience.v1.ExperienceSpec.theme:type_name -> experience.v1.ThemeSpec
-	18, // 6: experience.v1.ExperienceSpec.terms:type_name -> experience.v1.TermSet
-	19, // 7: experience.v1.ExperienceSpec.locale:type_name -> experience.v1.LocaleSpec
-	21, // 8: experience.v1.ExperienceSpec.surface_offline:type_name -> experience.v1.ExperienceSpec.SurfaceOfflineEntry
-	12, // 9: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
-	3,  // 10: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
-	1,  // 11: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
-	2,  // 12: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
-	4,  // 13: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
-	5,  // 14: experience.v1.NavSlot.placement:type_name -> experience.v1.Placement
-	22, // 15: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
-	13, // 16: experience.v1.NavGraph.slots:type_name -> experience.v1.NavSlot
-	14, // 17: experience.v1.NavGraph.edges:type_name -> experience.v1.NavEdge
-	23, // 18: experience.v1.ThemeSpec.color_overrides:type_name -> experience.v1.ThemeSpec.ColorOverridesEntry
-	24, // 19: experience.v1.TermSet.overrides:type_name -> experience.v1.TermSet.OverridesEntry
-	6,  // 20: experience.v1.OfflineSpec.policy:type_name -> experience.v1.OfflinePolicy
-	7,  // 21: experience.v1.OfflineSpec.conflict_policy:type_name -> experience.v1.ConflictPolicy
-	20, // 22: experience.v1.ExperienceSpec.SurfaceOfflineEntry.value:type_name -> experience.v1.OfflineSpec
-	23, // [23:23] is the sub-list for method output_type
-	23, // [23:23] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	10, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
+	12, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
+	17, // 2: experience.v1.AppDefinition.deep_link:type_name -> experience.v1.DeepLinkSpec
+	25, // 3: experience.v1.AppDefinition.signing:type_name -> experience.v1.SigningSpec
+	0,  // 4: experience.v1.ExperienceSpec.unknown_surface_policy:type_name -> experience.v1.UnknownSurfacePolicy
+	16, // 5: experience.v1.ExperienceSpec.nav_graph:type_name -> experience.v1.NavGraph
+	18, // 6: experience.v1.ExperienceSpec.theme:type_name -> experience.v1.ThemeSpec
+	19, // 7: experience.v1.ExperienceSpec.terms:type_name -> experience.v1.TermSet
+	20, // 8: experience.v1.ExperienceSpec.locale:type_name -> experience.v1.LocaleSpec
+	30, // 9: experience.v1.ExperienceSpec.surface_offline:type_name -> experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	13, // 10: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
+	22, // 11: experience.v1.ExperienceSpec.tools:type_name -> experience.v1.ToolDefinition
+	23, // 12: experience.v1.ExperienceSpec.agent_nodes:type_name -> experience.v1.AgentNode
+	27, // 13: experience.v1.ExperienceSpec.resolution_context:type_name -> experience.v1.ResolutionContext
+	28, // 14: experience.v1.ExperienceSpec.locked_surfaces:type_name -> experience.v1.LockedSurface
+	29, // 15: experience.v1.ExperienceSpec.action_gates:type_name -> experience.v1.ActionGate
+	31, // 16: experience.v1.ExperienceSpec.flag_overrides:type_name -> experience.v1.ExperienceSpec.FlagOverridesEntry
+	32, // 17: experience.v1.ExperienceSpec.custom_fields:type_name -> experience.v1.ExperienceSpec.CustomFieldsEntry
+	33, // 18: experience.v1.ExperienceSpec.rule_policy:type_name -> experience.v1.ExperienceSpec.RulePolicyEntry
+	3,  // 19: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
+	1,  // 20: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
+	2,  // 21: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
+	4,  // 22: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
+	5,  // 23: experience.v1.NavSlot.placement:type_name -> experience.v1.Placement
+	34, // 24: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
+	14, // 25: experience.v1.NavGraph.slots:type_name -> experience.v1.NavSlot
+	15, // 26: experience.v1.NavGraph.edges:type_name -> experience.v1.NavEdge
+	35, // 27: experience.v1.ThemeSpec.color_overrides:type_name -> experience.v1.ThemeSpec.ColorOverridesEntry
+	36, // 28: experience.v1.TermSet.overrides:type_name -> experience.v1.TermSet.OverridesEntry
+	6,  // 29: experience.v1.OfflineSpec.policy:type_name -> experience.v1.OfflinePolicy
+	7,  // 30: experience.v1.OfflineSpec.conflict_policy:type_name -> experience.v1.ConflictPolicy
+	8,  // 31: experience.v1.ToolDefinition.side_effect:type_name -> experience.v1.SideEffect
+	37, // 32: experience.v1.SigningSpec.by_platform:type_name -> experience.v1.SigningSpec.ByPlatformEntry
+	21, // 33: experience.v1.ExperienceSpec.SurfaceOfflineEntry.value:type_name -> experience.v1.OfflineSpec
+	24, // 34: experience.v1.SigningSpec.ByPlatformEntry.value:type_name -> experience.v1.CredentialRef
+	35, // [35:35] is the sub-list for method output_type
+	35, // [35:35] is the sub-list for method input_type
+	35, // [35:35] is the sub-list for extension type_name
+	35, // [35:35] is the sub-list for extension extendee
+	0,  // [0:35] is the sub-list for field type_name
 }
 
 func init() { file_experience_v1_experience_proto_init() }
@@ -1688,8 +2522,8 @@ func file_experience_v1_experience_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_experience_v1_experience_proto_rawDesc), len(file_experience_v1_experience_proto_rawDesc)),
-			NumEnums:      8,
-			NumMessages:   17,
+			NumEnums:      9,
+			NumMessages:   29,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

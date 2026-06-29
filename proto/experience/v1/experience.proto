@@ -26,8 +26,17 @@ message AppDefinition {
   // change them post-submit -- it is a BUILD-time, not a resolved-spec, value.
   DeepLinkSpec deep_link = 10;
   reserved 11 to 19;   // remaining build-time nav seam   (140-05)
-  reserved 20 to 29;   // SigningSpec (per-platform)      (140-07)
-  reserved 30 to 39;   // app-service-slot refs           (140-07/10)
+  // 140-07 un-reserved field 20 from the 20-29 signing range for SigningSpec;
+  // 21..29 stay reserved. Signing lives HERE (BUILD-time, like DeepLinkSpec) --
+  // a store binary commits to its signing identity at submit time. SigningSpec
+  // stores a per-platform CredentialRef (ref + custody), NEVER inline material.
+  SigningSpec signing = 20;
+  reserved 21 to 29;   // remaining signing seam          (140-07)
+  // 140-07 un-reserved field 30 from the 30-39 app-service-slot range for the
+  // build-time service-slot refs (search/notify/export/attach/print/audit);
+  // 31..39 stay reserved.
+  repeated string app_service_slots = 30;
+  reserved 31 to 39;   // remaining app-service-slot refs  (140-07/10)
   reserved 40 to 49;   // distribution / signing_ref seam (140-07)
 }
 
@@ -100,9 +109,36 @@ message ExperienceSpec {
   // 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
   repeated ServiceTransportBinding bindings = 50;  // service<->transport bindings (transport- AND scope-agnostic)
   reserved 51 to 59;   // additional binding seams                     (140-04)
-  reserved 60 to 69;   // ToolDefinition / AgentNode                  (140-07)
-  reserved 70 to 79;   // telemetry / ResolutionContext / LockedSurface (140-07/08/09)
-  reserved 80 to 89;   // flag_overrides / variant / declared_states / customFields / RulePolicy (140-07)
+  // 140-07 un-reserved 60/61 from the 60-69 tool/agent range; 62..69 stay
+  // reserved. ToolDefinition is TYPED (adapter allowlist FK + JSON-Schema
+  // envelopes + side_effect + idempotency_key), NEVER a config_json blob.
+  // AgentNode carries a typed io_envelope_schema -- the swap-stable seam the
+  // real LLM dispatcher (obj 144) plugs into without a contract change.
+  repeated ToolDefinition tools = 60;       // curated-allowlist-bound tools
+  repeated AgentNode agent_nodes = 61;      // agent nodes (io-envelope-preserving)
+  reserved 62 to 69;   // remaining tool/agent seam                    (140-07)
+  // 140-07 un-reserved 70/71 from the 70-79 telemetry/resolution range; 72..79
+  // stay reserved. ResolutionContext is the provenance of THIS resolution
+  // (tenant/org + resolved_at + resolver_version); LockedSurface carries an
+  // upsell_reason for a surface gated behind an entitlement. The TelemetryEnvelope
+  // message itself is a top-level message (emitted on the runtime wire, not a
+  // resolved-spec field) -- only resolution_context + locked_surfaces live here.
+  ResolutionContext resolution_context = 70; // provenance of this resolution
+  repeated LockedSurface locked_surfaces = 71; // surfaces gated behind an upsell
+  reserved 72 to 79;   // remaining telemetry/resolution seam          (140-07/08/09)
+  // 140-07 un-reserved 80..86 from the 80-89 reserved-cheap range; 87..89 stay
+  // reserved. These are reserved-NOW-cheap seams: typed-but-empty-friendly fields
+  // a frozen-forever proto must reserve up front rather than migrate to add.
+  // server_killable (86) is the REQUIRED fast-rollback kill flag for the
+  // generated fleet (a customer-own store account gives no kill switch otherwise).
+  repeated ActionGate action_gates = 80;     // per-action entitlement gates
+  map<string, string> flag_overrides = 81;   // feature-flag overrides
+  string variant = 82;                       // A/B or cohort variant
+  repeated string declared_states = 83;      // render states (populated/empty/error/...)
+  map<string, string> custom_fields = 84;    // vertical/builder custom fields
+  map<string, string> rule_policy = 85;      // rule-policy hints (e.g. refund -> approval)
+  bool server_killable = 86;                 // REQUIRED fast-rollback kill flag
+  reserved 87 to 89;   // remaining reserved-cheap seam                (140-07)
 }
 
 // --- 140-04 ServiceTransportBinding (must-have #3) -------------------------
@@ -317,4 +353,111 @@ message OfflineSpec {
   uint32 cache_ttl_seconds = 2;        // how long cached reads stay valid offline
   ConflictPolicy conflict_policy = 3;  // how a queued write reconciles at sync
   uint32 read_only_grace_seconds = 4;  // grace window the surface stays read-only after going offline
+}
+
+// --- 140-07 tool/agent/signing/telemetry + reserved-cheap (LAST proto-writer) -
+//
+// Must-haves #7..#10. This is the FINAL message group -- after it the
+// experience.v1 message shape is FROZEN for handler work (140-08+). Every value
+// is a TYPED field (frozen-contract discipline); NO config_json blob; signing is
+// a REFERENCE, never inline material.
+//
+// SECURITY MODEL (locked, memories feedback_allowlist_by_stored_value_injection +
+// feedback_rest_authority_field_body_binding): a tool binds ONLY to a curated
+// allowlist of pre-built tenant-safe adapters -- adapter_id is an allowlist FK,
+// never an arbitrary RPC/SQL target. The allowlist check + side_effect gating +
+// io-envelope shape are MACHINE-CHECKED in tooling.go (ValidateTooling), not a
+// proto constraint -- the data can EXPRESS an off-allowlist tool so the validator
+// has something to reject. Wrong-tenant non-leak: an off-allowlist adapter
+// collapses to the SAME code whether it is another tenant's private adapter or a
+// wholly-unknown one (no existence oracle).
+
+// SideEffect gates the tool dispatcher. UNSPECIFIED=0 is fail-closed (an
+// unclassified tool is not dispatchable). READ = pure read. WRITE = mutates
+// tenant data (idempotency_key load-bearing). EXTERNAL = outbound (webhooks etc.)
+// -- representable but DEFERRED (out of scope; ValidateTooling warn-flags it).
+enum SideEffect {
+  SIDE_EFFECT_UNSPECIFIED = 0;  // fail-closed -- not dispatchable
+  SIDE_EFFECT_READ = 1;         // pure read
+  SIDE_EFFECT_WRITE = 2;        // mutates tenant data (idempotency_key matters)
+  SIDE_EFFECT_EXTERNAL = 3;     // outbound (webhooks) -- DEFERRED, representable
+}
+
+// ToolDefinition is the TYPED tool contract. adapter_id is a curated-allowlist FK
+// (NO arbitrary binding). input_schema/output_schema are JSON-Schema STRINGS (a
+// typed envelope), NOT a free config_json blob. side_effect gates the dispatcher.
+// idempotency_key is load-bearing for WRITE/EXTERNAL replays.
+message ToolDefinition {
+  string adapter_id = 1;       // curated-allowlist FK (no arbitrary RPC/SQL)
+  string input_schema = 2;     // JSON-Schema string (typed envelope, not a blob)
+  string output_schema = 3;    // JSON-Schema string (typed envelope, not a blob)
+  SideEffect side_effect = 4;  // dispatcher gate (read/write/external)
+  string idempotency_key = 5;  // replay key (load-bearing for write/external)
+}
+
+// AgentNode is an agent step binding a set of tool ids under a TYPED
+// io_envelope_schema. The io-envelope is the SWAP-STABLE seam: the stub
+// dispatcher AND the real LLM dispatcher (obj 144) both read/write THIS envelope,
+// so the dispatcher swap is envelope-preserving with NO contract change.
+message AgentNode {
+  repeated string tool_ids = 1;       // tool ids this node may call
+  string io_envelope_schema = 2;      // JSON-Schema io envelope (swap-stable seam)
+}
+
+// CredentialRef is a REFERENCE to signing material held in a custody system
+// (1Password / KMS), NEVER the material itself. ref is the pointer (e.g.
+// op://AOCyber/ios-dist-cert); custody names the system holding it.
+message CredentialRef {
+  string ref = 1;      // pointer into the custody system (op://..., kms://...)
+  string custody = 2;  // custody system name (e.g. "1password", "kms")
+}
+
+// SigningSpec is the per-platform signing identity, keyed by platform
+// (ios|android). It carries CredentialRefs (ref + custody) for BOTH platforms,
+// NEVER inline cert/key bytes. Lives on AppDefinition (BUILD-time) -- a store
+// binary commits to its signing identity at submit time.
+message SigningSpec {
+  map<string, CredentialRef> by_platform = 1;  // platform -> credential reference
+}
+
+// TelemetryEnvelope carries every observability ID in-schema (NOT a free blob).
+// Emitted on the runtime telemetry wire. tenant_id is the REQUESTING tenant only
+// -- it is never an other-tenant id (no cross-tenant telemetry bleed).
+message TelemetryEnvelope {
+  string spec_id = 1;
+  string spec_version = 2;
+  string surface_id = 3;
+  string binding_id = 4;
+  string entitlement_set_hash = 5;
+  string brand = 6;
+  string theme_profile = 7;
+  string form_factor = 8;
+  string build_sha = 9;
+  string compliance_profile = 10;
+  string tenant_id = 11;  // REQUESTING tenant only -- never another tenant's id
+}
+
+// ResolutionContext is the provenance of a resolved ExperienceSpec: which
+// tenant/org it was resolved for, when, and by which resolver version. Lives on
+// ExperienceSpec.resolution_context (field 70).
+message ResolutionContext {
+  string tenant_id = 1;
+  string org_id = 2;
+  string resolved_at = 3;        // RFC3339 resolution timestamp
+  string resolver_version = 4;   // resolver build/version that produced the spec
+}
+
+// LockedSurface is a surface gated behind an entitlement upsell: the surface_id
+// the requesting scope is NOT entitled to + the upsell_reason shown to the user.
+message LockedSurface {
+  string surface_id = 1;
+  string upsell_reason = 2;
+}
+
+// ActionGate gates a single action_id behind an entitlement_key. Reserved-cheap
+// seam on ExperienceSpec.action_gates (field 80) -- typed up front so the frozen
+// proto never has to migrate to add per-action entitlement gating.
+message ActionGate {
+  string action_id = 1;
+  string entitlement_key = 2;
 }
