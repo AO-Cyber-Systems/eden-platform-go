@@ -136,6 +136,75 @@ func WithBinding(b *experiencev1.ServiceTransportBinding) SpecOpt {
 	}
 }
 
+// --- 140-05 NavGraph + DeepLinkSpec factory options -----------------------
+//
+// These GROW the factory for the NavGraph message group (proto field 20 on
+// ExperienceSpec, un-reserved from the 20-29 nav range) and DeepLinkSpec (proto
+// field 10 on AppDefinition, un-reserved from the 10-19 nav range).
+//
+// NavGraph is a GRAPH, not a flat surface list: a landing surface + typed
+// NavSlots (surface + placement + order) + typed NavEdges that carry
+// param_bindings (the customer->invoice->payment SELECTION-passing proof). The
+// <=5 PRIMARY rule is a VALIDATOR concern (ValidateNavGraph), NOT a data
+// constraint -- the factory must be able to express >5 PRIMARY slots so the
+// validator has something to reject.
+
+// NewNavSlot builds a single NavSlot: a surface placed at a placement + order.
+func NewNavSlot(surfaceID string, placement experiencev1.Placement, order int32) *experiencev1.NavSlot {
+	return &experiencev1.NavSlot{
+		SurfaceId: surfaceID,
+		Placement: placement,
+		Order:     order,
+	}
+}
+
+// NewNavEdge builds a typed inter-surface edge. param_bindings carries the
+// selection passed across the hop (e.g. {"customerId": "$selection.id"} from a
+// customer surface into an invoice surface) -- this is the flow-passing proof
+// that the graph composes flows, not a launcher.
+func NewNavEdge(from, to string, paramBindings map[string]string, trigger string) *experiencev1.NavEdge {
+	return &experiencev1.NavEdge{
+		FromSurfaceId: from,
+		ToSurfaceId:   to,
+		ParamBindings: paramBindings,
+		Trigger:       trigger,
+	}
+}
+
+// WithNavGraph sets the spec's NavGraph: a landing surface + its slots. Compose
+// with WithNavEdge to add typed edges after the slots are placed.
+func WithNavGraph(landingSurfaceID string, slots ...*experiencev1.NavSlot) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) {
+		if s.NavGraph == nil {
+			s.NavGraph = &experiencev1.NavGraph{}
+		}
+		s.NavGraph.LandingSurfaceId = landingSurfaceID
+		s.NavGraph.Slots = append(s.NavGraph.Slots, slots...)
+	}
+}
+
+// WithNavEdge appends a typed edge to the spec's NavGraph. Compose it after
+// WithNavGraph so the graph exists; calling it alone lazily creates the graph
+// (so an edge-only test can still build a graph with no landing/slots, e.g. to
+// prove an edge whose `to` is not in any slot fails coherence).
+func WithNavEdge(edge *experiencev1.NavEdge) SpecOpt {
+	return func(s *experiencev1.ExperienceSpec) {
+		if s.NavGraph == nil {
+			s.NavGraph = &experiencev1.NavGraph{}
+		}
+		s.NavGraph.Edges = append(s.NavGraph.Edges, edge)
+	}
+}
+
+// NewDeepLink builds a DeepLinkSpec: the url scheme + route templates a store
+// binary commits to (these can't change post-submit).
+func NewDeepLink(urlScheme string, routeTemplates ...string) *experiencev1.DeepLinkSpec {
+	return &experiencev1.DeepLinkSpec{
+		UrlScheme:      urlScheme,
+		RouteTemplates: routeTemplates,
+	}
+}
+
 // NewSpec returns a valid, marshalable ExperienceSpec with sane defaults,
 // then applies the supplied options in order. Each call returns a fresh,
 // independent (non-aliased) struct.
