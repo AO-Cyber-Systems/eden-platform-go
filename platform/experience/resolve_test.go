@@ -87,7 +87,12 @@ func TestResolve_FiltersUngrantedIntoLockedSurfaces(t *testing.T) {
 // The resolver stamps a ResolutionContext with the tuple's tenant/org + the
 // configured resolver version + resolved_at.
 func TestResolve_StampsResolutionContext(t *testing.T) {
-	spec := fixtures.NewSpec(fixtures.WithReferencedSurfaces("invoices"))
+	// Spec + tuple share scope (chokepoint passes); the test asserts the STAMP.
+	spec := fixtures.NewSpec(
+		fixtures.WithReferencedSurfaces("invoices"),
+		fixtures.WithTenant("tenant-stamp"),
+		fixtures.WithOrg("org-stamp"),
+	)
 	tuple := fixtures.NewTuple(
 		fixtures.WithResolutionTuple("role-tech", "ent-pro", "form-factor-pos", "tenant-stamp", "org-stamp"),
 		fixtures.WithGrantedEntitlements("invoices"),
@@ -167,25 +172,39 @@ func TestContentHash_DeterministicForIdenticalInputs(t *testing.T) {
 // org -- changes the content hash. This is the preimage proof: distinct tuples
 // MUST collide-freely map to distinct hashes.
 func TestContentHash_EveryTupleAxisChangesHash(t *testing.T) {
+	// One resolved spec (scope-aligned so the chokepoint passes); the preimage
+	// proof varies the TUPLE passed to ContentHash, holding the resolved spec
+	// fixed -- so any hash change is attributable solely to a tuple axis.
 	base := fixtures.NewTuple(
 		fixtures.WithResolutionTuple("role-a", "ent-a", "ff-a", "tenant-a", "org-a"),
 		fixtures.WithGrantedEntitlements("invoices"),
 	)
-	spec := func() specArg { return fixtures.NewSpec(fixtures.WithReferencedSurfaces("invoices")) }
-	baseHash := mustResolveHash(t, spec(), base)
+	spec := fixtures.NewSpec(
+		fixtures.WithReferencedSurfaces("invoices"),
+		fixtures.WithTenant("tenant-a"),
+		fixtures.WithOrg("org-a"),
+	)
+	resolved, err := experience.Resolve(context.Background(), spec, base,
+		experience.ResolverConfig{Version: resolverVersionFixture, ResolvedAt: "2026-06-29T00:00:00Z"})
+	if err != nil {
+		t.Fatalf("Resolve base: %v", err)
+	}
+	baseHash := experience.ContentHash(resolved, base)
 
 	axes := []struct {
 		name  string
 		tuple fixtures.ResolutionTuple
 	}{
-		{"role", withTupleAxis(base, "role-DIFFERENT", "ent-a", "ff-a", "tenant-a", "org-a")},
-		{"entitlements", withTupleAxis(base, "role-a", "ent-DIFFERENT", "ff-a", "tenant-a", "org-a")},
-		{"form_factor", withTupleAxis(base, "role-a", "ent-a", "ff-DIFFERENT", "tenant-a", "org-a")},
-		{"tenant", withTupleAxis(base, "role-a", "ent-a", "ff-a", "tenant-DIFFERENT", "org-a")},
-		{"org", withTupleAxis(base, "role-a", "ent-a", "ff-a", "tenant-a", "org-DIFFERENT")},
+		{"role", tupleAxis("role-DIFFERENT", "ent-a", "ff-a", "tenant-a", "org-a")},
+		{"entitlements", tupleAxis("role-a", "ent-DIFFERENT", "ff-a", "tenant-a", "org-a")},
+		{"form_factor", tupleAxis("role-a", "ent-a", "ff-DIFFERENT", "tenant-a", "org-a")},
+		{"tenant", tupleAxis("role-a", "ent-a", "ff-a", "tenant-DIFFERENT", "org-a")},
+		{"org", tupleAxis("role-a", "ent-a", "ff-a", "tenant-a", "org-DIFFERENT")},
 	}
 	for _, ax := range axes {
-		h := mustResolveHash(t, spec(), ax.tuple)
+		// Same resolved spec, different tuple -> the only thing that can move the
+		// hash is the tuple in the preimage.
+		h := experience.ContentHash(resolved, ax.tuple)
 		if h == baseHash {
 			t.Fatalf("changing tuple axis %q did NOT change the content hash -- axis is missing from the preimage", ax.name)
 		}
@@ -197,7 +216,11 @@ func TestContentHash_EveryTupleAxisChangesHash(t *testing.T) {
 // surfaces + reasons + context), never the granting rule material.
 func TestResolve_EntitlementRulesNotSerializedIntoOutput(t *testing.T) {
 	const secretRule = "RULE-PLAN-PRO-GRANTS-PAYROLL-IF-SEATS-GT-5"
-	spec := fixtures.NewSpec(fixtures.WithReferencedSurfaces("invoices", "payroll"))
+	spec := fixtures.NewSpec(
+		fixtures.WithReferencedSurfaces("invoices", "payroll"),
+		fixtures.WithTenant("tenant-r"),
+		fixtures.WithOrg("org-r"),
+	)
 	tuple := fixtures.NewTuple(
 		fixtures.WithResolutionTuple("role-owner", secretRule, "ff", "tenant-r", "org-r"),
 		fixtures.WithGrantedEntitlements("invoices"),
@@ -308,7 +331,7 @@ func mustResolveHash(t *testing.T, spec specArg, tuple fixtures.ResolutionTuple)
 	return experience.ContentHash(resolved, tuple)
 }
 
-func withTupleAxis(base fixtures.ResolutionTuple, role, ent, ff, tenant, org string) fixtures.ResolutionTuple {
+func tupleAxis(role, ent, ff, tenant, org string) fixtures.ResolutionTuple {
 	return fixtures.NewTuple(
 		fixtures.WithResolutionTuple(role, ent, ff, tenant, org),
 		fixtures.WithGrantedEntitlements("invoices"),
