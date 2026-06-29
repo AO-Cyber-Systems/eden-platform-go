@@ -125,6 +125,63 @@ func WithAgentNode(node *experiencev1.AgentNode) SpecOpt {
 	}
 }
 
+// --- Dispatcher scope fixtures (TRD 140-10) --------------------------------
+//
+// A tool->adapter binding is TENANT-SCOPED: the curated allowlist is not global,
+// it is the set of adapters THIS scope (a resolved ScopedContext.ScopeID) may
+// bind. The stub dispatcher resolves the adapter against the SCOPE's allowlist,
+// so an adapter bound to tenant X's scope is simply absent from tenant Y's set
+// and collapses to the SAME not-allowed outcome as an unknown adapter (no
+// existence oracle -- the wrong-tenant + wrong-adapter cases are byte-identical).
+//
+// These fixtures model a per-scope adapter registry so a test can build the
+// happy path (adapter in this scope's set), the off-allowlist path (adapter in
+// NO scope's set), and the wrong-tenant path (adapter in tenant X's set,
+// dispatched under tenant Y's scope) without hand-built maps.
+
+// ScopedAdapters returns a fresh per-scope adapter registry: scopeID -> the set
+// of adapter ids that scope is authorized to bind. The default registry grants
+// DefaultTenantID the full curated allowlist and WrongTenantID a DISJOINT set,
+// so an adapter bound under DefaultTenantID is absent from WrongTenantID's set
+// (the wrong-tenant non-leak fixture). Returned fresh per call so a test may
+// mutate it safely.
+func ScopedAdapters() map[string]map[string]struct{} {
+	return map[string]map[string]struct{}{
+		DefaultTenantID: {
+			AdapterSearchContacts: {},
+			AdapterCreateInvoice:  {},
+			AdapterSendWebhook:    {},
+		},
+		DefaultOrgID: {
+			AdapterSearchContacts: {},
+			AdapterCreateInvoice:  {},
+		},
+		// WrongTenantID's set is DISJOINT from the default-scope adapters used by
+		// the happy-path tools, so a tool bound to a default-scope adapter is
+		// not-allowed under WrongTenantID -- identical to an unknown adapter.
+		WrongTenantID: {
+			"adapter.unrelated_other_tenant": {},
+		},
+	}
+}
+
+// AllowedAdaptersForScope returns the adapter set a single scope id may bind
+// (the per-scope curated allowlist), or an empty set if the scope grants none.
+func AllowedAdaptersForScope(scopeID string) map[string]struct{} {
+	reg := ScopedAdapters()
+	if set, ok := reg[scopeID]; ok {
+		return set
+	}
+	return map[string]struct{}{}
+}
+
+// NewAgentNodeForTool builds an AgentNode whose tool_ids bind the given tool's
+// adapter_id, under a default coherent io_envelope_schema. The dispatcher checks
+// that the dispatched tool is one the node actually binds.
+func NewAgentNodeForTool(tool *experiencev1.ToolDefinition) *experiencev1.AgentNode {
+	return NewAgentNode("", tool.GetAdapterId())
+}
+
 // --- SigningSpec (AppDefinition) -------------------------------------------
 //
 // SigningSpec = map<platform -> CredentialRef{ref, custody}>. It stores a
