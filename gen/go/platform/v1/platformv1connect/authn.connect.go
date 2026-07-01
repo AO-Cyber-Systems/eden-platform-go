@@ -35,6 +35,9 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
+	// AuthnServiceResolveWorkspacesByEmailProcedure is the fully-qualified name of the AuthnService's
+	// ResolveWorkspacesByEmail RPC.
+	AuthnServiceResolveWorkspacesByEmailProcedure = "/platform.v1.AuthnService/ResolveWorkspacesByEmail"
 	// AuthnServicePasswordLoginStartProcedure is the fully-qualified name of the AuthnService's
 	// PasswordLoginStart RPC.
 	AuthnServicePasswordLoginStartProcedure = "/platform.v1.AuthnService/PasswordLoginStart"
@@ -100,6 +103,12 @@ const (
 
 // AuthnServiceClient is a client for the platform.v1.AuthnService service.
 type AuthnServiceClient interface {
+	// === Pre-login workspace resolution (Obj 16 / LOGIN-01) ===
+	// UNAUTHENTICATED, pre-login. Given an email, returns the workspaces
+	// (tenants) that email's identity may sign in to, so the client can run
+	// the email-first two-step flow. Enumeration-safe: a non-existent email
+	// and a legacy/unlinked email are INDISTINGUISHABLE (both RESOLVE_NONE).
+	ResolveWorkspacesByEmail(context.Context, *connect.Request[v1.ResolveWorkspacesByEmailRequest]) (*connect.Response[v1.ResolveWorkspacesByEmailResponse], error)
 	// === Password flow ===
 	PasswordLoginStart(context.Context, *connect.Request[v1.PasswordLoginStartRequest]) (*connect.Response[v1.PasswordLoginStartResponse], error)
 	PasswordLoginComplete(context.Context, *connect.Request[v1.PasswordLoginCompleteRequest]) (*connect.Response[v1.PasswordLoginCompleteResponse], error)
@@ -141,6 +150,12 @@ func NewAuthnServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 	baseURL = strings.TrimRight(baseURL, "/")
 	authnServiceMethods := v1.File_platform_v1_authn_proto.Services().ByName("AuthnService").Methods()
 	return &authnServiceClient{
+		resolveWorkspacesByEmail: connect.NewClient[v1.ResolveWorkspacesByEmailRequest, v1.ResolveWorkspacesByEmailResponse](
+			httpClient,
+			baseURL+AuthnServiceResolveWorkspacesByEmailProcedure,
+			connect.WithSchema(authnServiceMethods.ByName("ResolveWorkspacesByEmail")),
+			connect.WithClientOptions(opts...),
+		),
 		passwordLoginStart: connect.NewClient[v1.PasswordLoginStartRequest, v1.PasswordLoginStartResponse](
 			httpClient,
 			baseURL+AuthnServicePasswordLoginStartProcedure,
@@ -254,6 +269,7 @@ func NewAuthnServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // authnServiceClient implements AuthnServiceClient.
 type authnServiceClient struct {
+	resolveWorkspacesByEmail        *connect.Client[v1.ResolveWorkspacesByEmailRequest, v1.ResolveWorkspacesByEmailResponse]
 	passwordLoginStart              *connect.Client[v1.PasswordLoginStartRequest, v1.PasswordLoginStartResponse]
 	passwordLoginComplete           *connect.Client[v1.PasswordLoginCompleteRequest, v1.PasswordLoginCompleteResponse]
 	changePassword                  *connect.Client[v1.ChangePasswordRequest, v1.ChangePasswordResponse]
@@ -272,6 +288,11 @@ type authnServiceClient struct {
 	logout                          *connect.Client[v1.AuthnServiceLogoutRequest, v1.AuthnServiceLogoutResponse]
 	listMyCredentials               *connect.Client[v1.ListMyCredentialsRequest, v1.ListMyCredentialsResponse]
 	revokeMyCredential              *connect.Client[v1.RevokeMyCredentialRequest, v1.RevokeMyCredentialResponse]
+}
+
+// ResolveWorkspacesByEmail calls platform.v1.AuthnService.ResolveWorkspacesByEmail.
+func (c *authnServiceClient) ResolveWorkspacesByEmail(ctx context.Context, req *connect.Request[v1.ResolveWorkspacesByEmailRequest]) (*connect.Response[v1.ResolveWorkspacesByEmailResponse], error) {
+	return c.resolveWorkspacesByEmail.CallUnary(ctx, req)
 }
 
 // PasswordLoginStart calls platform.v1.AuthnService.PasswordLoginStart.
@@ -366,6 +387,12 @@ func (c *authnServiceClient) RevokeMyCredential(ctx context.Context, req *connec
 
 // AuthnServiceHandler is an implementation of the platform.v1.AuthnService service.
 type AuthnServiceHandler interface {
+	// === Pre-login workspace resolution (Obj 16 / LOGIN-01) ===
+	// UNAUTHENTICATED, pre-login. Given an email, returns the workspaces
+	// (tenants) that email's identity may sign in to, so the client can run
+	// the email-first two-step flow. Enumeration-safe: a non-existent email
+	// and a legacy/unlinked email are INDISTINGUISHABLE (both RESOLVE_NONE).
+	ResolveWorkspacesByEmail(context.Context, *connect.Request[v1.ResolveWorkspacesByEmailRequest]) (*connect.Response[v1.ResolveWorkspacesByEmailResponse], error)
 	// === Password flow ===
 	PasswordLoginStart(context.Context, *connect.Request[v1.PasswordLoginStartRequest]) (*connect.Response[v1.PasswordLoginStartResponse], error)
 	PasswordLoginComplete(context.Context, *connect.Request[v1.PasswordLoginCompleteRequest]) (*connect.Response[v1.PasswordLoginCompleteResponse], error)
@@ -403,6 +430,12 @@ type AuthnServiceHandler interface {
 // and JSON codecs. They also support gzip compression.
 func NewAuthnServiceHandler(svc AuthnServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
 	authnServiceMethods := v1.File_platform_v1_authn_proto.Services().ByName("AuthnService").Methods()
+	authnServiceResolveWorkspacesByEmailHandler := connect.NewUnaryHandler(
+		AuthnServiceResolveWorkspacesByEmailProcedure,
+		svc.ResolveWorkspacesByEmail,
+		connect.WithSchema(authnServiceMethods.ByName("ResolveWorkspacesByEmail")),
+		connect.WithHandlerOptions(opts...),
+	)
 	authnServicePasswordLoginStartHandler := connect.NewUnaryHandler(
 		AuthnServicePasswordLoginStartProcedure,
 		svc.PasswordLoginStart,
@@ -513,6 +546,8 @@ func NewAuthnServiceHandler(svc AuthnServiceHandler, opts ...connect.HandlerOpti
 	)
 	return "/platform.v1.AuthnService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case AuthnServiceResolveWorkspacesByEmailProcedure:
+			authnServiceResolveWorkspacesByEmailHandler.ServeHTTP(w, r)
 		case AuthnServicePasswordLoginStartProcedure:
 			authnServicePasswordLoginStartHandler.ServeHTTP(w, r)
 		case AuthnServicePasswordLoginCompleteProcedure:
@@ -557,6 +592,10 @@ func NewAuthnServiceHandler(svc AuthnServiceHandler, opts ...connect.HandlerOpti
 
 // UnimplementedAuthnServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedAuthnServiceHandler struct{}
+
+func (UnimplementedAuthnServiceHandler) ResolveWorkspacesByEmail(context.Context, *connect.Request[v1.ResolveWorkspacesByEmailRequest]) (*connect.Response[v1.ResolveWorkspacesByEmailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AuthnService.ResolveWorkspacesByEmail is not implemented"))
+}
 
 func (UnimplementedAuthnServiceHandler) PasswordLoginStart(context.Context, *connect.Request[v1.PasswordLoginStartRequest]) (*connect.Response[v1.PasswordLoginStartResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AuthnService.PasswordLoginStart is not implemented"))
