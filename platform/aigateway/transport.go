@@ -15,6 +15,14 @@ import (
 // Large error payloads are useful for debugging but unbounded reads are not.
 const errorBodyLimit = 8 * 1024
 
+// extraHeaders is a private interface implemented by request types that carry
+// per-request HTTP headers (e.g. ChatRequest, GuardrailsCheckRequest). The
+// headers are applied after Content-Type and Authorization on every attempt.
+// Ranging over a nil map is safe (zero iterations).
+type extraHeaders interface {
+	extraHeaderMap() map[string]string
+}
+
 // doJSON marshals body to JSON, POSTs it to path under the configured base
 // URL, retries transient failures (HTTP 429 / 5xx) up to cfg.MaxRetries with
 // exponential backoff, and decodes a successful response into out (which may
@@ -22,6 +30,9 @@ const errorBodyLimit = 8 * 1024
 //
 // Authentication: sets Authorization: Bearer <APIKey> when APIKey is
 // non-empty. The gateway expects this header on every endpoint.
+//
+// Per-request headers: if body implements the extraHeaders interface, those
+// headers are applied after Content-Type and Authorization on every attempt.
 //
 // Error mapping:
 //
@@ -40,7 +51,15 @@ func (c *Client) doJSON(ctx context.Context, method, path string, body any, out 
 		}
 	}
 
-	resp, err := c.do(ctx, method, path, "application/json", bytes.NewReader(encoded), encoded)
+	// Extract per-request extra headers from the body, if it carries them.
+	// Types that do not implement extraHeaders contribute a nil map, which is
+	// safe to range over (zero iterations — no behavior change).
+	var extra map[string]string
+	if h, ok := body.(extraHeaders); ok {
+		extra = h.extraHeaderMap()
+	}
+
+	resp, err := c.do(ctx, method, path, "application/json", bytes.NewReader(encoded), encoded, extra)
 	if err != nil {
 		return err
 	}
@@ -71,7 +90,7 @@ func (c *Client) doMultipart(ctx context.Context, path string, build func(w *mul
 		return fmt.Errorf("aigateway: close multipart writer: %w", err)
 	}
 	bodyBytes := buf.Bytes()
-	resp, err := c.do(ctx, http.MethodPost, path, mw.FormDataContentType(), bytes.NewReader(bodyBytes), bodyBytes)
+	resp, err := c.do(ctx, http.MethodPost, path, mw.FormDataContentType(), bytes.NewReader(bodyBytes), bodyBytes, nil)
 	if err != nil {
 		return err
 	}
@@ -90,7 +109,9 @@ func (c *Client) doMultipart(ctx context.Context, path string, build func(w *mul
 // do executes the HTTP request with retry. body is the io.Reader used for
 // the first attempt; bodyBytes is the buffered copy used to rebuild the body
 // on each retry (ReadSeeker is awkward when the caller passed bytes.Reader).
-func (c *Client) do(ctx context.Context, method, path, contentType string, _ io.Reader, bodyBytes []byte) (*http.Response, error) {
+// extra contains per-request HTTP headers applied after Content-Type and
+// Authorization on every attempt; nil is safe (zero iterations).
+func (c *Client) do(ctx context.Context, method, path, contentType string, _ io.Reader, bodyBytes []byte, extra map[string]string) (*http.Response, error) {
 	if !c.IsConfigured() {
 		return nil, ErrNotConfigured
 	}
@@ -124,6 +145,13 @@ func (c *Client) do(ctx context.Context, method, path, contentType string, _ io.
 		}
 		if c.cfg.APIKey != "" {
 			req.Header.Set("Authorization", "Bearer "+c.cfg.APIKey)
+		}
+		// Apply per-request extra headers (e.g. X-Household-ID, X-Member-ID,
+		// X-Child-Mode) AFTER Content-Type and Authorization on every attempt,
+		// so retried requests still carry the X-* headers. Ranging over a nil
+		// map is safe (zero iterations — backward-compatible).
+		for k, v := range extra {
+			req.Header.Set(k, v)
 		}
 
 		resp, err := c.http.Do(req)
