@@ -54,6 +54,16 @@ type Claims struct {
 	HouseholdID string `json:"hid,omitempty"`
 	ChildID     string `json:"child_id,omitempty"`
 	ChildMode   bool   `json:"child_mode,omitempty"`
+
+	// Entitlements (`ent`) carries the plan/entitlement scope resolved at
+	// issuance by the token minter (AOID under AOFamily Path B). Wire-identical
+	// to AOID's `ent` tag so household-product backends unmarshal it directly
+	// via idt.Claims(&claims) with no per-backend decode change — the same
+	// capture-by-tag mechanism that already picks up hid/child_mode. omitempty
+	// keeps B2B/tnt-only tokens byte-compatible. eden is a passive carrier: the
+	// plan→entitlement policy lives in the issuing product's billing service,
+	// never here (see HasEntitlement / RequirePlan in entitlements.go).
+	Entitlements []string `json:"ent,omitempty"`
 }
 
 // HasScope returns true if the token's scope list contains the given scope.
