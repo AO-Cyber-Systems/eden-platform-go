@@ -20,6 +20,13 @@ option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/
 // header. The client calls BeginStepUp(stepup_token), completes the
 // challenge, calls FinishStepUp, then retries the original RPC.
 service AuthnService {
+  // === Pre-login workspace resolution (Obj 16 / LOGIN-01) ===
+  // UNAUTHENTICATED, pre-login. Given an email, returns the workspaces
+  // (tenants) that email's identity may sign in to, so the client can run
+  // the email-first two-step flow. Enumeration-safe: a non-existent email
+  // and a legacy/unlinked email are INDISTINGUISHABLE (both RESOLVE_NONE).
+  rpc ResolveWorkspacesByEmail(ResolveWorkspacesByEmailRequest) returns (ResolveWorkspacesByEmailResponse);
+
   // === Password flow ===
   rpc PasswordLoginStart(PasswordLoginStartRequest) returns (PasswordLoginStartResponse);
   rpc PasswordLoginComplete(PasswordLoginCompleteRequest) returns (PasswordLoginCompleteResponse);
@@ -90,6 +97,29 @@ message SessionSummary {
   google.protobuf.Timestamp last_active_at = 7;
   google.protobuf.Timestamp expires_at = 8;
   bool is_current = 9;
+}
+
+// ===== Pre-login workspace resolution (Obj 16) =====
+
+message ResolveWorkspacesByEmailRequest {
+  string email = 1;
+}
+
+message ResolveWorkspace {
+  string tenant_id = 1;
+  string display_name = 2;
+}
+
+enum ResolveStatus {
+  RESOLVE_STATUS_UNSPECIFIED = 0;
+  RESOLVE_STATUS_ONE = 1;
+  RESOLVE_STATUS_MANY = 2;
+  RESOLVE_STATUS_NONE = 3;
+}
+
+message ResolveWorkspacesByEmailResponse {
+  ResolveStatus status = 1;
+  repeated ResolveWorkspace workspaces = 2;
 }
 
 // ===== Password flow =====
