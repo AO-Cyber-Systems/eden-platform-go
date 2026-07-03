@@ -57,6 +57,12 @@ const (
 	// AccountSelfServiceRevokeMyApiKeyProcedure is the fully-qualified name of the AccountSelfService's
 	// RevokeMyApiKey RPC.
 	AccountSelfServiceRevokeMyApiKeyProcedure = "/platform.v1.AccountSelfService/RevokeMyApiKey"
+	// AccountSelfServiceListMyIdPLinksProcedure is the fully-qualified name of the AccountSelfService's
+	// ListMyIdPLinks RPC.
+	AccountSelfServiceListMyIdPLinksProcedure = "/platform.v1.AccountSelfService/ListMyIdPLinks"
+	// AccountSelfServiceUnlinkMyIdPProcedure is the fully-qualified name of the AccountSelfService's
+	// UnlinkMyIdP RPC.
+	AccountSelfServiceUnlinkMyIdPProcedure = "/platform.v1.AccountSelfService/UnlinkMyIdP"
 )
 
 // AccountSelfServiceClient is a client for the platform.v1.AccountSelfService service.
@@ -82,6 +88,11 @@ type AccountSelfServiceClient interface {
 	// MGMT-04 — API key listing + self-revoke
 	ListMyApiKeys(context.Context, *connect.Request[v1.AccountSelfServiceListMyApiKeysRequest]) (*connect.Response[v1.ListMyApiKeysResponse], error)
 	RevokeMyApiKey(context.Context, *connect.Request[v1.AccountSelfServiceRevokeMyApiKeyRequest]) (*connect.Response[v1.AccountSelfServiceRevokeMyApiKeyResponse], error)
+	// MGMT-05 — Linked IdP listing + self-unlink (Obj 14 GID-08). The caller's
+	// identity is resolved from the session; UnlinkMyIdP refuses to remove the
+	// last remaining link (CodeFailedPrecondition) to prevent login lockout.
+	ListMyIdPLinks(context.Context, *connect.Request[v1.AccountSelfServiceListMyIdPLinksRequest]) (*connect.Response[v1.ListMyIdPLinksResponse], error)
+	UnlinkMyIdP(context.Context, *connect.Request[v1.AccountSelfServiceUnlinkMyIdPRequest]) (*connect.Response[v1.AccountSelfServiceUnlinkMyIdPResponse], error)
 }
 
 // NewAccountSelfServiceClient constructs a client for the platform.v1.AccountSelfService service.
@@ -143,6 +154,18 @@ func NewAccountSelfServiceClient(httpClient connect.HTTPClient, baseURL string, 
 			connect.WithSchema(accountSelfServiceMethods.ByName("RevokeMyApiKey")),
 			connect.WithClientOptions(opts...),
 		),
+		listMyIdPLinks: connect.NewClient[v1.AccountSelfServiceListMyIdPLinksRequest, v1.ListMyIdPLinksResponse](
+			httpClient,
+			baseURL+AccountSelfServiceListMyIdPLinksProcedure,
+			connect.WithSchema(accountSelfServiceMethods.ByName("ListMyIdPLinks")),
+			connect.WithClientOptions(opts...),
+		),
+		unlinkMyIdP: connect.NewClient[v1.AccountSelfServiceUnlinkMyIdPRequest, v1.AccountSelfServiceUnlinkMyIdPResponse](
+			httpClient,
+			baseURL+AccountSelfServiceUnlinkMyIdPProcedure,
+			connect.WithSchema(accountSelfServiceMethods.ByName("UnlinkMyIdP")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -156,6 +179,8 @@ type accountSelfServiceClient struct {
 	revokeMyOAuthGrant *connect.Client[v1.AccountSelfServiceRevokeMyOAuthGrantRequest, v1.AccountSelfServiceRevokeMyOAuthGrantResponse]
 	listMyApiKeys      *connect.Client[v1.AccountSelfServiceListMyApiKeysRequest, v1.ListMyApiKeysResponse]
 	revokeMyApiKey     *connect.Client[v1.AccountSelfServiceRevokeMyApiKeyRequest, v1.AccountSelfServiceRevokeMyApiKeyResponse]
+	listMyIdPLinks     *connect.Client[v1.AccountSelfServiceListMyIdPLinksRequest, v1.ListMyIdPLinksResponse]
+	unlinkMyIdP        *connect.Client[v1.AccountSelfServiceUnlinkMyIdPRequest, v1.AccountSelfServiceUnlinkMyIdPResponse]
 }
 
 // GetMyProfile calls platform.v1.AccountSelfService.GetMyProfile.
@@ -198,6 +223,16 @@ func (c *accountSelfServiceClient) RevokeMyApiKey(ctx context.Context, req *conn
 	return c.revokeMyApiKey.CallUnary(ctx, req)
 }
 
+// ListMyIdPLinks calls platform.v1.AccountSelfService.ListMyIdPLinks.
+func (c *accountSelfServiceClient) ListMyIdPLinks(ctx context.Context, req *connect.Request[v1.AccountSelfServiceListMyIdPLinksRequest]) (*connect.Response[v1.ListMyIdPLinksResponse], error) {
+	return c.listMyIdPLinks.CallUnary(ctx, req)
+}
+
+// UnlinkMyIdP calls platform.v1.AccountSelfService.UnlinkMyIdP.
+func (c *accountSelfServiceClient) UnlinkMyIdP(ctx context.Context, req *connect.Request[v1.AccountSelfServiceUnlinkMyIdPRequest]) (*connect.Response[v1.AccountSelfServiceUnlinkMyIdPResponse], error) {
+	return c.unlinkMyIdP.CallUnary(ctx, req)
+}
+
 // AccountSelfServiceHandler is an implementation of the platform.v1.AccountSelfService service.
 type AccountSelfServiceHandler interface {
 	// MGMT-01 — Profile management. Both Get and Update return MyProfile (the
@@ -221,6 +256,11 @@ type AccountSelfServiceHandler interface {
 	// MGMT-04 — API key listing + self-revoke
 	ListMyApiKeys(context.Context, *connect.Request[v1.AccountSelfServiceListMyApiKeysRequest]) (*connect.Response[v1.ListMyApiKeysResponse], error)
 	RevokeMyApiKey(context.Context, *connect.Request[v1.AccountSelfServiceRevokeMyApiKeyRequest]) (*connect.Response[v1.AccountSelfServiceRevokeMyApiKeyResponse], error)
+	// MGMT-05 — Linked IdP listing + self-unlink (Obj 14 GID-08). The caller's
+	// identity is resolved from the session; UnlinkMyIdP refuses to remove the
+	// last remaining link (CodeFailedPrecondition) to prevent login lockout.
+	ListMyIdPLinks(context.Context, *connect.Request[v1.AccountSelfServiceListMyIdPLinksRequest]) (*connect.Response[v1.ListMyIdPLinksResponse], error)
+	UnlinkMyIdP(context.Context, *connect.Request[v1.AccountSelfServiceUnlinkMyIdPRequest]) (*connect.Response[v1.AccountSelfServiceUnlinkMyIdPResponse], error)
 }
 
 // NewAccountSelfServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -278,6 +318,18 @@ func NewAccountSelfServiceHandler(svc AccountSelfServiceHandler, opts ...connect
 		connect.WithSchema(accountSelfServiceMethods.ByName("RevokeMyApiKey")),
 		connect.WithHandlerOptions(opts...),
 	)
+	accountSelfServiceListMyIdPLinksHandler := connect.NewUnaryHandler(
+		AccountSelfServiceListMyIdPLinksProcedure,
+		svc.ListMyIdPLinks,
+		connect.WithSchema(accountSelfServiceMethods.ByName("ListMyIdPLinks")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountSelfServiceUnlinkMyIdPHandler := connect.NewUnaryHandler(
+		AccountSelfServiceUnlinkMyIdPProcedure,
+		svc.UnlinkMyIdP,
+		connect.WithSchema(accountSelfServiceMethods.ByName("UnlinkMyIdP")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/platform.v1.AccountSelfService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AccountSelfServiceGetMyProfileProcedure:
@@ -296,6 +348,10 @@ func NewAccountSelfServiceHandler(svc AccountSelfServiceHandler, opts ...connect
 			accountSelfServiceListMyApiKeysHandler.ServeHTTP(w, r)
 		case AccountSelfServiceRevokeMyApiKeyProcedure:
 			accountSelfServiceRevokeMyApiKeyHandler.ServeHTTP(w, r)
+		case AccountSelfServiceListMyIdPLinksProcedure:
+			accountSelfServiceListMyIdPLinksHandler.ServeHTTP(w, r)
+		case AccountSelfServiceUnlinkMyIdPProcedure:
+			accountSelfServiceUnlinkMyIdPHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -335,4 +391,12 @@ func (UnimplementedAccountSelfServiceHandler) ListMyApiKeys(context.Context, *co
 
 func (UnimplementedAccountSelfServiceHandler) RevokeMyApiKey(context.Context, *connect.Request[v1.AccountSelfServiceRevokeMyApiKeyRequest]) (*connect.Response[v1.AccountSelfServiceRevokeMyApiKeyResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountSelfService.RevokeMyApiKey is not implemented"))
+}
+
+func (UnimplementedAccountSelfServiceHandler) ListMyIdPLinks(context.Context, *connect.Request[v1.AccountSelfServiceListMyIdPLinksRequest]) (*connect.Response[v1.ListMyIdPLinksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountSelfService.ListMyIdPLinks is not implemented"))
+}
+
+func (UnimplementedAccountSelfServiceHandler) UnlinkMyIdP(context.Context, *connect.Request[v1.AccountSelfServiceUnlinkMyIdPRequest]) (*connect.Response[v1.AccountSelfServiceUnlinkMyIdPResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountSelfService.UnlinkMyIdP is not implemented"))
 }

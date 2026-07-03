@@ -14,3 +14,12 @@ plugins:
     out: ../eden-platform-api-dart/lib/src/gen
     include_wkt: true
     include_imports: true
+  - remote: buf.build/community/pseudomuto-doc
+    out: docs/api
+    opt:
+      - markdown,api.md
+  # Structured JSON drives the eden-docs Swagger-style /api/ explorer.
+  - remote: buf.build/community/pseudomuto-doc
+    out: docs/api
+    opt:
+      - json,api.json

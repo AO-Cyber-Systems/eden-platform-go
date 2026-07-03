@@ -81,6 +81,12 @@ const (
 	// FederationAdminServiceRegisterDownstreamClientProcedure is the fully-qualified name of the
 	// FederationAdminService's RegisterDownstreamClient RPC.
 	FederationAdminServiceRegisterDownstreamClientProcedure = "/platform.v1.FederationAdminService/RegisterDownstreamClient"
+	// FederationAdminServiceAddClientIdPOptionProcedure is the fully-qualified name of the
+	// FederationAdminService's AddClientIdPOption RPC.
+	FederationAdminServiceAddClientIdPOptionProcedure = "/platform.v1.FederationAdminService/AddClientIdPOption"
+	// FederationAdminServiceRemoveClientIdPOptionProcedure is the fully-qualified name of the
+	// FederationAdminService's RemoveClientIdPOption RPC.
+	FederationAdminServiceRemoveClientIdPOptionProcedure = "/platform.v1.FederationAdminService/RemoveClientIdPOption"
 )
 
 // FederationAdminServiceClient is a client for the platform.v1.FederationAdminService service.
@@ -146,6 +152,15 @@ type FederationAdminServiceClient interface {
 	// UIs that need finer control should call OAuthAdminService.CreateClient
 	// directly instead.
 	RegisterDownstreamClient(context.Context, *connect.Request[v1.FederationAdminServiceRegisterDownstreamClientRequest]) (*connect.Response[v1.FederationAdminServiceRegisterDownstreamClientResponse], error)
+	// AddClientIdPOption enables an (OAuth client, external IdP) pairing so the
+	// IdP is offered in that client's /authorize IdP picker. Idempotent on the
+	// (client_id, idp_id) pair. The response carries the resulting option with
+	// enabled = true.
+	AddClientIdPOption(context.Context, *connect.Request[v1.FederationAdminServiceAddClientIdPOptionRequest]) (*connect.Response[v1.FederationAdminServiceAddClientIdPOptionResponse], error)
+	// RemoveClientIdPOption DISABLES (enabled = false — it does NOT delete the
+	// row, preserving the admin audit trail) an (OAuth client, external IdP)
+	// pairing. The response carries the option with enabled = false.
+	RemoveClientIdPOption(context.Context, *connect.Request[v1.FederationAdminServiceRemoveClientIdPOptionRequest]) (*connect.Response[v1.FederationAdminServiceRemoveClientIdPOptionResponse], error)
 }
 
 // NewFederationAdminServiceClient constructs a client for the platform.v1.FederationAdminService
@@ -255,6 +270,18 @@ func NewFederationAdminServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(federationAdminServiceMethods.ByName("RegisterDownstreamClient")),
 			connect.WithClientOptions(opts...),
 		),
+		addClientIdPOption: connect.NewClient[v1.FederationAdminServiceAddClientIdPOptionRequest, v1.FederationAdminServiceAddClientIdPOptionResponse](
+			httpClient,
+			baseURL+FederationAdminServiceAddClientIdPOptionProcedure,
+			connect.WithSchema(federationAdminServiceMethods.ByName("AddClientIdPOption")),
+			connect.WithClientOptions(opts...),
+		),
+		removeClientIdPOption: connect.NewClient[v1.FederationAdminServiceRemoveClientIdPOptionRequest, v1.FederationAdminServiceRemoveClientIdPOptionResponse](
+			httpClient,
+			baseURL+FederationAdminServiceRemoveClientIdPOptionProcedure,
+			connect.WithSchema(federationAdminServiceMethods.ByName("RemoveClientIdPOption")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -276,6 +303,8 @@ type federationAdminServiceClient struct {
 	listDownstreamSPs        *connect.Client[v1.FederationAdminServiceListDownstreamSPsRequest, v1.FederationAdminServiceListDownstreamSPsResponse]
 	deleteDownstreamSP       *connect.Client[v1.FederationAdminServiceDeleteDownstreamSPRequest, v1.FederationAdminServiceDeleteDownstreamSPResponse]
 	registerDownstreamClient *connect.Client[v1.FederationAdminServiceRegisterDownstreamClientRequest, v1.FederationAdminServiceRegisterDownstreamClientResponse]
+	addClientIdPOption       *connect.Client[v1.FederationAdminServiceAddClientIdPOptionRequest, v1.FederationAdminServiceAddClientIdPOptionResponse]
+	removeClientIdPOption    *connect.Client[v1.FederationAdminServiceRemoveClientIdPOptionRequest, v1.FederationAdminServiceRemoveClientIdPOptionResponse]
 }
 
 // CreateExternalIdP calls platform.v1.FederationAdminService.CreateExternalIdP.
@@ -358,6 +387,16 @@ func (c *federationAdminServiceClient) RegisterDownstreamClient(ctx context.Cont
 	return c.registerDownstreamClient.CallUnary(ctx, req)
 }
 
+// AddClientIdPOption calls platform.v1.FederationAdminService.AddClientIdPOption.
+func (c *federationAdminServiceClient) AddClientIdPOption(ctx context.Context, req *connect.Request[v1.FederationAdminServiceAddClientIdPOptionRequest]) (*connect.Response[v1.FederationAdminServiceAddClientIdPOptionResponse], error) {
+	return c.addClientIdPOption.CallUnary(ctx, req)
+}
+
+// RemoveClientIdPOption calls platform.v1.FederationAdminService.RemoveClientIdPOption.
+func (c *federationAdminServiceClient) RemoveClientIdPOption(ctx context.Context, req *connect.Request[v1.FederationAdminServiceRemoveClientIdPOptionRequest]) (*connect.Response[v1.FederationAdminServiceRemoveClientIdPOptionResponse], error) {
+	return c.removeClientIdPOption.CallUnary(ctx, req)
+}
+
 // FederationAdminServiceHandler is an implementation of the platform.v1.FederationAdminService
 // service.
 type FederationAdminServiceHandler interface {
@@ -422,6 +461,15 @@ type FederationAdminServiceHandler interface {
 	// UIs that need finer control should call OAuthAdminService.CreateClient
 	// directly instead.
 	RegisterDownstreamClient(context.Context, *connect.Request[v1.FederationAdminServiceRegisterDownstreamClientRequest]) (*connect.Response[v1.FederationAdminServiceRegisterDownstreamClientResponse], error)
+	// AddClientIdPOption enables an (OAuth client, external IdP) pairing so the
+	// IdP is offered in that client's /authorize IdP picker. Idempotent on the
+	// (client_id, idp_id) pair. The response carries the resulting option with
+	// enabled = true.
+	AddClientIdPOption(context.Context, *connect.Request[v1.FederationAdminServiceAddClientIdPOptionRequest]) (*connect.Response[v1.FederationAdminServiceAddClientIdPOptionResponse], error)
+	// RemoveClientIdPOption DISABLES (enabled = false — it does NOT delete the
+	// row, preserving the admin audit trail) an (OAuth client, external IdP)
+	// pairing. The response carries the option with enabled = false.
+	RemoveClientIdPOption(context.Context, *connect.Request[v1.FederationAdminServiceRemoveClientIdPOptionRequest]) (*connect.Response[v1.FederationAdminServiceRemoveClientIdPOptionResponse], error)
 }
 
 // NewFederationAdminServiceHandler builds an HTTP handler from the service implementation. It
@@ -527,6 +575,18 @@ func NewFederationAdminServiceHandler(svc FederationAdminServiceHandler, opts ..
 		connect.WithSchema(federationAdminServiceMethods.ByName("RegisterDownstreamClient")),
 		connect.WithHandlerOptions(opts...),
 	)
+	federationAdminServiceAddClientIdPOptionHandler := connect.NewUnaryHandler(
+		FederationAdminServiceAddClientIdPOptionProcedure,
+		svc.AddClientIdPOption,
+		connect.WithSchema(federationAdminServiceMethods.ByName("AddClientIdPOption")),
+		connect.WithHandlerOptions(opts...),
+	)
+	federationAdminServiceRemoveClientIdPOptionHandler := connect.NewUnaryHandler(
+		FederationAdminServiceRemoveClientIdPOptionProcedure,
+		svc.RemoveClientIdPOption,
+		connect.WithSchema(federationAdminServiceMethods.ByName("RemoveClientIdPOption")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/platform.v1.FederationAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case FederationAdminServiceCreateExternalIdPProcedure:
@@ -561,6 +621,10 @@ func NewFederationAdminServiceHandler(svc FederationAdminServiceHandler, opts ..
 			federationAdminServiceDeleteDownstreamSPHandler.ServeHTTP(w, r)
 		case FederationAdminServiceRegisterDownstreamClientProcedure:
 			federationAdminServiceRegisterDownstreamClientHandler.ServeHTTP(w, r)
+		case FederationAdminServiceAddClientIdPOptionProcedure:
+			federationAdminServiceAddClientIdPOptionHandler.ServeHTTP(w, r)
+		case FederationAdminServiceRemoveClientIdPOptionProcedure:
+			federationAdminServiceRemoveClientIdPOptionHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -632,4 +696,12 @@ func (UnimplementedFederationAdminServiceHandler) DeleteDownstreamSP(context.Con
 
 func (UnimplementedFederationAdminServiceHandler) RegisterDownstreamClient(context.Context, *connect.Request[v1.FederationAdminServiceRegisterDownstreamClientRequest]) (*connect.Response[v1.FederationAdminServiceRegisterDownstreamClientResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.FederationAdminService.RegisterDownstreamClient is not implemented"))
+}
+
+func (UnimplementedFederationAdminServiceHandler) AddClientIdPOption(context.Context, *connect.Request[v1.FederationAdminServiceAddClientIdPOptionRequest]) (*connect.Response[v1.FederationAdminServiceAddClientIdPOptionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.FederationAdminService.AddClientIdPOption is not implemented"))
+}
+
+func (UnimplementedFederationAdminServiceHandler) RemoveClientIdPOption(context.Context, *connect.Request[v1.FederationAdminServiceRemoveClientIdPOptionRequest]) (*connect.Response[v1.FederationAdminServiceRemoveClientIdPOptionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.FederationAdminService.RemoveClientIdPOption is not implemented"))
 }
