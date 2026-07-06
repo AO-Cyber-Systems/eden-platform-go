@@ -41,6 +41,12 @@ service AccountSelfService {
   // MGMT-04 — API key listing + self-revoke
   rpc ListMyApiKeys(AccountSelfServiceListMyApiKeysRequest) returns (ListMyApiKeysResponse);
   rpc RevokeMyApiKey(AccountSelfServiceRevokeMyApiKeyRequest) returns (AccountSelfServiceRevokeMyApiKeyResponse);
+
+  // MGMT-05 — Linked IdP listing + self-unlink (Obj 14 GID-08). The caller's
+  // identity is resolved from the session; UnlinkMyIdP refuses to remove the
+  // last remaining link (CodeFailedPrecondition) to prevent login lockout.
+  rpc ListMyIdPLinks(AccountSelfServiceListMyIdPLinksRequest) returns (ListMyIdPLinksResponse);
+  rpc UnlinkMyIdP(AccountSelfServiceUnlinkMyIdPRequest) returns (AccountSelfServiceUnlinkMyIdPResponse);
 }
 
 // ===== Data shapes =====
@@ -102,6 +108,19 @@ message ApiKeySummary {
   google.protobuf.Timestamp last_used_at = 7;
 }
 
+// IdPLink is one external-IdP login method linked to the caller's global
+// identity (Obj 14). idp_subject + idp_email are the values the IdP asserted
+// at link time (recorded on the link row, never promoted to the identity).
+// created_at is an RFC3339 string — the link rows are global (no per-tenant
+// timestamptz coercion the portal would need to localize differently).
+message IdPLink {
+  string external_idp_id = 1;
+  string idp_name = 2;
+  string idp_subject = 3;
+  string idp_email = 4;
+  string created_at = 5;
+}
+
 // ===== Request / Response =====
 
 message AccountSelfServiceGetMyProfileRequest {}
@@ -148,3 +167,18 @@ message AccountSelfServiceRevokeMyApiKeyRequest {
 }
 
 message AccountSelfServiceRevokeMyApiKeyResponse {}
+
+message AccountSelfServiceListMyIdPLinksRequest {}
+
+message ListMyIdPLinksResponse {
+  repeated IdPLink links = 1;
+}
+
+message AccountSelfServiceUnlinkMyIdPRequest {
+  string external_idp_id = 1;
+}
+
+message AccountSelfServiceUnlinkMyIdPResponse {
+  // remaining lists the caller's IdP links AFTER the unlink succeeds.
+  repeated IdPLink remaining = 1;
+}

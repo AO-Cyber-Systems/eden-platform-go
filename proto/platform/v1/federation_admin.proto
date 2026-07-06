@@ -116,6 +116,19 @@ service FederationAdminService {
   // UIs that need finer control should call OAuthAdminService.CreateClient
   // directly instead.
   rpc RegisterDownstreamClient(FederationAdminServiceRegisterDownstreamClientRequest) returns (FederationAdminServiceRegisterDownstreamClientResponse);
+
+  // ----- ClientIdPOption (per-client IdP picker — Obj 14 GID-06) -----
+
+  // AddClientIdPOption enables an (OAuth client, external IdP) pairing so the
+  // IdP is offered in that client's /authorize IdP picker. Idempotent on the
+  // (client_id, idp_id) pair. The response carries the resulting option with
+  // enabled = true.
+  rpc AddClientIdPOption(FederationAdminServiceAddClientIdPOptionRequest) returns (FederationAdminServiceAddClientIdPOptionResponse);
+
+  // RemoveClientIdPOption DISABLES (enabled = false — it does NOT delete the
+  // row, preserving the admin audit trail) an (OAuth client, external IdP)
+  // pairing. The response carries the option with enabled = false.
+  rpc RemoveClientIdPOption(FederationAdminServiceRemoveClientIdPOptionRequest) returns (FederationAdminServiceRemoveClientIdPOptionResponse);
 }
 
 // ============================================================================
@@ -437,4 +450,37 @@ message FederationAdminServiceRegisterDownstreamClientResponse {
   // client_secret is the one-time plaintext secret emitted exactly
   // once at creation. The server retains only the bcrypt hash.
   string client_secret = 2;
+}
+
+// ============================================================================
+// ClientIdPOption messages (per-client IdP picker — Obj 14 GID-06)
+// ============================================================================
+
+// ClientIdPOption is the (OAuth client, external IdP) pairing that controls
+// whether a given IdP is offered in a client's /authorize IdP picker.
+// RemoveClientIdPOption returns this with enabled = false (disable, not
+// delete) to preserve the admin audit trail.
+message ClientIdPOption {
+  string id = 1;
+  string client_id = 2;
+  string idp_id = 3;
+  bool enabled = 4;
+}
+
+message FederationAdminServiceAddClientIdPOptionRequest {
+  string client_id = 1;
+  string idp_id = 2;
+}
+
+message FederationAdminServiceAddClientIdPOptionResponse {
+  ClientIdPOption option = 1;
+}
+
+message FederationAdminServiceRemoveClientIdPOptionRequest {
+  string client_id = 1;
+  string idp_id = 2;
+}
+
+message FederationAdminServiceRemoveClientIdPOptionResponse {
+  ClientIdPOption option = 1;
 }

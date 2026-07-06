@@ -447,6 +447,87 @@ func (x *ApiKeySummary) GetLastUsedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+// IdPLink is one external-IdP login method linked to the caller's global
+// identity (Obj 14). idp_subject + idp_email are the values the IdP asserted
+// at link time (recorded on the link row, never promoted to the identity).
+// created_at is an RFC3339 string — the link rows are global (no per-tenant
+// timestamptz coercion the portal would need to localize differently).
+type IdPLink struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExternalIdpId string                 `protobuf:"bytes,1,opt,name=external_idp_id,json=externalIdpId,proto3" json:"external_idp_id,omitempty"`
+	IdpName       string                 `protobuf:"bytes,2,opt,name=idp_name,json=idpName,proto3" json:"idp_name,omitempty"`
+	IdpSubject    string                 `protobuf:"bytes,3,opt,name=idp_subject,json=idpSubject,proto3" json:"idp_subject,omitempty"`
+	IdpEmail      string                 `protobuf:"bytes,4,opt,name=idp_email,json=idpEmail,proto3" json:"idp_email,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IdPLink) Reset() {
+	*x = IdPLink{}
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IdPLink) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IdPLink) ProtoMessage() {}
+
+func (x *IdPLink) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IdPLink.ProtoReflect.Descriptor instead.
+func (*IdPLink) Descriptor() ([]byte, []int) {
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *IdPLink) GetExternalIdpId() string {
+	if x != nil {
+		return x.ExternalIdpId
+	}
+	return ""
+}
+
+func (x *IdPLink) GetIdpName() string {
+	if x != nil {
+		return x.IdpName
+	}
+	return ""
+}
+
+func (x *IdPLink) GetIdpSubject() string {
+	if x != nil {
+		return x.IdpSubject
+	}
+	return ""
+}
+
+func (x *IdPLink) GetIdpEmail() string {
+	if x != nil {
+		return x.IdpEmail
+	}
+	return ""
+}
+
+func (x *IdPLink) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
 type AccountSelfServiceGetMyProfileRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -455,7 +536,7 @@ type AccountSelfServiceGetMyProfileRequest struct {
 
 func (x *AccountSelfServiceGetMyProfileRequest) Reset() {
 	*x = AccountSelfServiceGetMyProfileRequest{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[5]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -467,7 +548,7 @@ func (x *AccountSelfServiceGetMyProfileRequest) String() string {
 func (*AccountSelfServiceGetMyProfileRequest) ProtoMessage() {}
 
 func (x *AccountSelfServiceGetMyProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[5]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -480,7 +561,7 @@ func (x *AccountSelfServiceGetMyProfileRequest) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AccountSelfServiceGetMyProfileRequest.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceGetMyProfileRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{5}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{6}
 }
 
 // PATCH semantics: only set (present) fields are updated.
@@ -495,7 +576,7 @@ type AccountSelfServiceUpdateMyProfileRequest struct {
 
 func (x *AccountSelfServiceUpdateMyProfileRequest) Reset() {
 	*x = AccountSelfServiceUpdateMyProfileRequest{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[6]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -507,7 +588,7 @@ func (x *AccountSelfServiceUpdateMyProfileRequest) String() string {
 func (*AccountSelfServiceUpdateMyProfileRequest) ProtoMessage() {}
 
 func (x *AccountSelfServiceUpdateMyProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[6]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -520,7 +601,7 @@ func (x *AccountSelfServiceUpdateMyProfileRequest) ProtoReflect() protoreflect.M
 
 // Deprecated: Use AccountSelfServiceUpdateMyProfileRequest.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceUpdateMyProfileRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{6}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *AccountSelfServiceUpdateMyProfileRequest) GetDisplayName() string {
@@ -552,7 +633,7 @@ type AccountSelfServiceListMyMFAFactorsRequest struct {
 
 func (x *AccountSelfServiceListMyMFAFactorsRequest) Reset() {
 	*x = AccountSelfServiceListMyMFAFactorsRequest{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[7]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -564,7 +645,7 @@ func (x *AccountSelfServiceListMyMFAFactorsRequest) String() string {
 func (*AccountSelfServiceListMyMFAFactorsRequest) ProtoMessage() {}
 
 func (x *AccountSelfServiceListMyMFAFactorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[7]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -577,7 +658,7 @@ func (x *AccountSelfServiceListMyMFAFactorsRequest) ProtoReflect() protoreflect.
 
 // Deprecated: Use AccountSelfServiceListMyMFAFactorsRequest.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceListMyMFAFactorsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{7}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{8}
 }
 
 type ListMyMFAFactorsResponse struct {
@@ -589,7 +670,7 @@ type ListMyMFAFactorsResponse struct {
 
 func (x *ListMyMFAFactorsResponse) Reset() {
 	*x = ListMyMFAFactorsResponse{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[8]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -601,7 +682,7 @@ func (x *ListMyMFAFactorsResponse) String() string {
 func (*ListMyMFAFactorsResponse) ProtoMessage() {}
 
 func (x *ListMyMFAFactorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[8]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -614,7 +695,7 @@ func (x *ListMyMFAFactorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyMFAFactorsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyMFAFactorsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{8}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ListMyMFAFactorsResponse) GetFactors() []*MFAFactor {
@@ -633,7 +714,7 @@ type AccountSelfServiceRemoveMyMFARequest struct {
 
 func (x *AccountSelfServiceRemoveMyMFARequest) Reset() {
 	*x = AccountSelfServiceRemoveMyMFARequest{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[9]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -645,7 +726,7 @@ func (x *AccountSelfServiceRemoveMyMFARequest) String() string {
 func (*AccountSelfServiceRemoveMyMFARequest) ProtoMessage() {}
 
 func (x *AccountSelfServiceRemoveMyMFARequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[9]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -658,7 +739,7 @@ func (x *AccountSelfServiceRemoveMyMFARequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AccountSelfServiceRemoveMyMFARequest.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceRemoveMyMFARequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{9}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *AccountSelfServiceRemoveMyMFARequest) GetCredentialId() string {
@@ -676,7 +757,7 @@ type AccountSelfServiceRemoveMyMFAResponse struct {
 
 func (x *AccountSelfServiceRemoveMyMFAResponse) Reset() {
 	*x = AccountSelfServiceRemoveMyMFAResponse{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[10]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -688,7 +769,7 @@ func (x *AccountSelfServiceRemoveMyMFAResponse) String() string {
 func (*AccountSelfServiceRemoveMyMFAResponse) ProtoMessage() {}
 
 func (x *AccountSelfServiceRemoveMyMFAResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[10]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -701,7 +782,7 @@ func (x *AccountSelfServiceRemoveMyMFAResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AccountSelfServiceRemoveMyMFAResponse.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceRemoveMyMFAResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{10}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{11}
 }
 
 type AccountSelfServiceListMyOAuthGrantsRequest struct {
@@ -712,7 +793,7 @@ type AccountSelfServiceListMyOAuthGrantsRequest struct {
 
 func (x *AccountSelfServiceListMyOAuthGrantsRequest) Reset() {
 	*x = AccountSelfServiceListMyOAuthGrantsRequest{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[11]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -724,7 +805,7 @@ func (x *AccountSelfServiceListMyOAuthGrantsRequest) String() string {
 func (*AccountSelfServiceListMyOAuthGrantsRequest) ProtoMessage() {}
 
 func (x *AccountSelfServiceListMyOAuthGrantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[11]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -737,7 +818,7 @@ func (x *AccountSelfServiceListMyOAuthGrantsRequest) ProtoReflect() protoreflect
 
 // Deprecated: Use AccountSelfServiceListMyOAuthGrantsRequest.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceListMyOAuthGrantsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{11}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{12}
 }
 
 type ListMyOAuthGrantsResponse struct {
@@ -749,7 +830,7 @@ type ListMyOAuthGrantsResponse struct {
 
 func (x *ListMyOAuthGrantsResponse) Reset() {
 	*x = ListMyOAuthGrantsResponse{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[12]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -761,7 +842,7 @@ func (x *ListMyOAuthGrantsResponse) String() string {
 func (*ListMyOAuthGrantsResponse) ProtoMessage() {}
 
 func (x *ListMyOAuthGrantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[12]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -774,7 +855,7 @@ func (x *ListMyOAuthGrantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyOAuthGrantsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyOAuthGrantsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{12}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListMyOAuthGrantsResponse) GetGrants() []*OAuthGrant {
@@ -793,7 +874,7 @@ type AccountSelfServiceRevokeMyOAuthGrantRequest struct {
 
 func (x *AccountSelfServiceRevokeMyOAuthGrantRequest) Reset() {
 	*x = AccountSelfServiceRevokeMyOAuthGrantRequest{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[13]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -805,7 +886,7 @@ func (x *AccountSelfServiceRevokeMyOAuthGrantRequest) String() string {
 func (*AccountSelfServiceRevokeMyOAuthGrantRequest) ProtoMessage() {}
 
 func (x *AccountSelfServiceRevokeMyOAuthGrantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[13]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -818,7 +899,7 @@ func (x *AccountSelfServiceRevokeMyOAuthGrantRequest) ProtoReflect() protoreflec
 
 // Deprecated: Use AccountSelfServiceRevokeMyOAuthGrantRequest.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceRevokeMyOAuthGrantRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{13}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AccountSelfServiceRevokeMyOAuthGrantRequest) GetClientId() string {
@@ -836,7 +917,7 @@ type AccountSelfServiceRevokeMyOAuthGrantResponse struct {
 
 func (x *AccountSelfServiceRevokeMyOAuthGrantResponse) Reset() {
 	*x = AccountSelfServiceRevokeMyOAuthGrantResponse{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[14]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -848,7 +929,7 @@ func (x *AccountSelfServiceRevokeMyOAuthGrantResponse) String() string {
 func (*AccountSelfServiceRevokeMyOAuthGrantResponse) ProtoMessage() {}
 
 func (x *AccountSelfServiceRevokeMyOAuthGrantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[14]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -861,7 +942,7 @@ func (x *AccountSelfServiceRevokeMyOAuthGrantResponse) ProtoReflect() protorefle
 
 // Deprecated: Use AccountSelfServiceRevokeMyOAuthGrantResponse.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceRevokeMyOAuthGrantResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{14}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{15}
 }
 
 type AccountSelfServiceListMyApiKeysRequest struct {
@@ -872,7 +953,7 @@ type AccountSelfServiceListMyApiKeysRequest struct {
 
 func (x *AccountSelfServiceListMyApiKeysRequest) Reset() {
 	*x = AccountSelfServiceListMyApiKeysRequest{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[15]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -884,7 +965,7 @@ func (x *AccountSelfServiceListMyApiKeysRequest) String() string {
 func (*AccountSelfServiceListMyApiKeysRequest) ProtoMessage() {}
 
 func (x *AccountSelfServiceListMyApiKeysRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[15]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -897,7 +978,7 @@ func (x *AccountSelfServiceListMyApiKeysRequest) ProtoReflect() protoreflect.Mes
 
 // Deprecated: Use AccountSelfServiceListMyApiKeysRequest.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceListMyApiKeysRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{15}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{16}
 }
 
 type ListMyApiKeysResponse struct {
@@ -909,7 +990,7 @@ type ListMyApiKeysResponse struct {
 
 func (x *ListMyApiKeysResponse) Reset() {
 	*x = ListMyApiKeysResponse{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[16]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -921,7 +1002,7 @@ func (x *ListMyApiKeysResponse) String() string {
 func (*ListMyApiKeysResponse) ProtoMessage() {}
 
 func (x *ListMyApiKeysResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[16]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -934,7 +1015,7 @@ func (x *ListMyApiKeysResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyApiKeysResponse.ProtoReflect.Descriptor instead.
 func (*ListMyApiKeysResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{16}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ListMyApiKeysResponse) GetKeys() []*ApiKeySummary {
@@ -953,7 +1034,7 @@ type AccountSelfServiceRevokeMyApiKeyRequest struct {
 
 func (x *AccountSelfServiceRevokeMyApiKeyRequest) Reset() {
 	*x = AccountSelfServiceRevokeMyApiKeyRequest{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[17]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -965,7 +1046,7 @@ func (x *AccountSelfServiceRevokeMyApiKeyRequest) String() string {
 func (*AccountSelfServiceRevokeMyApiKeyRequest) ProtoMessage() {}
 
 func (x *AccountSelfServiceRevokeMyApiKeyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[17]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -978,7 +1059,7 @@ func (x *AccountSelfServiceRevokeMyApiKeyRequest) ProtoReflect() protoreflect.Me
 
 // Deprecated: Use AccountSelfServiceRevokeMyApiKeyRequest.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceRevokeMyApiKeyRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{17}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *AccountSelfServiceRevokeMyApiKeyRequest) GetKeyId() string {
@@ -996,7 +1077,7 @@ type AccountSelfServiceRevokeMyApiKeyResponse struct {
 
 func (x *AccountSelfServiceRevokeMyApiKeyResponse) Reset() {
 	*x = AccountSelfServiceRevokeMyApiKeyResponse{}
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[18]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1008,7 +1089,7 @@ func (x *AccountSelfServiceRevokeMyApiKeyResponse) String() string {
 func (*AccountSelfServiceRevokeMyApiKeyResponse) ProtoMessage() {}
 
 func (x *AccountSelfServiceRevokeMyApiKeyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_account_self_service_proto_msgTypes[18]
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1021,7 +1102,176 @@ func (x *AccountSelfServiceRevokeMyApiKeyResponse) ProtoReflect() protoreflect.M
 
 // Deprecated: Use AccountSelfServiceRevokeMyApiKeyResponse.ProtoReflect.Descriptor instead.
 func (*AccountSelfServiceRevokeMyApiKeyResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{18}
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{19}
+}
+
+type AccountSelfServiceListMyIdPLinksRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AccountSelfServiceListMyIdPLinksRequest) Reset() {
+	*x = AccountSelfServiceListMyIdPLinksRequest{}
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AccountSelfServiceListMyIdPLinksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AccountSelfServiceListMyIdPLinksRequest) ProtoMessage() {}
+
+func (x *AccountSelfServiceListMyIdPLinksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AccountSelfServiceListMyIdPLinksRequest.ProtoReflect.Descriptor instead.
+func (*AccountSelfServiceListMyIdPLinksRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{20}
+}
+
+type ListMyIdPLinksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Links         []*IdPLink             `protobuf:"bytes,1,rep,name=links,proto3" json:"links,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyIdPLinksResponse) Reset() {
+	*x = ListMyIdPLinksResponse{}
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyIdPLinksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyIdPLinksResponse) ProtoMessage() {}
+
+func (x *ListMyIdPLinksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyIdPLinksResponse.ProtoReflect.Descriptor instead.
+func (*ListMyIdPLinksResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListMyIdPLinksResponse) GetLinks() []*IdPLink {
+	if x != nil {
+		return x.Links
+	}
+	return nil
+}
+
+type AccountSelfServiceUnlinkMyIdPRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ExternalIdpId string                 `protobuf:"bytes,1,opt,name=external_idp_id,json=externalIdpId,proto3" json:"external_idp_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AccountSelfServiceUnlinkMyIdPRequest) Reset() {
+	*x = AccountSelfServiceUnlinkMyIdPRequest{}
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AccountSelfServiceUnlinkMyIdPRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AccountSelfServiceUnlinkMyIdPRequest) ProtoMessage() {}
+
+func (x *AccountSelfServiceUnlinkMyIdPRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AccountSelfServiceUnlinkMyIdPRequest.ProtoReflect.Descriptor instead.
+func (*AccountSelfServiceUnlinkMyIdPRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AccountSelfServiceUnlinkMyIdPRequest) GetExternalIdpId() string {
+	if x != nil {
+		return x.ExternalIdpId
+	}
+	return ""
+}
+
+type AccountSelfServiceUnlinkMyIdPResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// remaining lists the caller's IdP links AFTER the unlink succeeds.
+	Remaining     []*IdPLink `protobuf:"bytes,1,rep,name=remaining,proto3" json:"remaining,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AccountSelfServiceUnlinkMyIdPResponse) Reset() {
+	*x = AccountSelfServiceUnlinkMyIdPResponse{}
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AccountSelfServiceUnlinkMyIdPResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AccountSelfServiceUnlinkMyIdPResponse) ProtoMessage() {}
+
+func (x *AccountSelfServiceUnlinkMyIdPResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_account_self_service_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AccountSelfServiceUnlinkMyIdPResponse.ProtoReflect.Descriptor instead.
+func (*AccountSelfServiceUnlinkMyIdPResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_account_self_service_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AccountSelfServiceUnlinkMyIdPResponse) GetRemaining() []*IdPLink {
+	if x != nil {
+		return x.Remaining
+	}
+	return nil
 }
 
 var File_platform_v1_account_self_service_proto protoreflect.FileDescriptor
@@ -1072,7 +1322,15 @@ const file_platform_v1_account_self_service_proto_rawDesc = "" +
 	"\n" +
 	"expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12<\n" +
 	"\flast_used_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
-	"lastUsedAt\"'\n" +
+	"lastUsedAt\"\xa9\x01\n" +
+	"\aIdPLink\x12&\n" +
+	"\x0fexternal_idp_id\x18\x01 \x01(\tR\rexternalIdpId\x12\x19\n" +
+	"\bidp_name\x18\x02 \x01(\tR\aidpName\x12\x1f\n" +
+	"\vidp_subject\x18\x03 \x01(\tR\n" +
+	"idpSubject\x12\x1b\n" +
+	"\tidp_email\x18\x04 \x01(\tR\bidpEmail\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\tR\tcreatedAt\"'\n" +
 	"%AccountSelfServiceGetMyProfileRequest\"\x8e\x02\n" +
 	"(AccountSelfServiceUpdateMyProfileRequest\x12&\n" +
 	"\fdisplay_name\x18\x01 \x01(\tH\x00R\vdisplayName\x88\x01\x01\x12(\n" +
@@ -1098,7 +1356,14 @@ const file_platform_v1_account_self_service_proto_rawDesc = "" +
 	"\x04keys\x18\x01 \x03(\v2\x1a.platform.v1.ApiKeySummaryR\x04keys\"@\n" +
 	"'AccountSelfServiceRevokeMyApiKeyRequest\x12\x15\n" +
 	"\x06key_id\x18\x01 \x01(\tR\x05keyId\"*\n" +
-	"(AccountSelfServiceRevokeMyApiKeyResponse2\xa6\a\n" +
+	"(AccountSelfServiceRevokeMyApiKeyResponse\")\n" +
+	"'AccountSelfServiceListMyIdPLinksRequest\"D\n" +
+	"\x16ListMyIdPLinksResponse\x12*\n" +
+	"\x05links\x18\x01 \x03(\v2\x14.platform.v1.IdPLinkR\x05links\"N\n" +
+	"$AccountSelfServiceUnlinkMyIdPRequest\x12&\n" +
+	"\x0fexternal_idp_id\x18\x01 \x01(\tR\rexternalIdpId\"[\n" +
+	"%AccountSelfServiceUnlinkMyIdPResponse\x122\n" +
+	"\tremaining\x18\x01 \x03(\v2\x14.platform.v1.IdPLinkR\tremaining2\x89\t\n" +
 	"\x12AccountSelfService\x12Z\n" +
 	"\fGetMyProfile\x122.platform.v1.AccountSelfServiceGetMyProfileRequest\x1a\x16.platform.v1.MyProfile\x12`\n" +
 	"\x0fUpdateMyProfile\x125.platform.v1.AccountSelfServiceUpdateMyProfileRequest\x1a\x16.platform.v1.MyProfile\x12q\n" +
@@ -1107,7 +1372,9 @@ const file_platform_v1_account_self_service_proto_rawDesc = "" +
 	"\x11ListMyOAuthGrants\x127.platform.v1.AccountSelfServiceListMyOAuthGrantsRequest\x1a&.platform.v1.ListMyOAuthGrantsResponse\x12\x89\x01\n" +
 	"\x12RevokeMyOAuthGrant\x128.platform.v1.AccountSelfServiceRevokeMyOAuthGrantRequest\x1a9.platform.v1.AccountSelfServiceRevokeMyOAuthGrantResponse\x12h\n" +
 	"\rListMyApiKeys\x123.platform.v1.AccountSelfServiceListMyApiKeysRequest\x1a\".platform.v1.ListMyApiKeysResponse\x12}\n" +
-	"\x0eRevokeMyApiKey\x124.platform.v1.AccountSelfServiceRevokeMyApiKeyRequest\x1a5.platform.v1.AccountSelfServiceRevokeMyApiKeyResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x0eRevokeMyApiKey\x124.platform.v1.AccountSelfServiceRevokeMyApiKeyRequest\x1a5.platform.v1.AccountSelfServiceRevokeMyApiKeyResponse\x12k\n" +
+	"\x0eListMyIdPLinks\x124.platform.v1.AccountSelfServiceListMyIdPLinksRequest\x1a#.platform.v1.ListMyIdPLinksResponse\x12t\n" +
+	"\vUnlinkMyIdP\x121.platform.v1.AccountSelfServiceUnlinkMyIdPRequest\x1a2.platform.v1.AccountSelfServiceUnlinkMyIdPResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_account_self_service_proto_rawDescOnce sync.Once
@@ -1121,64 +1388,75 @@ func file_platform_v1_account_self_service_proto_rawDescGZIP() []byte {
 	return file_platform_v1_account_self_service_proto_rawDescData
 }
 
-var file_platform_v1_account_self_service_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_platform_v1_account_self_service_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_platform_v1_account_self_service_proto_goTypes = []any{
 	(*MyProfile)(nil),                                    // 0: platform.v1.MyProfile
 	(*CommunicationPrefs)(nil),                           // 1: platform.v1.CommunicationPrefs
 	(*MFAFactor)(nil),                                    // 2: platform.v1.MFAFactor
 	(*OAuthGrant)(nil),                                   // 3: platform.v1.OAuthGrant
 	(*ApiKeySummary)(nil),                                // 4: platform.v1.ApiKeySummary
-	(*AccountSelfServiceGetMyProfileRequest)(nil),        // 5: platform.v1.AccountSelfServiceGetMyProfileRequest
-	(*AccountSelfServiceUpdateMyProfileRequest)(nil),     // 6: platform.v1.AccountSelfServiceUpdateMyProfileRequest
-	(*AccountSelfServiceListMyMFAFactorsRequest)(nil),    // 7: platform.v1.AccountSelfServiceListMyMFAFactorsRequest
-	(*ListMyMFAFactorsResponse)(nil),                     // 8: platform.v1.ListMyMFAFactorsResponse
-	(*AccountSelfServiceRemoveMyMFARequest)(nil),         // 9: platform.v1.AccountSelfServiceRemoveMyMFARequest
-	(*AccountSelfServiceRemoveMyMFAResponse)(nil),        // 10: platform.v1.AccountSelfServiceRemoveMyMFAResponse
-	(*AccountSelfServiceListMyOAuthGrantsRequest)(nil),   // 11: platform.v1.AccountSelfServiceListMyOAuthGrantsRequest
-	(*ListMyOAuthGrantsResponse)(nil),                    // 12: platform.v1.ListMyOAuthGrantsResponse
-	(*AccountSelfServiceRevokeMyOAuthGrantRequest)(nil),  // 13: platform.v1.AccountSelfServiceRevokeMyOAuthGrantRequest
-	(*AccountSelfServiceRevokeMyOAuthGrantResponse)(nil), // 14: platform.v1.AccountSelfServiceRevokeMyOAuthGrantResponse
-	(*AccountSelfServiceListMyApiKeysRequest)(nil),       // 15: platform.v1.AccountSelfServiceListMyApiKeysRequest
-	(*ListMyApiKeysResponse)(nil),                        // 16: platform.v1.ListMyApiKeysResponse
-	(*AccountSelfServiceRevokeMyApiKeyRequest)(nil),      // 17: platform.v1.AccountSelfServiceRevokeMyApiKeyRequest
-	(*AccountSelfServiceRevokeMyApiKeyResponse)(nil),     // 18: platform.v1.AccountSelfServiceRevokeMyApiKeyResponse
-	(*timestamppb.Timestamp)(nil),                        // 19: google.protobuf.Timestamp
+	(*IdPLink)(nil),                                      // 5: platform.v1.IdPLink
+	(*AccountSelfServiceGetMyProfileRequest)(nil),        // 6: platform.v1.AccountSelfServiceGetMyProfileRequest
+	(*AccountSelfServiceUpdateMyProfileRequest)(nil),     // 7: platform.v1.AccountSelfServiceUpdateMyProfileRequest
+	(*AccountSelfServiceListMyMFAFactorsRequest)(nil),    // 8: platform.v1.AccountSelfServiceListMyMFAFactorsRequest
+	(*ListMyMFAFactorsResponse)(nil),                     // 9: platform.v1.ListMyMFAFactorsResponse
+	(*AccountSelfServiceRemoveMyMFARequest)(nil),         // 10: platform.v1.AccountSelfServiceRemoveMyMFARequest
+	(*AccountSelfServiceRemoveMyMFAResponse)(nil),        // 11: platform.v1.AccountSelfServiceRemoveMyMFAResponse
+	(*AccountSelfServiceListMyOAuthGrantsRequest)(nil),   // 12: platform.v1.AccountSelfServiceListMyOAuthGrantsRequest
+	(*ListMyOAuthGrantsResponse)(nil),                    // 13: platform.v1.ListMyOAuthGrantsResponse
+	(*AccountSelfServiceRevokeMyOAuthGrantRequest)(nil),  // 14: platform.v1.AccountSelfServiceRevokeMyOAuthGrantRequest
+	(*AccountSelfServiceRevokeMyOAuthGrantResponse)(nil), // 15: platform.v1.AccountSelfServiceRevokeMyOAuthGrantResponse
+	(*AccountSelfServiceListMyApiKeysRequest)(nil),       // 16: platform.v1.AccountSelfServiceListMyApiKeysRequest
+	(*ListMyApiKeysResponse)(nil),                        // 17: platform.v1.ListMyApiKeysResponse
+	(*AccountSelfServiceRevokeMyApiKeyRequest)(nil),      // 18: platform.v1.AccountSelfServiceRevokeMyApiKeyRequest
+	(*AccountSelfServiceRevokeMyApiKeyResponse)(nil),     // 19: platform.v1.AccountSelfServiceRevokeMyApiKeyResponse
+	(*AccountSelfServiceListMyIdPLinksRequest)(nil),      // 20: platform.v1.AccountSelfServiceListMyIdPLinksRequest
+	(*ListMyIdPLinksResponse)(nil),                       // 21: platform.v1.ListMyIdPLinksResponse
+	(*AccountSelfServiceUnlinkMyIdPRequest)(nil),         // 22: platform.v1.AccountSelfServiceUnlinkMyIdPRequest
+	(*AccountSelfServiceUnlinkMyIdPResponse)(nil),        // 23: platform.v1.AccountSelfServiceUnlinkMyIdPResponse
+	(*timestamppb.Timestamp)(nil),                        // 24: google.protobuf.Timestamp
 }
 var file_platform_v1_account_self_service_proto_depIdxs = []int32{
 	1,  // 0: platform.v1.MyProfile.communication_prefs:type_name -> platform.v1.CommunicationPrefs
-	19, // 1: platform.v1.MyProfile.updated_at:type_name -> google.protobuf.Timestamp
-	19, // 2: platform.v1.MFAFactor.enrolled_at:type_name -> google.protobuf.Timestamp
-	19, // 3: platform.v1.MFAFactor.last_used_at:type_name -> google.protobuf.Timestamp
-	19, // 4: platform.v1.OAuthGrant.first_granted_at:type_name -> google.protobuf.Timestamp
-	19, // 5: platform.v1.OAuthGrant.last_used_at:type_name -> google.protobuf.Timestamp
-	19, // 6: platform.v1.ApiKeySummary.issued_at:type_name -> google.protobuf.Timestamp
-	19, // 7: platform.v1.ApiKeySummary.expires_at:type_name -> google.protobuf.Timestamp
-	19, // 8: platform.v1.ApiKeySummary.last_used_at:type_name -> google.protobuf.Timestamp
+	24, // 1: platform.v1.MyProfile.updated_at:type_name -> google.protobuf.Timestamp
+	24, // 2: platform.v1.MFAFactor.enrolled_at:type_name -> google.protobuf.Timestamp
+	24, // 3: platform.v1.MFAFactor.last_used_at:type_name -> google.protobuf.Timestamp
+	24, // 4: platform.v1.OAuthGrant.first_granted_at:type_name -> google.protobuf.Timestamp
+	24, // 5: platform.v1.OAuthGrant.last_used_at:type_name -> google.protobuf.Timestamp
+	24, // 6: platform.v1.ApiKeySummary.issued_at:type_name -> google.protobuf.Timestamp
+	24, // 7: platform.v1.ApiKeySummary.expires_at:type_name -> google.protobuf.Timestamp
+	24, // 8: platform.v1.ApiKeySummary.last_used_at:type_name -> google.protobuf.Timestamp
 	1,  // 9: platform.v1.AccountSelfServiceUpdateMyProfileRequest.communication_prefs:type_name -> platform.v1.CommunicationPrefs
 	2,  // 10: platform.v1.ListMyMFAFactorsResponse.factors:type_name -> platform.v1.MFAFactor
 	3,  // 11: platform.v1.ListMyOAuthGrantsResponse.grants:type_name -> platform.v1.OAuthGrant
 	4,  // 12: platform.v1.ListMyApiKeysResponse.keys:type_name -> platform.v1.ApiKeySummary
-	5,  // 13: platform.v1.AccountSelfService.GetMyProfile:input_type -> platform.v1.AccountSelfServiceGetMyProfileRequest
-	6,  // 14: platform.v1.AccountSelfService.UpdateMyProfile:input_type -> platform.v1.AccountSelfServiceUpdateMyProfileRequest
-	7,  // 15: platform.v1.AccountSelfService.ListMyMFAFactors:input_type -> platform.v1.AccountSelfServiceListMyMFAFactorsRequest
-	9,  // 16: platform.v1.AccountSelfService.RemoveMyMFA:input_type -> platform.v1.AccountSelfServiceRemoveMyMFARequest
-	11, // 17: platform.v1.AccountSelfService.ListMyOAuthGrants:input_type -> platform.v1.AccountSelfServiceListMyOAuthGrantsRequest
-	13, // 18: platform.v1.AccountSelfService.RevokeMyOAuthGrant:input_type -> platform.v1.AccountSelfServiceRevokeMyOAuthGrantRequest
-	15, // 19: platform.v1.AccountSelfService.ListMyApiKeys:input_type -> platform.v1.AccountSelfServiceListMyApiKeysRequest
-	17, // 20: platform.v1.AccountSelfService.RevokeMyApiKey:input_type -> platform.v1.AccountSelfServiceRevokeMyApiKeyRequest
-	0,  // 21: platform.v1.AccountSelfService.GetMyProfile:output_type -> platform.v1.MyProfile
-	0,  // 22: platform.v1.AccountSelfService.UpdateMyProfile:output_type -> platform.v1.MyProfile
-	8,  // 23: platform.v1.AccountSelfService.ListMyMFAFactors:output_type -> platform.v1.ListMyMFAFactorsResponse
-	10, // 24: platform.v1.AccountSelfService.RemoveMyMFA:output_type -> platform.v1.AccountSelfServiceRemoveMyMFAResponse
-	12, // 25: platform.v1.AccountSelfService.ListMyOAuthGrants:output_type -> platform.v1.ListMyOAuthGrantsResponse
-	14, // 26: platform.v1.AccountSelfService.RevokeMyOAuthGrant:output_type -> platform.v1.AccountSelfServiceRevokeMyOAuthGrantResponse
-	16, // 27: platform.v1.AccountSelfService.ListMyApiKeys:output_type -> platform.v1.ListMyApiKeysResponse
-	18, // 28: platform.v1.AccountSelfService.RevokeMyApiKey:output_type -> platform.v1.AccountSelfServiceRevokeMyApiKeyResponse
-	21, // [21:29] is the sub-list for method output_type
-	13, // [13:21] is the sub-list for method input_type
-	13, // [13:13] is the sub-list for extension type_name
-	13, // [13:13] is the sub-list for extension extendee
-	0,  // [0:13] is the sub-list for field type_name
+	5,  // 13: platform.v1.ListMyIdPLinksResponse.links:type_name -> platform.v1.IdPLink
+	5,  // 14: platform.v1.AccountSelfServiceUnlinkMyIdPResponse.remaining:type_name -> platform.v1.IdPLink
+	6,  // 15: platform.v1.AccountSelfService.GetMyProfile:input_type -> platform.v1.AccountSelfServiceGetMyProfileRequest
+	7,  // 16: platform.v1.AccountSelfService.UpdateMyProfile:input_type -> platform.v1.AccountSelfServiceUpdateMyProfileRequest
+	8,  // 17: platform.v1.AccountSelfService.ListMyMFAFactors:input_type -> platform.v1.AccountSelfServiceListMyMFAFactorsRequest
+	10, // 18: platform.v1.AccountSelfService.RemoveMyMFA:input_type -> platform.v1.AccountSelfServiceRemoveMyMFARequest
+	12, // 19: platform.v1.AccountSelfService.ListMyOAuthGrants:input_type -> platform.v1.AccountSelfServiceListMyOAuthGrantsRequest
+	14, // 20: platform.v1.AccountSelfService.RevokeMyOAuthGrant:input_type -> platform.v1.AccountSelfServiceRevokeMyOAuthGrantRequest
+	16, // 21: platform.v1.AccountSelfService.ListMyApiKeys:input_type -> platform.v1.AccountSelfServiceListMyApiKeysRequest
+	18, // 22: platform.v1.AccountSelfService.RevokeMyApiKey:input_type -> platform.v1.AccountSelfServiceRevokeMyApiKeyRequest
+	20, // 23: platform.v1.AccountSelfService.ListMyIdPLinks:input_type -> platform.v1.AccountSelfServiceListMyIdPLinksRequest
+	22, // 24: platform.v1.AccountSelfService.UnlinkMyIdP:input_type -> platform.v1.AccountSelfServiceUnlinkMyIdPRequest
+	0,  // 25: platform.v1.AccountSelfService.GetMyProfile:output_type -> platform.v1.MyProfile
+	0,  // 26: platform.v1.AccountSelfService.UpdateMyProfile:output_type -> platform.v1.MyProfile
+	9,  // 27: platform.v1.AccountSelfService.ListMyMFAFactors:output_type -> platform.v1.ListMyMFAFactorsResponse
+	11, // 28: platform.v1.AccountSelfService.RemoveMyMFA:output_type -> platform.v1.AccountSelfServiceRemoveMyMFAResponse
+	13, // 29: platform.v1.AccountSelfService.ListMyOAuthGrants:output_type -> platform.v1.ListMyOAuthGrantsResponse
+	15, // 30: platform.v1.AccountSelfService.RevokeMyOAuthGrant:output_type -> platform.v1.AccountSelfServiceRevokeMyOAuthGrantResponse
+	17, // 31: platform.v1.AccountSelfService.ListMyApiKeys:output_type -> platform.v1.ListMyApiKeysResponse
+	19, // 32: platform.v1.AccountSelfService.RevokeMyApiKey:output_type -> platform.v1.AccountSelfServiceRevokeMyApiKeyResponse
+	21, // 33: platform.v1.AccountSelfService.ListMyIdPLinks:output_type -> platform.v1.ListMyIdPLinksResponse
+	23, // 34: platform.v1.AccountSelfService.UnlinkMyIdP:output_type -> platform.v1.AccountSelfServiceUnlinkMyIdPResponse
+	25, // [25:35] is the sub-list for method output_type
+	15, // [15:25] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_account_self_service_proto_init() }
@@ -1186,14 +1464,14 @@ func file_platform_v1_account_self_service_proto_init() {
 	if File_platform_v1_account_self_service_proto != nil {
 		return
 	}
-	file_platform_v1_account_self_service_proto_msgTypes[6].OneofWrappers = []any{}
+	file_platform_v1_account_self_service_proto_msgTypes[7].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_account_self_service_proto_rawDesc), len(file_platform_v1_account_self_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   19,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

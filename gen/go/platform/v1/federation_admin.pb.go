@@ -2031,6 +2031,270 @@ func (x *FederationAdminServiceRegisterDownstreamClientResponse) GetClientSecret
 	return ""
 }
 
+// ClientIdPOption is the (OAuth client, external IdP) pairing that controls
+// whether a given IdP is offered in a client's /authorize IdP picker.
+// RemoveClientIdPOption returns this with enabled = false (disable, not
+// delete) to preserve the admin audit trail.
+type ClientIdPOption struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ClientId      string                 `protobuf:"bytes,2,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	IdpId         string                 `protobuf:"bytes,3,opt,name=idp_id,json=idpId,proto3" json:"idp_id,omitempty"`
+	Enabled       bool                   `protobuf:"varint,4,opt,name=enabled,proto3" json:"enabled,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ClientIdPOption) Reset() {
+	*x = ClientIdPOption{}
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ClientIdPOption) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ClientIdPOption) ProtoMessage() {}
+
+func (x *ClientIdPOption) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ClientIdPOption.ProtoReflect.Descriptor instead.
+func (*ClientIdPOption) Descriptor() ([]byte, []int) {
+	return file_platform_v1_federation_admin_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *ClientIdPOption) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ClientIdPOption) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *ClientIdPOption) GetIdpId() string {
+	if x != nil {
+		return x.IdpId
+	}
+	return ""
+}
+
+func (x *ClientIdPOption) GetEnabled() bool {
+	if x != nil {
+		return x.Enabled
+	}
+	return false
+}
+
+type FederationAdminServiceAddClientIdPOptionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClientId      string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	IdpId         string                 `protobuf:"bytes,2,opt,name=idp_id,json=idpId,proto3" json:"idp_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FederationAdminServiceAddClientIdPOptionRequest) Reset() {
+	*x = FederationAdminServiceAddClientIdPOptionRequest{}
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FederationAdminServiceAddClientIdPOptionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FederationAdminServiceAddClientIdPOptionRequest) ProtoMessage() {}
+
+func (x *FederationAdminServiceAddClientIdPOptionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FederationAdminServiceAddClientIdPOptionRequest.ProtoReflect.Descriptor instead.
+func (*FederationAdminServiceAddClientIdPOptionRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_federation_admin_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *FederationAdminServiceAddClientIdPOptionRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *FederationAdminServiceAddClientIdPOptionRequest) GetIdpId() string {
+	if x != nil {
+		return x.IdpId
+	}
+	return ""
+}
+
+type FederationAdminServiceAddClientIdPOptionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Option        *ClientIdPOption       `protobuf:"bytes,1,opt,name=option,proto3" json:"option,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FederationAdminServiceAddClientIdPOptionResponse) Reset() {
+	*x = FederationAdminServiceAddClientIdPOptionResponse{}
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FederationAdminServiceAddClientIdPOptionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FederationAdminServiceAddClientIdPOptionResponse) ProtoMessage() {}
+
+func (x *FederationAdminServiceAddClientIdPOptionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FederationAdminServiceAddClientIdPOptionResponse.ProtoReflect.Descriptor instead.
+func (*FederationAdminServiceAddClientIdPOptionResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_federation_admin_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *FederationAdminServiceAddClientIdPOptionResponse) GetOption() *ClientIdPOption {
+	if x != nil {
+		return x.Option
+	}
+	return nil
+}
+
+type FederationAdminServiceRemoveClientIdPOptionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClientId      string                 `protobuf:"bytes,1,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
+	IdpId         string                 `protobuf:"bytes,2,opt,name=idp_id,json=idpId,proto3" json:"idp_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FederationAdminServiceRemoveClientIdPOptionRequest) Reset() {
+	*x = FederationAdminServiceRemoveClientIdPOptionRequest{}
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FederationAdminServiceRemoveClientIdPOptionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FederationAdminServiceRemoveClientIdPOptionRequest) ProtoMessage() {}
+
+func (x *FederationAdminServiceRemoveClientIdPOptionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FederationAdminServiceRemoveClientIdPOptionRequest.ProtoReflect.Descriptor instead.
+func (*FederationAdminServiceRemoveClientIdPOptionRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_federation_admin_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *FederationAdminServiceRemoveClientIdPOptionRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
+	}
+	return ""
+}
+
+func (x *FederationAdminServiceRemoveClientIdPOptionRequest) GetIdpId() string {
+	if x != nil {
+		return x.IdpId
+	}
+	return ""
+}
+
+type FederationAdminServiceRemoveClientIdPOptionResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Option        *ClientIdPOption       `protobuf:"bytes,1,opt,name=option,proto3" json:"option,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FederationAdminServiceRemoveClientIdPOptionResponse) Reset() {
+	*x = FederationAdminServiceRemoveClientIdPOptionResponse{}
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FederationAdminServiceRemoveClientIdPOptionResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FederationAdminServiceRemoveClientIdPOptionResponse) ProtoMessage() {}
+
+func (x *FederationAdminServiceRemoveClientIdPOptionResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_federation_admin_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FederationAdminServiceRemoveClientIdPOptionResponse.ProtoReflect.Descriptor instead.
+func (*FederationAdminServiceRemoveClientIdPOptionResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_federation_admin_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *FederationAdminServiceRemoveClientIdPOptionResponse) GetOption() *ClientIdPOption {
+	if x != nil {
+		return x.Option
+	}
+	return nil
+}
+
 var File_platform_v1_federation_admin_proto protoreflect.FileDescriptor
 
 const file_platform_v1_federation_admin_proto_rawDesc = "" +
@@ -2188,7 +2452,22 @@ const file_platform_v1_federation_admin_proto_rawDesc = "" +
 	"\x0eallowed_scopes\x18\x04 \x03(\tR\rallowedScopes\"\x8f\x01\n" +
 	"6FederationAdminServiceRegisterDownstreamClientResponse\x120\n" +
 	"\x06client\x18\x01 \x01(\v2\x18.platform.v1.OAuthClientR\x06client\x12#\n" +
-	"\rclient_secret\x18\x02 \x01(\tR\fclientSecret2\x9a\x13\n" +
+	"\rclient_secret\x18\x02 \x01(\tR\fclientSecret\"o\n" +
+	"\x0fClientIdPOption\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
+	"\tclient_id\x18\x02 \x01(\tR\bclientId\x12\x15\n" +
+	"\x06idp_id\x18\x03 \x01(\tR\x05idpId\x12\x18\n" +
+	"\aenabled\x18\x04 \x01(\bR\aenabled\"e\n" +
+	"/FederationAdminServiceAddClientIdPOptionRequest\x12\x1b\n" +
+	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x15\n" +
+	"\x06idp_id\x18\x02 \x01(\tR\x05idpId\"h\n" +
+	"0FederationAdminServiceAddClientIdPOptionResponse\x124\n" +
+	"\x06option\x18\x01 \x01(\v2\x1c.platform.v1.ClientIdPOptionR\x06option\"h\n" +
+	"2FederationAdminServiceRemoveClientIdPOptionRequest\x12\x1b\n" +
+	"\tclient_id\x18\x01 \x01(\tR\bclientId\x12\x15\n" +
+	"\x06idp_id\x18\x02 \x01(\tR\x05idpId\"k\n" +
+	"3FederationAdminServiceRemoveClientIdPOptionResponse\x124\n" +
+	"\x06option\x18\x01 \x01(\v2\x1c.platform.v1.ClientIdPOptionR\x06option2\xcb\x15\n" +
 	"\x16FederationAdminService\x12\x8e\x01\n" +
 	"\x11CreateExternalIdP\x12;.platform.v1.FederationAdminServiceCreateExternalIdPRequest\x1a<.platform.v1.FederationAdminServiceCreateExternalIdPResponse\x12\x85\x01\n" +
 	"\x0eGetExternalIdP\x128.platform.v1.FederationAdminServiceGetExternalIdPRequest\x1a9.platform.v1.FederationAdminServiceGetExternalIdPResponse\x12\x8e\x01\n" +
@@ -2205,7 +2484,9 @@ const file_platform_v1_federation_admin_proto_rawDesc = "" +
 	"\x14RegisterDownstreamSP\x12>.platform.v1.FederationAdminServiceRegisterDownstreamSPRequest\x1a?.platform.v1.FederationAdminServiceRegisterDownstreamSPResponse\x12\x8e\x01\n" +
 	"\x11ListDownstreamSPs\x12;.platform.v1.FederationAdminServiceListDownstreamSPsRequest\x1a<.platform.v1.FederationAdminServiceListDownstreamSPsResponse\x12\x91\x01\n" +
 	"\x12DeleteDownstreamSP\x12<.platform.v1.FederationAdminServiceDeleteDownstreamSPRequest\x1a=.platform.v1.FederationAdminServiceDeleteDownstreamSPResponse\x12\xa3\x01\n" +
-	"\x18RegisterDownstreamClient\x12B.platform.v1.FederationAdminServiceRegisterDownstreamClientRequest\x1aC.platform.v1.FederationAdminServiceRegisterDownstreamClientResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x18RegisterDownstreamClient\x12B.platform.v1.FederationAdminServiceRegisterDownstreamClientRequest\x1aC.platform.v1.FederationAdminServiceRegisterDownstreamClientResponse\x12\x91\x01\n" +
+	"\x12AddClientIdPOption\x12<.platform.v1.FederationAdminServiceAddClientIdPOptionRequest\x1a=.platform.v1.FederationAdminServiceAddClientIdPOptionResponse\x12\x9a\x01\n" +
+	"\x15RemoveClientIdPOption\x12?.platform.v1.FederationAdminServiceRemoveClientIdPOptionRequest\x1a@.platform.v1.FederationAdminServiceRemoveClientIdPOptionResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_federation_admin_proto_rawDescOnce sync.Once
@@ -2219,7 +2500,7 @@ func file_platform_v1_federation_admin_proto_rawDescGZIP() []byte {
 	return file_platform_v1_federation_admin_proto_rawDescData
 }
 
-var file_platform_v1_federation_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_platform_v1_federation_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_platform_v1_federation_admin_proto_goTypes = []any{
 	(*FederationAdminServiceCreateExternalIdPRequest)(nil),         // 0: platform.v1.FederationAdminServiceCreateExternalIdPRequest
 	(*FederationAdminServiceCreateExternalIdPResponse)(nil),        // 1: platform.v1.FederationAdminServiceCreateExternalIdPResponse
@@ -2253,66 +2534,77 @@ var file_platform_v1_federation_admin_proto_goTypes = []any{
 	(*FederationAdminServiceDeleteDownstreamSPResponse)(nil),       // 29: platform.v1.FederationAdminServiceDeleteDownstreamSPResponse
 	(*FederationAdminServiceRegisterDownstreamClientRequest)(nil),  // 30: platform.v1.FederationAdminServiceRegisterDownstreamClientRequest
 	(*FederationAdminServiceRegisterDownstreamClientResponse)(nil), // 31: platform.v1.FederationAdminServiceRegisterDownstreamClientResponse
-	nil,                      // 32: platform.v1.FederationAdminServiceCreateAttributeMappingRequest.CustomAttrsEntry
-	nil,                      // 33: platform.v1.FederationAdminServiceUpdateAttributeMappingRequest.CustomAttrsEntry
-	(*ExternalIdP)(nil),      // 34: platform.v1.ExternalIdP
-	(*AttributeMapping)(nil), // 35: platform.v1.AttributeMapping
-	(*FederationPolicy)(nil), // 36: platform.v1.FederationPolicy
-	(*DownstreamSP)(nil),     // 37: platform.v1.DownstreamSP
-	(*OAuthClient)(nil),      // 38: platform.v1.OAuthClient
+	(*ClientIdPOption)(nil),                                        // 32: platform.v1.ClientIdPOption
+	(*FederationAdminServiceAddClientIdPOptionRequest)(nil),        // 33: platform.v1.FederationAdminServiceAddClientIdPOptionRequest
+	(*FederationAdminServiceAddClientIdPOptionResponse)(nil),       // 34: platform.v1.FederationAdminServiceAddClientIdPOptionResponse
+	(*FederationAdminServiceRemoveClientIdPOptionRequest)(nil),     // 35: platform.v1.FederationAdminServiceRemoveClientIdPOptionRequest
+	(*FederationAdminServiceRemoveClientIdPOptionResponse)(nil),    // 36: platform.v1.FederationAdminServiceRemoveClientIdPOptionResponse
+	nil,                      // 37: platform.v1.FederationAdminServiceCreateAttributeMappingRequest.CustomAttrsEntry
+	nil,                      // 38: platform.v1.FederationAdminServiceUpdateAttributeMappingRequest.CustomAttrsEntry
+	(*ExternalIdP)(nil),      // 39: platform.v1.ExternalIdP
+	(*AttributeMapping)(nil), // 40: platform.v1.AttributeMapping
+	(*FederationPolicy)(nil), // 41: platform.v1.FederationPolicy
+	(*DownstreamSP)(nil),     // 42: platform.v1.DownstreamSP
+	(*OAuthClient)(nil),      // 43: platform.v1.OAuthClient
 }
 var file_platform_v1_federation_admin_proto_depIdxs = []int32{
-	34, // 0: platform.v1.FederationAdminServiceCreateExternalIdPResponse.idp:type_name -> platform.v1.ExternalIdP
-	34, // 1: platform.v1.FederationAdminServiceGetExternalIdPResponse.idp:type_name -> platform.v1.ExternalIdP
-	34, // 2: platform.v1.FederationAdminServiceUpdateExternalIdPResponse.idp:type_name -> platform.v1.ExternalIdP
-	34, // 3: platform.v1.FederationAdminServiceListExternalIdPsResponse.idps:type_name -> platform.v1.ExternalIdP
-	32, // 4: platform.v1.FederationAdminServiceCreateAttributeMappingRequest.custom_attrs:type_name -> platform.v1.FederationAdminServiceCreateAttributeMappingRequest.CustomAttrsEntry
-	35, // 5: platform.v1.FederationAdminServiceCreateAttributeMappingResponse.mapping:type_name -> platform.v1.AttributeMapping
-	33, // 6: platform.v1.FederationAdminServiceUpdateAttributeMappingRequest.custom_attrs:type_name -> platform.v1.FederationAdminServiceUpdateAttributeMappingRequest.CustomAttrsEntry
-	35, // 7: platform.v1.FederationAdminServiceUpdateAttributeMappingResponse.mapping:type_name -> platform.v1.AttributeMapping
-	35, // 8: platform.v1.FederationAdminServiceListAttributeMappingsResponse.mappings:type_name -> platform.v1.AttributeMapping
-	36, // 9: platform.v1.FederationAdminServiceUpsertFederationPolicyResponse.policy:type_name -> platform.v1.FederationPolicy
-	36, // 10: platform.v1.FederationAdminServiceGetFederationPolicyResponse.policy:type_name -> platform.v1.FederationPolicy
-	37, // 11: platform.v1.FederationAdminServiceRegisterDownstreamSPResponse.sp:type_name -> platform.v1.DownstreamSP
-	37, // 12: platform.v1.FederationAdminServiceListDownstreamSPsResponse.sps:type_name -> platform.v1.DownstreamSP
-	38, // 13: platform.v1.FederationAdminServiceRegisterDownstreamClientResponse.client:type_name -> platform.v1.OAuthClient
-	0,  // 14: platform.v1.FederationAdminService.CreateExternalIdP:input_type -> platform.v1.FederationAdminServiceCreateExternalIdPRequest
-	2,  // 15: platform.v1.FederationAdminService.GetExternalIdP:input_type -> platform.v1.FederationAdminServiceGetExternalIdPRequest
-	4,  // 16: platform.v1.FederationAdminService.UpdateExternalIdP:input_type -> platform.v1.FederationAdminServiceUpdateExternalIdPRequest
-	6,  // 17: platform.v1.FederationAdminService.DeleteExternalIdP:input_type -> platform.v1.FederationAdminServiceDeleteExternalIdPRequest
-	8,  // 18: platform.v1.FederationAdminService.ListExternalIdPs:input_type -> platform.v1.FederationAdminServiceListExternalIdPsRequest
-	10, // 19: platform.v1.FederationAdminService.CreateAttributeMapping:input_type -> platform.v1.FederationAdminServiceCreateAttributeMappingRequest
-	12, // 20: platform.v1.FederationAdminService.UpdateAttributeMapping:input_type -> platform.v1.FederationAdminServiceUpdateAttributeMappingRequest
-	14, // 21: platform.v1.FederationAdminService.DeleteAttributeMapping:input_type -> platform.v1.FederationAdminServiceDeleteAttributeMappingRequest
-	16, // 22: platform.v1.FederationAdminService.ListAttributeMappings:input_type -> platform.v1.FederationAdminServiceListAttributeMappingsRequest
-	18, // 23: platform.v1.FederationAdminService.UpsertFederationPolicy:input_type -> platform.v1.FederationAdminServiceUpsertFederationPolicyRequest
-	20, // 24: platform.v1.FederationAdminService.GetFederationPolicy:input_type -> platform.v1.FederationAdminServiceGetFederationPolicyRequest
-	22, // 25: platform.v1.FederationAdminService.DeleteFederationPolicy:input_type -> platform.v1.FederationAdminServiceDeleteFederationPolicyRequest
-	24, // 26: platform.v1.FederationAdminService.RegisterDownstreamSP:input_type -> platform.v1.FederationAdminServiceRegisterDownstreamSPRequest
-	26, // 27: platform.v1.FederationAdminService.ListDownstreamSPs:input_type -> platform.v1.FederationAdminServiceListDownstreamSPsRequest
-	28, // 28: platform.v1.FederationAdminService.DeleteDownstreamSP:input_type -> platform.v1.FederationAdminServiceDeleteDownstreamSPRequest
-	30, // 29: platform.v1.FederationAdminService.RegisterDownstreamClient:input_type -> platform.v1.FederationAdminServiceRegisterDownstreamClientRequest
-	1,  // 30: platform.v1.FederationAdminService.CreateExternalIdP:output_type -> platform.v1.FederationAdminServiceCreateExternalIdPResponse
-	3,  // 31: platform.v1.FederationAdminService.GetExternalIdP:output_type -> platform.v1.FederationAdminServiceGetExternalIdPResponse
-	5,  // 32: platform.v1.FederationAdminService.UpdateExternalIdP:output_type -> platform.v1.FederationAdminServiceUpdateExternalIdPResponse
-	7,  // 33: platform.v1.FederationAdminService.DeleteExternalIdP:output_type -> platform.v1.FederationAdminServiceDeleteExternalIdPResponse
-	9,  // 34: platform.v1.FederationAdminService.ListExternalIdPs:output_type -> platform.v1.FederationAdminServiceListExternalIdPsResponse
-	11, // 35: platform.v1.FederationAdminService.CreateAttributeMapping:output_type -> platform.v1.FederationAdminServiceCreateAttributeMappingResponse
-	13, // 36: platform.v1.FederationAdminService.UpdateAttributeMapping:output_type -> platform.v1.FederationAdminServiceUpdateAttributeMappingResponse
-	15, // 37: platform.v1.FederationAdminService.DeleteAttributeMapping:output_type -> platform.v1.FederationAdminServiceDeleteAttributeMappingResponse
-	17, // 38: platform.v1.FederationAdminService.ListAttributeMappings:output_type -> platform.v1.FederationAdminServiceListAttributeMappingsResponse
-	19, // 39: platform.v1.FederationAdminService.UpsertFederationPolicy:output_type -> platform.v1.FederationAdminServiceUpsertFederationPolicyResponse
-	21, // 40: platform.v1.FederationAdminService.GetFederationPolicy:output_type -> platform.v1.FederationAdminServiceGetFederationPolicyResponse
-	23, // 41: platform.v1.FederationAdminService.DeleteFederationPolicy:output_type -> platform.v1.FederationAdminServiceDeleteFederationPolicyResponse
-	25, // 42: platform.v1.FederationAdminService.RegisterDownstreamSP:output_type -> platform.v1.FederationAdminServiceRegisterDownstreamSPResponse
-	27, // 43: platform.v1.FederationAdminService.ListDownstreamSPs:output_type -> platform.v1.FederationAdminServiceListDownstreamSPsResponse
-	29, // 44: platform.v1.FederationAdminService.DeleteDownstreamSP:output_type -> platform.v1.FederationAdminServiceDeleteDownstreamSPResponse
-	31, // 45: platform.v1.FederationAdminService.RegisterDownstreamClient:output_type -> platform.v1.FederationAdminServiceRegisterDownstreamClientResponse
-	30, // [30:46] is the sub-list for method output_type
-	14, // [14:30] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	39, // 0: platform.v1.FederationAdminServiceCreateExternalIdPResponse.idp:type_name -> platform.v1.ExternalIdP
+	39, // 1: platform.v1.FederationAdminServiceGetExternalIdPResponse.idp:type_name -> platform.v1.ExternalIdP
+	39, // 2: platform.v1.FederationAdminServiceUpdateExternalIdPResponse.idp:type_name -> platform.v1.ExternalIdP
+	39, // 3: platform.v1.FederationAdminServiceListExternalIdPsResponse.idps:type_name -> platform.v1.ExternalIdP
+	37, // 4: platform.v1.FederationAdminServiceCreateAttributeMappingRequest.custom_attrs:type_name -> platform.v1.FederationAdminServiceCreateAttributeMappingRequest.CustomAttrsEntry
+	40, // 5: platform.v1.FederationAdminServiceCreateAttributeMappingResponse.mapping:type_name -> platform.v1.AttributeMapping
+	38, // 6: platform.v1.FederationAdminServiceUpdateAttributeMappingRequest.custom_attrs:type_name -> platform.v1.FederationAdminServiceUpdateAttributeMappingRequest.CustomAttrsEntry
+	40, // 7: platform.v1.FederationAdminServiceUpdateAttributeMappingResponse.mapping:type_name -> platform.v1.AttributeMapping
+	40, // 8: platform.v1.FederationAdminServiceListAttributeMappingsResponse.mappings:type_name -> platform.v1.AttributeMapping
+	41, // 9: platform.v1.FederationAdminServiceUpsertFederationPolicyResponse.policy:type_name -> platform.v1.FederationPolicy
+	41, // 10: platform.v1.FederationAdminServiceGetFederationPolicyResponse.policy:type_name -> platform.v1.FederationPolicy
+	42, // 11: platform.v1.FederationAdminServiceRegisterDownstreamSPResponse.sp:type_name -> platform.v1.DownstreamSP
+	42, // 12: platform.v1.FederationAdminServiceListDownstreamSPsResponse.sps:type_name -> platform.v1.DownstreamSP
+	43, // 13: platform.v1.FederationAdminServiceRegisterDownstreamClientResponse.client:type_name -> platform.v1.OAuthClient
+	32, // 14: platform.v1.FederationAdminServiceAddClientIdPOptionResponse.option:type_name -> platform.v1.ClientIdPOption
+	32, // 15: platform.v1.FederationAdminServiceRemoveClientIdPOptionResponse.option:type_name -> platform.v1.ClientIdPOption
+	0,  // 16: platform.v1.FederationAdminService.CreateExternalIdP:input_type -> platform.v1.FederationAdminServiceCreateExternalIdPRequest
+	2,  // 17: platform.v1.FederationAdminService.GetExternalIdP:input_type -> platform.v1.FederationAdminServiceGetExternalIdPRequest
+	4,  // 18: platform.v1.FederationAdminService.UpdateExternalIdP:input_type -> platform.v1.FederationAdminServiceUpdateExternalIdPRequest
+	6,  // 19: platform.v1.FederationAdminService.DeleteExternalIdP:input_type -> platform.v1.FederationAdminServiceDeleteExternalIdPRequest
+	8,  // 20: platform.v1.FederationAdminService.ListExternalIdPs:input_type -> platform.v1.FederationAdminServiceListExternalIdPsRequest
+	10, // 21: platform.v1.FederationAdminService.CreateAttributeMapping:input_type -> platform.v1.FederationAdminServiceCreateAttributeMappingRequest
+	12, // 22: platform.v1.FederationAdminService.UpdateAttributeMapping:input_type -> platform.v1.FederationAdminServiceUpdateAttributeMappingRequest
+	14, // 23: platform.v1.FederationAdminService.DeleteAttributeMapping:input_type -> platform.v1.FederationAdminServiceDeleteAttributeMappingRequest
+	16, // 24: platform.v1.FederationAdminService.ListAttributeMappings:input_type -> platform.v1.FederationAdminServiceListAttributeMappingsRequest
+	18, // 25: platform.v1.FederationAdminService.UpsertFederationPolicy:input_type -> platform.v1.FederationAdminServiceUpsertFederationPolicyRequest
+	20, // 26: platform.v1.FederationAdminService.GetFederationPolicy:input_type -> platform.v1.FederationAdminServiceGetFederationPolicyRequest
+	22, // 27: platform.v1.FederationAdminService.DeleteFederationPolicy:input_type -> platform.v1.FederationAdminServiceDeleteFederationPolicyRequest
+	24, // 28: platform.v1.FederationAdminService.RegisterDownstreamSP:input_type -> platform.v1.FederationAdminServiceRegisterDownstreamSPRequest
+	26, // 29: platform.v1.FederationAdminService.ListDownstreamSPs:input_type -> platform.v1.FederationAdminServiceListDownstreamSPsRequest
+	28, // 30: platform.v1.FederationAdminService.DeleteDownstreamSP:input_type -> platform.v1.FederationAdminServiceDeleteDownstreamSPRequest
+	30, // 31: platform.v1.FederationAdminService.RegisterDownstreamClient:input_type -> platform.v1.FederationAdminServiceRegisterDownstreamClientRequest
+	33, // 32: platform.v1.FederationAdminService.AddClientIdPOption:input_type -> platform.v1.FederationAdminServiceAddClientIdPOptionRequest
+	35, // 33: platform.v1.FederationAdminService.RemoveClientIdPOption:input_type -> platform.v1.FederationAdminServiceRemoveClientIdPOptionRequest
+	1,  // 34: platform.v1.FederationAdminService.CreateExternalIdP:output_type -> platform.v1.FederationAdminServiceCreateExternalIdPResponse
+	3,  // 35: platform.v1.FederationAdminService.GetExternalIdP:output_type -> platform.v1.FederationAdminServiceGetExternalIdPResponse
+	5,  // 36: platform.v1.FederationAdminService.UpdateExternalIdP:output_type -> platform.v1.FederationAdminServiceUpdateExternalIdPResponse
+	7,  // 37: platform.v1.FederationAdminService.DeleteExternalIdP:output_type -> platform.v1.FederationAdminServiceDeleteExternalIdPResponse
+	9,  // 38: platform.v1.FederationAdminService.ListExternalIdPs:output_type -> platform.v1.FederationAdminServiceListExternalIdPsResponse
+	11, // 39: platform.v1.FederationAdminService.CreateAttributeMapping:output_type -> platform.v1.FederationAdminServiceCreateAttributeMappingResponse
+	13, // 40: platform.v1.FederationAdminService.UpdateAttributeMapping:output_type -> platform.v1.FederationAdminServiceUpdateAttributeMappingResponse
+	15, // 41: platform.v1.FederationAdminService.DeleteAttributeMapping:output_type -> platform.v1.FederationAdminServiceDeleteAttributeMappingResponse
+	17, // 42: platform.v1.FederationAdminService.ListAttributeMappings:output_type -> platform.v1.FederationAdminServiceListAttributeMappingsResponse
+	19, // 43: platform.v1.FederationAdminService.UpsertFederationPolicy:output_type -> platform.v1.FederationAdminServiceUpsertFederationPolicyResponse
+	21, // 44: platform.v1.FederationAdminService.GetFederationPolicy:output_type -> platform.v1.FederationAdminServiceGetFederationPolicyResponse
+	23, // 45: platform.v1.FederationAdminService.DeleteFederationPolicy:output_type -> platform.v1.FederationAdminServiceDeleteFederationPolicyResponse
+	25, // 46: platform.v1.FederationAdminService.RegisterDownstreamSP:output_type -> platform.v1.FederationAdminServiceRegisterDownstreamSPResponse
+	27, // 47: platform.v1.FederationAdminService.ListDownstreamSPs:output_type -> platform.v1.FederationAdminServiceListDownstreamSPsResponse
+	29, // 48: platform.v1.FederationAdminService.DeleteDownstreamSP:output_type -> platform.v1.FederationAdminServiceDeleteDownstreamSPResponse
+	31, // 49: platform.v1.FederationAdminService.RegisterDownstreamClient:output_type -> platform.v1.FederationAdminServiceRegisterDownstreamClientResponse
+	34, // 50: platform.v1.FederationAdminService.AddClientIdPOption:output_type -> platform.v1.FederationAdminServiceAddClientIdPOptionResponse
+	36, // 51: platform.v1.FederationAdminService.RemoveClientIdPOption:output_type -> platform.v1.FederationAdminServiceRemoveClientIdPOptionResponse
+	34, // [34:52] is the sub-list for method output_type
+	16, // [16:34] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_federation_admin_proto_init() }
@@ -2328,7 +2620,7 @@ func file_platform_v1_federation_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_federation_admin_proto_rawDesc), len(file_platform_v1_federation_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   34,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
