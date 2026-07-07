@@ -1,0 +1,54 @@
+# experience-proto-breaking.yml -- TRD 140-12.
+#
+# The CROSS-REPO VERSIONING GATE (wire half). The experience.v1 contract is
+# FROZEN: a v1 proto is forever (offline-cached + store-submitted binaries can't
+# migrate). This workflow fails any PR that makes an INCOMPATIBLE change to the
+# experience.v1 proto -- a removed / retyped / renumbered frozen field -- while
+# letting ADDITIVE changes (new field / message / rpc) through.
+#
+# It runs `buf breaking` scoped to proto/experience/v1, comparing the PR's proto
+# against the committed baseline on the default branch. The in-process half of the
+# policy lives in platform/experience/contract_version.go (ClassifyChange /
+# BumpVersion) + the per-consumer compat tests.
+#
+# buf is PINNED to 1.69.0. An unpinned buf reflows the google/protobuf WKT
+# doc-comments that ship with the CLI -> FALSE breaking/drift diffs (memory:
+# feedback_buf_cli_version_wkt_drift). The pin is load-bearing, not cosmetic.
+
+name: experience-proto-breaking
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      # Path-filtered: only run when the experience proto (or buf config) moves.
+      - "proto/experience/v1/**"
+      - "buf.yaml"
+      - ".github/workflows/experience-proto-breaking.yml"
+
+jobs:
+  buf-breaking:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # buf breaking --against '.git#ref=...' needs the baseline ref's
+          # history present -> full fetch, not a shallow clone.
+          fetch-depth: 0
+
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          # PINNED. See the WKT-drift note above -- do NOT float this.
+          version: "1.69.0"
+
+      - name: buf lint (experience.v1)
+        run: buf lint --path proto/experience/v1
+
+      - name: buf breaking (experience.v1 vs main baseline)
+        # Fails (exit 100) on a removed / retyped / renumbered frozen field;
+        # passes (exit 0) on an additive change or no change. The baseline is the
+        # committed proto on origin/main -- the frozen contract's source of truth.
+        run: |
+          buf breaking \
+            --against '.git#ref=origin/main,subdir=.' \
+            --path proto/experience/v1

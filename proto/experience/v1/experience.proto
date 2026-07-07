@@ -1,0 +1,547 @@
+syntax = "proto3";
+
+// Package experience.v1 is the Eden Experience Platform keystone contract.
+// FROZEN-CONTRACT DISCIPLINE: a v1 proto is forever (offline-cached + store-
+// submitted binaries can't migrate). Every load-bearing value is a TYPED field
+// (never a JSONB/config_json blob); field-number ranges are RESERVED generously
+// for later TRDs (140-03..07). TRD 140-01 owns ONLY the envelope + 3 version
+// axes (must-have #1, the most irreversible decision).
+package experience.v1;
+
+option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1";
+
+// AppDefinition: build-time definition feeding BOTH the runtime resolver AND
+// the per-company native build pipeline (layered output).
+message AppDefinition {
+  string id = 1;
+  AppMeta meta = 2;
+  ExperienceSpec spec = 3;
+  // Min app binary version that can render specs from this definition (IRREVERSIBLE floor).
+  string min_binary_version = 4;
+  // Version of the experience.v1 contract this definition conforms to.
+  string contract_version = 5;
+  // 140-05 un-reserved field 10 from the 10-19 nav range for DeepLinkSpec;
+  // 11..19 stay reserved. DeepLink lives HERE (not on the spec) because a store
+  // binary commits to its url scheme + route templates at submit time and can't
+  // change them post-submit -- it is a BUILD-time, not a resolved-spec, value.
+  DeepLinkSpec deep_link = 10;
+  reserved 11 to 19;   // remaining build-time nav seam   (140-05)
+  // 140-07 un-reserved field 20 from the 20-29 signing range for SigningSpec;
+  // 21..29 stay reserved. Signing lives HERE (BUILD-time, like DeepLinkSpec) --
+  // a store binary commits to its signing identity at submit time. SigningSpec
+  // stores a per-platform CredentialRef (ref + custody), NEVER inline material.
+  SigningSpec signing = 20;
+  reserved 21 to 29;   // remaining signing seam          (140-07)
+  // 140-07 un-reserved field 30 from the 30-39 app-service-slot range for the
+  // build-time service-slot refs (search/notify/export/attach/print/audit);
+  // 31..39 stay reserved.
+  repeated string app_service_slots = 30;
+  reserved 31 to 39;   // remaining app-service-slot refs  (140-07/10)
+  reserved 40 to 49;   // distribution / signing_ref seam (140-07)
+}
+
+message AppMeta {
+  string name = 1;
+  string bundle_id = 2;
+  reserved 10 to 19;   // icon/brand/store-listing fields (later)
+}
+
+// UnknownSurfacePolicy: how a running binary handles a resolved spec that
+// references a FeatureSurface it does NOT know (i.e. not in the binary's
+// compiled-in SurfaceRegistryManifest.known_surface_ids). IRREVERSIBLE: a v1
+// spec carries this, and an old binary's behavior on a newer spec is frozen
+// the moment a device caches that spec. UNSPECIFIED fails SAFE (block) so an
+// unset policy can never silently render a surface the binary cannot handle.
+enum UnknownSurfacePolicy {
+  UNKNOWN_SURFACE_POLICY_UNSPECIFIED = 0;  // fail-safe -> treated as BLOCK_UPGRADE
+  UNKNOWN_SURFACE_POLICY_IGNORE = 1;            // drop the unknown surface, render the rest
+  UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE = 2;     // block + prompt the user to upgrade the binary
+  UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED = 3;   // render the unknown surface with a degraded marker
+}
+
+// SurfaceRegistryManifest: the artifact a BINARY compiles in and negotiates a
+// resolved ExperienceSpec against. It is NOT served on the spec — it is the
+// binary's own statement of which surfaces it can render + which
+// surface_contract_version it speaks. version_negotiation reads
+// known_surface_ids to decide ignore/block/degrade for unknown surfaces.
+message SurfaceRegistryManifest {
+  string contract_version = 1;          // surface contract version the binary speaks
+  repeated string known_surface_ids = 2; // surfaces this binary can render
+}
+
+// ExperienceSpec: server-authoritative, content-hashed, client-cacheable spec
+// resolved per {role,entitlements,form_factor,tenant,org}. The 3 version axes
+// are ORTHOGONAL; bumping one must not change another's serialized value.
+message ExperienceSpec {
+  string spec_schema_version = 1;       // schema version of THIS message
+  string surface_contract_version = 2;  // FeatureSurface contract version
+  string content_hash = 3;              // hash of resolved spec (rollback id + cache key)
+  string contract_version = 4;          // experience.v1 contract version (140-12 compat signal)
+  string min_binary_version = 5;        // floor binary version that can render this spec
+  // Tenancy: RESERVED here, ENFORCED in 140-08/09 (company scope + aocore org scope).
+  string tenant_id = 6;
+  string org_id = 7;
+  // 140-03 un-reserved 10..11 from the "SurfaceRegistryManifest + granted
+  // surfaces" range; 12..19 stay reserved for granted-surface refs.
+  repeated string referenced_surface_ids = 10;    // surface ids this spec references (negotiated vs the binary's manifest)
+  UnknownSurfacePolicy unknown_surface_policy = 11; // how the binary handles a referenced surface it does not know
+  reserved 12 to 19;   // granted-surface refs (later)
+  // 140-05 un-reserved field 20 from the 20-29 nav range for the NavGraph;
+  // 21..29 stay reserved for later nav seams.
+  NavGraph nav_graph = 20;
+  reserved 21 to 29;   // additional nav seams                        (140-05)
+  // 140-06 un-reserved 30/31/32 from the 30-39 presentation range for the
+  // typed presentation surface (ThemeSpec + TermSet + LocaleSpec); 33..39 stay
+  // reserved. LocaleSpec.timezone is the net-new LOAD-BEARING field (absent
+  // everywhere today, required for scheduling/field). TermSet is PRESENTATION-
+  // ONLY -- a Job->Visit relabel for display; logic keys off entity/surface ids,
+  // never the displayed term.
+  ThemeSpec theme = 30;    // brand preset + logo + color overrides + density
+  TermSet terms = 31;      // presentation-only term overrides (e.g. job->visit)
+  LocaleSpec locale = 32;  // locale + currency + IANA timezone (tz load-bearing)
+  reserved 33 to 39;   // remaining presentation seam                 (140-06)
+  // 140-06 un-reserved field 40 from the 40-49 offline range for the PER-SURFACE
+  // OfflineSpec map (keyed by surface_id); 41..49 stay reserved. Offline is
+  // per-surface and STRUCTURED (policy/cache_ttl/conflict_policy/grace), NEVER a
+  // bare global offlineCapable bool -- gates G1/G5 reason over the structure.
+  map<string, OfflineSpec> surface_offline = 40;  // per-surface offline policy, keyed by surface_id
+  reserved 41 to 49;   // remaining offline seam                      (140-06)
+  // 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
+  repeated ServiceTransportBinding bindings = 50;  // service<->transport bindings (transport- AND scope-agnostic)
+  reserved 51 to 59;   // additional binding seams                     (140-04)
+  // 140-07 un-reserved 60/61 from the 60-69 tool/agent range; 62..69 stay
+  // reserved. ToolDefinition is TYPED (adapter allowlist FK + JSON-Schema
+  // envelopes + side_effect + idempotency_key), NEVER a config_json blob.
+  // AgentNode carries a typed io_envelope_schema -- the swap-stable seam the
+  // real LLM dispatcher (obj 144) plugs into without a contract change.
+  repeated ToolDefinition tools = 60;       // curated-allowlist-bound tools
+  repeated AgentNode agent_nodes = 61;      // agent nodes (io-envelope-preserving)
+  reserved 62 to 69;   // remaining tool/agent seam                    (140-07)
+  // 140-07 un-reserved 70/71 from the 70-79 telemetry/resolution range; 72..79
+  // stay reserved. ResolutionContext is the provenance of THIS resolution
+  // (tenant/org + resolved_at + resolver_version); LockedSurface carries an
+  // upsell_reason for a surface gated behind an entitlement. The TelemetryEnvelope
+  // message itself is a top-level message (emitted on the runtime wire, not a
+  // resolved-spec field) -- only resolution_context + locked_surfaces live here.
+  ResolutionContext resolution_context = 70; // provenance of this resolution
+  repeated LockedSurface locked_surfaces = 71; // surfaces gated behind an upsell
+  reserved 72 to 79;   // remaining telemetry/resolution seam          (140-07/08/09)
+  // 140-07 un-reserved 80..86 from the 80-89 reserved-cheap range; 87..89 stay
+  // reserved. These are reserved-NOW-cheap seams: typed-but-empty-friendly fields
+  // a frozen-forever proto must reserve up front rather than migrate to add.
+  // server_killable (86) is the REQUIRED fast-rollback kill flag for the
+  // generated fleet (a customer-own store account gives no kill switch otherwise).
+  repeated ActionGate action_gates = 80;     // per-action entitlement gates
+  map<string, string> flag_overrides = 81;   // feature-flag overrides
+  string variant = 82;                       // A/B or cohort variant
+  repeated string declared_states = 83;      // render states (populated/empty/error/...)
+  map<string, string> custom_fields = 84;    // vertical/builder custom fields
+  map<string, string> rule_policy = 85;      // rule-policy hints (e.g. refund -> approval)
+  bool server_killable = 86;                 // REQUIRED fast-rollback kill flag
+  reserved 87 to 89;   // remaining reserved-cheap seam                (140-07)
+}
+
+// --- 140-04 ServiceTransportBinding (must-have #3) -------------------------
+//
+// The binding makes a FeatureSurface bind to a backend service in a way that is
+// TRANSPORT-agnostic (eden-biz = CONNECT; aocore = REST_OPENAPI) AND
+// SCOPE-agnostic (biz = company scope; aocore = org scope). It carries reads
+// AND writes -- create/update/delete are first-class Operations, not read-only.
+//
+// AOID IDENTITY MODEL (Decision #1, locked -- the mechanism is RUNTIME, not a
+// proto field): the device holds ONE AOID identity. scope_authority on each
+// binding selects which backend tenant scope that single identity projects to
+// via the AOEdge identity-context -- COMPANY (eden-biz) or ORG (aocore). aocore
+// VERIFIES the AOEdge identity-context today; biz aligns to accept it inbound
+// (alignment task #16). There is NO device-side multi-credential store: one
+// identity, projected per-backend at request time (see binding.ResolveScope).
+// Authority is derived ONLY from the verified identity context -- NEVER bound
+// from a request body.
+
+// TransportKind is the wire protocol a binding speaks. Room is reserved for
+// future transports (e.g. GraphQL) by keeping UNSPECIFIED=0 fail-closed and
+// numbering known transports sparsely-safe.
+enum TransportKind {
+  TRANSPORT_KIND_UNSPECIFIED = 0;   // reserved / not-yet-bindable (forward-compat)
+  TRANSPORT_KIND_CONNECT = 1;       // eden-biz Connect RPC
+  TRANSPORT_KIND_REST_OPENAPI = 2;  // aocore REST / OpenAPI
+}
+
+// ScopeAuthority is how a single AOID identity projects to a backend's tenant
+// scope. COMPANY = eden-biz company scope; ORG = aocore org scope. UNSPECIFIED
+// is fail-closed (not bindable). This enum is the proto-level mapping of the
+// one identity to each backend -- the projection logic is binding.ResolveScope.
+enum ScopeAuthority {
+  SCOPE_AUTHORITY_UNSPECIFIED = 0;  // reserved / fail-closed
+  SCOPE_AUTHORITY_COMPANY = 1;      // eden-biz company scope
+  SCOPE_AUTHORITY_ORG = 2;          // aocore org scope
+}
+
+// Operation is a single read or write the binding exposes. The binding is NOT
+// read-only: CREATE/UPDATE/DELETE are first-class alongside GET/LIST.
+enum Operation {
+  OPERATION_UNSPECIFIED = 0;
+  OPERATION_GET = 1;     // read one
+  OPERATION_LIST = 2;    // read many
+  OPERATION_CREATE = 3;  // write (create)
+  OPERATION_UPDATE = 4;  // write (update)
+  OPERATION_DELETE = 5;  // write (delete)
+}
+
+// PaginationKind is the pagination contract a LIST operation honors, independent
+// of transport (a CONNECT and a REST_OPENAPI binding can each use any kind).
+enum PaginationKind {
+  PAGINATION_KIND_UNSPECIFIED = 0;
+  PAGINATION_KIND_NONE = 1;    // no pagination
+  PAGINATION_KIND_CURSOR = 2;  // opaque page_token cursor
+  PAGINATION_KIND_OFFSET = 3;  // numeric offset/limit
+}
+
+// ServiceTransportBinding binds one entity's service to a transport + scope.
+// It is the anchor every later message references for identity + scope. It is
+// transport- AND scope-agnostic so the SAME ExperienceSpec can drive eden-biz
+// (CONNECT/COMPANY) and aocore (REST_OPENAPI/ORG) through one Repository
+// abstraction (the runtime two-transport proof lands in 140-11).
+//
+// NO authority field (company_id/org_id) lives here that a REST handler could
+// bind from the request BODY -- scope_authority selects WHICH scope the
+// verified AOID identity projects to; the scope VALUE is resolved at runtime
+// from the identity context, never the body (binding.ResolveScope).
+message ServiceTransportBinding {
+  string entity = 1;              // logical entity (e.g. "Invoice", "Tenant")
+  string service_package = 2;     // backend service package / namespace
+  string service_name = 3;        // backend service name
+  repeated Operation operations = 4;  // reads AND writes this binding exposes
+  TransportKind transport_kind = 5;   // CONNECT (biz) | REST_OPENAPI (aocore)
+  ScopeAuthority scope_authority = 6; // COMPANY (biz) | ORG (aocore) projection target
+  PaginationKind pagination = 7;      // LIST pagination contract
+  string repo_interface_id = 8;       // Repository abstraction id (140-11 two-transport proof)
+}
+
+// --- 140-05 NavGraph + DeepLinkSpec (must-have #2) -------------------------
+//
+// NavGraph is a GRAPH, not a flat repeated surface_id list. The builder must be
+// able to express the customer->invoice->payment FLOW, not just a launcher of
+// disconnected surfaces. Three typed pieces make it a graph:
+//   - NavSlot     places a surface at a Placement (primary nav vs overflow vs
+//                 detail-only) with an order -- the visible navigation chrome.
+//   - NavEdge     a TYPED inter-surface transition carrying param_bindings: the
+//                 selection passed across the hop (e.g. {customerId} from the
+//                 customer surface into the invoice surface). This is the
+//                 flow-passing proof -- an edge is not a bare launcher link.
+//   - NavGraph    landing surface + the slots + the edges.
+//
+// Coherence (<=5 PRIMARY, landing exists, edge endpoints exist, surface
+// entitlement) is MACHINE-CHECKED in navgraph.go (ValidateNavGraph), not
+// enforced as a proto constraint -- the data can EXPRESS an incoherent graph so
+// the validator (and the 140-09 M0 validator) has something to reject.
+
+// Placement is where a NavSlot's surface sits in the navigation chrome.
+// UNSPECIFIED=0 is fail-safe (an unplaced slot is treated as not-shown rather
+// than silently promoted into primary nav).
+enum Placement {
+  PLACEMENT_UNSPECIFIED = 0;  // unset -- not shown in primary/overflow nav
+  PLACEMENT_PRIMARY = 1;      // primary navigation (the <=5-slot rail/tab bar)
+  PLACEMENT_MORE = 2;         // overflow / "More" menu
+  PLACEMENT_DETAIL_ONLY = 3;  // reachable only via an edge, never in the chrome
+}
+
+// NavSlot places one surface in the navigation at a Placement + order.
+message NavSlot {
+  string surface_id = 1;     // the FeatureSurface this slot shows
+  Placement placement = 2;   // primary / more / detail-only
+  int32 order = 3;           // sort order within the placement
+}
+
+// NavEdge is a TYPED transition from one surface to another carrying the
+// selection passed across the hop. param_bindings maps a target input name to a
+// source selection expression (e.g. {"customerId": "$selection.id"}); trigger
+// names the gesture/event that fires the edge (e.g. "onSelect"). This typed
+// param-passing is what makes the graph compose FLOWS, not a launcher.
+message NavEdge {
+  string from_surface_id = 1;            // source surface
+  string to_surface_id = 2;              // target surface
+  map<string, string> param_bindings = 3; // target input <- source selection expr
+  string trigger = 4;                    // gesture/event that fires the edge
+}
+
+// NavGraph is the typed navigation graph for a resolved ExperienceSpec.
+message NavGraph {
+  string landing_surface_id = 1;  // the surface shown first (must be a slot)
+  repeated NavSlot slots = 2;     // placed surfaces (the nav chrome)
+  repeated NavEdge edges = 3;     // typed inter-surface transitions
+}
+
+// DeepLinkSpec is the url scheme + route templates a store binary commits to at
+// submit time. It lives on AppDefinition (BUILD-time), never on a resolved
+// ExperienceSpec, because a published store binary CANNOT change these
+// post-submit -- they are frozen the moment the binary ships.
+message DeepLinkSpec {
+  string url_scheme = 1;               // e.g. "edenbiz" (edenbiz://...)
+  repeated string route_templates = 2; // e.g. "/customers/:id", "/invoices/:id/pay"
+}
+
+// --- 140-06 ThemeSpec + TermSet + LocaleSpec + per-surface OfflineSpec ------
+//
+// Must-haves #5 + #6: the presentation + runtime-offline-policy surface. All
+// load-bearing values are TYPED fields (frozen-contract discipline). Coherence
+// (timezone-required-for-offline-scheduling, conflict-policy-coherence) is
+// MACHINE-CHECKED in presentation.go (ValidatePresentation), NOT a proto
+// constraint -- the data can EXPRESS an incoherent presentation so the validator
+// (and the 140-09 M0 validator) has something to reject.
+
+// ThemeSpec is the per-company brand surface: a named brand_preset, a logo_ref,
+// an arbitrary color-override map (token -> hex, no fixed schema so a builder can
+// override any subset of brand tokens), and a density token.
+message ThemeSpec {
+  string brand_preset = 1;                  // named brand preset the build starts from
+  string logo_ref = 2;                      // asset ref for the company logo
+  map<string, string> color_overrides = 3;  // brand token -> value (e.g. "primary" -> "#0A84FF")
+  string density = 4;                       // density token (e.g. "comfortable" | "compact")
+}
+
+// TermSet is the PRESENTATION-ONLY term-override map (e.g. {"job": "visit"}).
+// IMPORTANT: it is a DISPLAY relabel only -- it MUST NEVER be load-bearing for
+// logic. The runtime keys off the logical entity/surface id (the map KEY), and
+// the value is purely the label shown to the user. The TermResolver (build-spec
+// section 9) routes every displayed string through this map; no branch ever
+// keys off the resolved label.
+message TermSet {
+  map<string, string> overrides = 1;  // logical term -> displayed label (presentation-only)
+}
+
+// LocaleSpec is the per-resolution locale surface. timezone is the net-new
+// LOAD-BEARING field: it is absent everywhere in the product today and is
+// required to resolve local appointment times on scheduling/field surfaces.
+// Modeled as an IANA tz string (e.g. "America/New_York"). currency is a field
+// here -- it is NEVER hardcoded to USD at the contract level.
+message LocaleSpec {
+  string locale = 1;    // BCP-47 locale (e.g. "en-US")
+  string currency = 2;  // ISO-4217 currency (e.g. "USD") -- NOT hardcoded
+  string timezone = 3;  // IANA timezone (e.g. "America/New_York") -- load-bearing for scheduling
+}
+
+// OfflinePolicy is the per-surface offline behavior. UNSPECIFIED=0 fails SAFE
+// (treated as NONE -- no offline). NONE = online-only. READ_CACHE = serve cached
+// reads offline, no writes. READ_WRITE_QUEUE = cache reads AND queue writes for
+// later sync (the field-service offline-first mode).
+enum OfflinePolicy {
+  OFFLINE_POLICY_UNSPECIFIED = 0;        // fail-safe -> treated as NONE
+  OFFLINE_POLICY_NONE = 1;               // online-only, no offline behavior
+  OFFLINE_POLICY_READ_CACHE = 2;         // serve cached reads offline; no writes
+  OFFLINE_POLICY_READ_WRITE_QUEUE = 3;   // cache reads + queue writes for later sync
+}
+
+// ConflictPolicy is how a queued offline write reconciles against server state
+// at sync time. UNSPECIFIED=0 fails SAFE (treated as MANUAL_RECONCILE -- never
+// silently drop a conflicting write). LAST_WRITE_WINS = the later timestamp
+// wins. SERVER_WINS = the server copy wins, the queued write is discarded.
+// MANUAL_RECONCILE = surface the conflict to the user.
+enum ConflictPolicy {
+  CONFLICT_POLICY_UNSPECIFIED = 0;       // fail-safe -> treated as MANUAL_RECONCILE
+  CONFLICT_POLICY_LAST_WRITE_WINS = 1;   // later write wins
+  CONFLICT_POLICY_SERVER_WINS = 2;       // server copy wins, queued write discarded
+  CONFLICT_POLICY_MANUAL_RECONCILE = 3;  // surface the conflict to the user
+}
+
+// OfflineSpec is the STRUCTURED per-surface offline policy -- NOT a bare bool. A
+// bare offlineCapable bool cannot express a conflict strategy or a grace window;
+// gates G1/G5 reason over these four typed fields. Attached PER-SURFACE via
+// ExperienceSpec.surface_offline (keyed by surface_id), never one global flag.
+message OfflineSpec {
+  OfflinePolicy policy = 1;            // offline behavior for this surface
+  uint32 cache_ttl_seconds = 2;        // how long cached reads stay valid offline
+  ConflictPolicy conflict_policy = 3;  // how a queued write reconciles at sync
+  uint32 read_only_grace_seconds = 4;  // grace window the surface stays read-only after going offline
+}
+
+// --- 140-07 tool/agent/signing/telemetry + reserved-cheap (LAST proto-writer) -
+//
+// Must-haves #7..#10. This is the FINAL message group -- after it the
+// experience.v1 message shape is FROZEN for handler work (140-08+). Every value
+// is a TYPED field (frozen-contract discipline); NO config_json blob; signing is
+// a REFERENCE, never inline material.
+//
+// SECURITY MODEL (locked, memories feedback_allowlist_by_stored_value_injection +
+// feedback_rest_authority_field_body_binding): a tool binds ONLY to a curated
+// allowlist of pre-built tenant-safe adapters -- adapter_id is an allowlist FK,
+// never an arbitrary RPC/SQL target. The allowlist check + side_effect gating +
+// io-envelope shape are MACHINE-CHECKED in tooling.go (ValidateTooling), not a
+// proto constraint -- the data can EXPRESS an off-allowlist tool so the validator
+// has something to reject. Wrong-tenant non-leak: an off-allowlist adapter
+// collapses to the SAME code whether it is another tenant's private adapter or a
+// wholly-unknown one (no existence oracle).
+
+// SideEffect gates the tool dispatcher. UNSPECIFIED=0 is fail-closed (an
+// unclassified tool is not dispatchable). READ = pure read. WRITE = mutates
+// tenant data (idempotency_key load-bearing). EXTERNAL = outbound (webhooks etc.)
+// -- representable but DEFERRED (out of scope; ValidateTooling warn-flags it).
+enum SideEffect {
+  SIDE_EFFECT_UNSPECIFIED = 0;  // fail-closed -- not dispatchable
+  SIDE_EFFECT_READ = 1;         // pure read
+  SIDE_EFFECT_WRITE = 2;        // mutates tenant data (idempotency_key matters)
+  SIDE_EFFECT_EXTERNAL = 3;     // outbound (webhooks) -- DEFERRED, representable
+}
+
+// ToolDefinition is the TYPED tool contract. adapter_id is a curated-allowlist FK
+// (NO arbitrary binding). input_schema/output_schema are JSON-Schema STRINGS (a
+// typed envelope), NOT a free config_json blob. side_effect gates the dispatcher.
+// idempotency_key is load-bearing for WRITE/EXTERNAL replays.
+message ToolDefinition {
+  string adapter_id = 1;       // curated-allowlist FK (no arbitrary RPC/SQL)
+  string input_schema = 2;     // JSON-Schema string (typed envelope, not a blob)
+  string output_schema = 3;    // JSON-Schema string (typed envelope, not a blob)
+  SideEffect side_effect = 4;  // dispatcher gate (read/write/external)
+  string idempotency_key = 5;  // replay key (load-bearing for write/external)
+}
+
+// AgentNode is an agent step binding a set of tool ids under a TYPED
+// io_envelope_schema. The io-envelope is the SWAP-STABLE seam: the stub
+// dispatcher AND the real LLM dispatcher (obj 144) both read/write THIS envelope,
+// so the dispatcher swap is envelope-preserving with NO contract change.
+message AgentNode {
+  repeated string tool_ids = 1;       // tool ids this node may call
+  string io_envelope_schema = 2;      // JSON-Schema io envelope (swap-stable seam)
+}
+
+// CredentialRef is a REFERENCE to signing material held in a custody system
+// (1Password / KMS), NEVER the material itself. ref is the pointer (e.g.
+// op://AOCyber/ios-dist-cert); custody names the system holding it.
+message CredentialRef {
+  string ref = 1;      // pointer into the custody system (op://..., kms://...)
+  string custody = 2;  // custody system name (e.g. "1password", "kms")
+}
+
+// SigningSpec is the per-platform signing identity, keyed by platform
+// (ios|android). It carries CredentialRefs (ref + custody) for BOTH platforms,
+// NEVER inline cert/key bytes. Lives on AppDefinition (BUILD-time) -- a store
+// binary commits to its signing identity at submit time.
+message SigningSpec {
+  map<string, CredentialRef> by_platform = 1;  // platform -> credential reference
+}
+
+// TelemetryEnvelope carries every observability ID in-schema (NOT a free blob).
+// Emitted on the runtime telemetry wire. tenant_id is the REQUESTING tenant only
+// -- it is never an other-tenant id (no cross-tenant telemetry bleed).
+message TelemetryEnvelope {
+  string spec_id = 1;
+  string spec_version = 2;
+  string surface_id = 3;
+  string binding_id = 4;
+  string entitlement_set_hash = 5;
+  string brand = 6;
+  string theme_profile = 7;
+  string form_factor = 8;
+  string build_sha = 9;
+  string compliance_profile = 10;
+  string tenant_id = 11;  // REQUESTING tenant only -- never another tenant's id
+}
+
+// ResolutionContext is the provenance of a resolved ExperienceSpec: which
+// tenant/org it was resolved for, when, and by which resolver version. Lives on
+// ExperienceSpec.resolution_context (field 70).
+message ResolutionContext {
+  string tenant_id = 1;
+  string org_id = 2;
+  string resolved_at = 3;        // RFC3339 resolution timestamp
+  string resolver_version = 4;   // resolver build/version that produced the spec
+}
+
+// LockedSurface is a surface gated behind an entitlement upsell: the surface_id
+// the requesting scope is NOT entitled to + the upsell_reason shown to the user.
+message LockedSurface {
+  string surface_id = 1;
+  string upsell_reason = 2;
+}
+
+// ActionGate gates a single action_id behind an entitlement_key. Reserved-cheap
+// seam on ExperienceSpec.action_gates (field 80) -- typed up front so the frozen
+// proto never has to migrate to add per-action entitlement gating.
+message ActionGate {
+  string action_id = 1;
+  string entitlement_key = 2;
+}
+
+// --- 140-09 ExperienceService (M0 server surface) --------------------------
+//
+// ADDITIVE-ONLY: this block adds a NEW service + NEW request/response wrapper
+// messages (their own field numbers). It does NOT modify any frozen message
+// shape (AppDefinition / ExperienceSpec / their nested types are untouched).
+// Adding rpcs + new messages is a non-breaking change to a frozen v1 contract.
+//
+// TENANCY CHOKEPOINT (the keystone of this TRD): tenant_id / org_id are NEVER
+// bound from a request body -- they are derived from the AUTHENTICATED principal
+// (JWT claims) at the handler. A request that carries tenant_id / org_id is
+// IGNORED for authority; the body value cannot override identity. The wrapper
+// request messages below therefore DO NOT carry a tenant_id/org_id authority
+// field -- the absence is deliberate (mirrors the json:"-" authority lesson).
+//
+// NON-LEAKING DENIAL: a resolution whose principal scope diverges from the
+// stored spec's scope returns a SINGLE permission-denied code, identical whether
+// the spec exists for another tenant/org or does not exist at all (no oracle).
+
+// StoreSpecRequest stores an AppDefinition (carrying its ExperienceSpec) under
+// the AUTHENTICATED principal's scope. The app_definition's tenant_id/org_id (on
+// its nested spec) are OVERWRITTEN by the principal scope server-side -- a body
+// value cannot plant a spec under another tenant.
+message StoreSpecRequest {
+  AppDefinition app_definition = 1;
+}
+
+// StoreSpecResponse returns the stored spec's identity + content hash/version so
+// the caller can address it later (ResolveSpec / ValidateSpec by app_def_id).
+message StoreSpecResponse {
+  string app_def_id = 1;
+  string content_hash = 2;
+  string spec_schema_version = 3;
+}
+
+// ResolveSpecRequest asks the server to resolve a stored spec for the
+// principal's scope, role, and form_factor. The tuple's tenant/org come from the
+// authenticated principal -- NOT from this message. role + form_factor are the
+// non-authority resolution axes the caller legitimately supplies.
+message ResolveSpecRequest {
+  string app_def_id = 1;
+  string role = 2;
+  string form_factor = 3;
+}
+
+// ResolveSpecResponse carries the filtered + content-hashed ResolvedSpec (only
+// the surfaces the principal's entitlement set GRANTS; ungranted surfaces become
+// locked_surfaces on the spec).
+message ResolveSpecResponse {
+  ExperienceSpec resolved_spec = 1;
+}
+
+// ValidateSpecRequest validates an AppDefinition's spec for coherence (140-05
+// nav rules) + version conformance (140-03) under the principal's scope. The
+// spec's scope is overwritten by the principal scope before validation.
+message ValidateSpecRequest {
+  AppDefinition app_definition = 1;
+}
+
+// ValidationProblem is one machine-checked coherence/version violation. code is
+// a stable token (e.g. nav.too_many_primary) so clients branch without string
+// matching; surface_id names the offending surface when surface-scoped.
+message ValidationProblem {
+  string code = 1;
+  string surface_id = 2;
+  string message = 3;
+}
+
+// ValidateSpecResponse returns valid + the accumulated problems (empty when
+// coherent -- the validator never short-circuits, so the builder sees every
+// problem at once).
+message ValidateSpecResponse {
+  bool valid = 1;
+  repeated ValidationProblem problems = 2;
+}
+
+// ExperienceService is the M0 server surface every consumer calls: store a spec,
+// resolve it per principal scope, validate it. Tenancy is enforced at the
+// service chokepoint (principal-derived scope), never from a request body.
+service ExperienceService {
+  rpc StoreSpec(StoreSpecRequest) returns (StoreSpecResponse);
+  rpc ResolveSpec(ResolveSpecRequest) returns (ResolveSpecResponse);
+  rpc ValidateSpec(ValidateSpecRequest) returns (ValidateSpecResponse);
+}

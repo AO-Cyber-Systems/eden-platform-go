@@ -1,0 +1,30 @@
+# buf.experience.gen.yaml — dedicated overlay for the experience.v1 keystone.
+#
+# WHY A SEPARATE OVERLAY (TRD 140-01 recovery path): the main buf.gen.yaml emits
+# ALL Dart into ../eden-platform-api-dart. experience.v1 must land in its OWN Dart
+# package (eden-experience-api-dart), mirroring platform.v1 -> eden-platform-api-dart.
+# buf v2 cannot split one plugin's output per-package within a single template, so
+# experience.v1 ships via this overlay invoked filtered to its proto path:
+#
+#   buf generate --template buf.experience.gen.yaml --path proto/experience/v1
+#
+# Pin buf 1.69.0 (matches the breaking-change CI gate) to avoid WKT doc-comment
+# false drift. Dart out path is ABSOLUTE to avoid symlink/worktree ambiguity
+# (eden-libs/eden-platform-go is a symlink; relative ../ resolves through the
+# physical parent, not the logical one — absolute paths are unambiguous).
+version: v2
+plugins:
+  - remote: buf.build/protocolbuffers/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+  - remote: buf.build/connectrpc/go
+    out: gen/go
+    opt:
+      - paths=source_relative
+  - remote: buf.build/connectrpc/dart
+    out: /Users/markemerson/Source/eden-libs/eden-experience-api-dart/lib/src/gen
+  - remote: buf.build/protocolbuffers/dart:v21.1.2
+    out: /Users/markemerson/Source/eden-libs/eden-experience-api-dart/lib/src/gen
+    include_wkt: true
+    include_imports: true
