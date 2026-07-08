@@ -285,3 +285,279 @@ func TestValidateAgentSpec_WrongTenant_NonLeakingDenial(t *testing.T) {
 		t.Fatalf("content validation ran on a foreign spec (leak): %v", problems)
 	}
 }
+
+// --- 161-01: the AUDIENCE dimension ---------------------------------------------
+//
+// Test list (from 161-01-TRD, written BEFORE any production code):
+//  A1. Back-compat: a spec with audience INTERNAL or unset/UNSPECIFIED and no
+//      bindings validates exactly as a 160 spec did (helpdesk fixture unchanged).
+//  A2. EXTERNAL + an EXTERNAL binding whose tool_ids all reference
+//      visibility=EXTERNAL_SAFE tools -> valid.
+//  A3. EXTERNAL binding referencing a visibility=INTERNAL_ONLY tool ->
+//      AgentSpecExternalToolNotSafe naming the offending tool_id (deny-by-default).
+//  A4. EXTERNAL binding referencing a visibility=UNSPECIFIED tool -> SAME
+//      rejection (fail-closed: unspecified == internal_only).
+//  A5. BOTH requires an EXTERNAL binding; its external binding obeys A3/A4; the
+//      INTERNAL binding may reference ANY spec tool.
+//  A6. A binding tool_id not present in the spec's tool set ->
+//      AgentSpecBindingUnknownTool (binding subset-of spec tools).
+//  A7. WRONG-TENANT ordering: a foreign spec that ALSO violates A3 returns ONLY
+//      the single denial -- no audience finding leaks (len==1, the denial).
+//  A8. Forward-compat: audience fields (20/21, tool visibility 6) round-trip;
+//      UNKNOWN audience/visibility enum values unmarshal cleanly and survive
+//      re-serialize; the 160 unknown-field retention still holds on an
+//      audience-bearing spec.
+
+// externalSafeSpec builds an EXTERNAL-audience helpdesk spec whose external
+// binding references only the KB-search tool, marked EXTERNAL_SAFE (tool index
+// 0 = kb.article.search in the fixture's binding order).
+func externalSafeSpec() *experiencev1.AgentSpec {
+	return fixtures.NewAgentSpec(
+		fixtures.WithAudience(experiencev1.AgentAudience_AGENT_AUDIENCE_EXTERNAL),
+		fixtures.WithToolVisibility(0, experiencev1.ToolVisibility_TOOL_VISIBILITY_EXTERNAL_SAFE),
+		fixtures.WithAudienceBinding(fixtures.NewExternalAudienceBinding()),
+	)
+}
+
+// --- A1. Back-compat: unset/INTERNAL audience validates as a 160 spec ----------
+
+func TestValidateAgentSpec_Audience_BackCompatInternal(t *testing.T) {
+	// The UNCHANGED 160 helpdesk fixture (no audience field at all).
+	if problems := experience.ValidateAgentSpec(fixtures.NewAgentSpec(), fixtures.DefaultCompanyID); len(problems) != 0 {
+		t.Fatalf("160-era spec (no audience) rejected: %v", problems)
+	}
+	// Explicit INTERNAL, still no bindings.
+	internal := fixtures.NewAgentSpec(
+		fixtures.WithAudience(experiencev1.AgentAudience_AGENT_AUDIENCE_INTERNAL))
+	if problems := experience.ValidateAgentSpec(internal, fixtures.DefaultCompanyID); len(problems) != 0 {
+		t.Fatalf("explicit INTERNAL spec rejected: %v", problems)
+	}
+}
+
+// --- A2. EXTERNAL + external-safe binding is valid ------------------------------
+
+func TestValidateAgentSpec_Audience_ExternalSafeBindingValid(t *testing.T) {
+	problems := experience.ValidateAgentSpec(externalSafeSpec(), fixtures.DefaultCompanyID)
+	if len(problems) != 0 {
+		t.Fatalf("external spec with external_safe-only binding rejected: %v", problems)
+	}
+}
+
+// --- A3/A4. Deny-by-default: internal_only AND unspecified both reject ----------
+
+func TestValidateAgentSpec_Audience_ExternalBindingDeniesUnsafeTools(t *testing.T) {
+	cases := []struct {
+		name string
+		vis  experiencev1.ToolVisibility
+	}{
+		{"internal_only tool on external binding", experiencev1.ToolVisibility_TOOL_VISIBILITY_INTERNAL_ONLY},
+		{"UNSPECIFIED tool on external binding (fail-closed)", experiencev1.ToolVisibility_TOOL_VISIBILITY_UNSPECIFIED},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// kb.article.search (tool 0) carries the unsafe visibility while the
+			// external binding references it.
+			spec := fixtures.NewAgentSpec(
+				fixtures.WithAudience(experiencev1.AgentAudience_AGENT_AUDIENCE_EXTERNAL),
+				fixtures.WithToolVisibility(0, tc.vis),
+				fixtures.WithAudienceBinding(fixtures.NewExternalAudienceBinding()),
+			)
+			problems := experience.ValidateAgentSpec(spec, fixtures.DefaultCompanyID)
+			found := false
+			for _, p := range problems {
+				if p.Code == experience.AgentSpecExternalToolNotSafe {
+					found = true
+					// The finding must NAME the offending tool so the builder can
+					// point at it (same-tenant context -- not an oracle).
+					if !strings.Contains(p.Message, fixtures.HelpdeskToolKBSearch) {
+						t.Fatalf("finding does not name the offending tool_id %q: %q",
+							fixtures.HelpdeskToolKBSearch, p.Message)
+					}
+				}
+			}
+			if !found {
+				t.Fatalf("want %s, got %v", experience.AgentSpecExternalToolNotSafe, problems)
+			}
+		})
+	}
+}
+
+// --- A5. BOTH requires an external binding; internal binding unconstrained ------
+
+func TestValidateAgentSpec_Audience_BothRequiresExternalBinding(t *testing.T) {
+	// BOTH with NO external binding -> AgentSpecMissingExternalBinding.
+	noExternal := fixtures.NewAgentSpec(
+		fixtures.WithAudience(experiencev1.AgentAudience_AGENT_AUDIENCE_BOTH),
+		fixtures.WithAudienceBinding(&experiencev1.AudienceBinding{
+			Audience: experiencev1.AgentAudience_AGENT_AUDIENCE_INTERNAL,
+			ToolIds:  fixtures.HelpdeskToolIDs(),
+		}),
+	)
+	problems := experience.ValidateAgentSpec(noExternal, fixtures.DefaultCompanyID)
+	found := false
+	for _, p := range problems {
+		if p.Code == experience.AgentSpecMissingExternalBinding {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("BOTH without external binding: want %s, got %v",
+			experience.AgentSpecMissingExternalBinding, problems)
+	}
+
+	// EXTERNAL (audience without any binding at all) -> same requirement.
+	bare := fixtures.NewAgentSpec(
+		fixtures.WithAudience(experiencev1.AgentAudience_AGENT_AUDIENCE_EXTERNAL))
+	problems = experience.ValidateAgentSpec(bare, fixtures.DefaultCompanyID)
+	found = false
+	for _, p := range problems {
+		if p.Code == experience.AgentSpecMissingExternalBinding {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("EXTERNAL without any binding: want %s, got %v",
+			experience.AgentSpecMissingExternalBinding, problems)
+	}
+
+	// Valid BOTH: internal binding references ANY tool (including internal-only
+	// writes); external binding references only the EXTERNAL_SAFE kb-search.
+	valid := fixtures.NewAgentSpec(
+		fixtures.WithAudience(experiencev1.AgentAudience_AGENT_AUDIENCE_BOTH),
+		fixtures.WithToolVisibility(0, experiencev1.ToolVisibility_TOOL_VISIBILITY_EXTERNAL_SAFE),
+		fixtures.WithAudienceBinding(&experiencev1.AudienceBinding{
+			Audience: experiencev1.AgentAudience_AGENT_AUDIENCE_INTERNAL,
+			ToolIds:  fixtures.HelpdeskToolIDs(), // full internal set, any visibility
+		}),
+		fixtures.WithAudienceBinding(fixtures.NewExternalAudienceBinding()),
+	)
+	if problems := experience.ValidateAgentSpec(valid, fixtures.DefaultCompanyID); len(problems) != 0 {
+		t.Fatalf("valid BOTH spec rejected: %v", problems)
+	}
+
+	// The external binding of a BOTH spec obeys A3: unsafe tool -> rejected.
+	unsafeBoth := fixtures.NewAgentSpec(
+		fixtures.WithAudience(experiencev1.AgentAudience_AGENT_AUDIENCE_BOTH),
+		fixtures.WithToolVisibility(0, experiencev1.ToolVisibility_TOOL_VISIBILITY_INTERNAL_ONLY),
+		fixtures.WithAudienceBinding(fixtures.NewExternalAudienceBinding()),
+	)
+	problems = experience.ValidateAgentSpec(unsafeBoth, fixtures.DefaultCompanyID)
+	found = false
+	for _, p := range problems {
+		if p.Code == experience.AgentSpecExternalToolNotSafe {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("BOTH external binding with unsafe tool: want %s, got %v",
+			experience.AgentSpecExternalToolNotSafe, problems)
+	}
+}
+
+// --- A6. Binding tool_ids must be a subset of the spec's tools ------------------
+
+func TestValidateAgentSpec_Audience_BindingUnknownToolRejected(t *testing.T) {
+	spec := fixtures.NewAgentSpec(
+		fixtures.WithAudience(experiencev1.AgentAudience_AGENT_AUDIENCE_INTERNAL),
+		fixtures.WithAudienceBinding(&experiencev1.AudienceBinding{
+			Audience: experiencev1.AgentAudience_AGENT_AUDIENCE_INTERNAL,
+			ToolIds:  []string{"tool.not.in.spec"},
+		}),
+	)
+	problems := experience.ValidateAgentSpec(spec, fixtures.DefaultCompanyID)
+	found := false
+	for _, p := range problems {
+		if p.Code == experience.AgentSpecBindingUnknownTool {
+			found = true
+			if !strings.Contains(p.Message, "tool.not.in.spec") {
+				t.Fatalf("finding does not name the unknown tool_id: %q", p.Message)
+			}
+		}
+	}
+	if !found {
+		t.Fatalf("want %s, got %v", experience.AgentSpecBindingUnknownTool, problems)
+	}
+}
+
+// --- A7. Wrong-tenant ordering UNCHANGED: tenancy first and ALONE ----------------
+
+// A foreign-scope spec that ALSO violates the external-tool-safety rule returns
+// ONLY the single non-leaking denial -- an audience finding on a foreign spec
+// would itself be an oracle.
+func TestValidateAgentSpec_Audience_WrongTenantSingleDenial(t *testing.T) {
+	violating := fixtures.NewAgentSpec( // company_id = DefaultCompanyID
+		fixtures.WithAudience(experiencev1.AgentAudience_AGENT_AUDIENCE_EXTERNAL),
+		fixtures.WithToolVisibility(0, experiencev1.ToolVisibility_TOOL_VISIBILITY_INTERNAL_ONLY),
+		fixtures.WithAudienceBinding(fixtures.NewExternalAudienceBinding()),
+	)
+	problems := experience.ValidateAgentSpec(violating, fixtures.WrongCompanyID)
+	if len(problems) != 1 {
+		t.Fatalf("foreign spec must yield exactly ONE finding, got %v", problems)
+	}
+	if problems[0].Code != experience.AgentSpecPermissionDenied {
+		t.Fatalf("foreign spec finding: got %s want %s", problems[0].Code, experience.AgentSpecPermissionDenied)
+	}
+	// Byte-identical to the missing-spec denial (no existence oracle).
+	missing := experience.ValidateAgentSpec(nil, fixtures.WrongCompanyID)
+	if !reflect.DeepEqual(problems, missing) {
+		t.Fatalf("audience finding leaked on a foreign spec:\n got: %#v\n want: %#v", problems, missing)
+	}
+}
+
+// --- A8. Forward-compat: audience fields + unknown enum values ------------------
+
+func TestAgentSpec_Audience_ForwardCompat(t *testing.T) {
+	spec := externalSafeSpec()
+
+	// (a) Audience fields round-trip: audience(20), audience_bindings(21),
+	// tools[].visibility(6).
+	got := rtAgentSpec(t, spec)
+	if got.GetAudience() != experiencev1.AgentAudience_AGENT_AUDIENCE_EXTERNAL {
+		t.Fatalf("audience lost on the wire: got %v", got.GetAudience())
+	}
+	if len(got.GetAudienceBindings()) != 1 {
+		t.Fatalf("audience_bindings lost on the wire: got %v", got.GetAudienceBindings())
+	}
+	b := got.GetAudienceBindings()[0]
+	if b.GetAudience() != experiencev1.AgentAudience_AGENT_AUDIENCE_EXTERNAL ||
+		len(b.GetToolIds()) == 0 || b.GetPersona() == "" || b.GetEscalationTarget() == "" {
+		t.Fatalf("AudienceBinding fields lost on the wire: %+v", b)
+	}
+	if got.GetTools()[0].GetVisibility() != experiencev1.ToolVisibility_TOOL_VISIBILITY_EXTERNAL_SAFE {
+		t.Fatalf("tools[0].visibility lost on the wire: got %v", got.GetTools()[0].GetVisibility())
+	}
+
+	// (b) UNKNOWN enum values (a version-N+1 audience/visibility) unmarshal
+	// cleanly (proto3 open enums) and survive re-serialize.
+	unknown := externalSafeSpec()
+	unknown.Audience = experiencev1.AgentAudience(99)
+	unknown.Tools[0].Visibility = experiencev1.ToolVisibility(99)
+	rt := rtAgentSpec(t, unknown)
+	if int32(rt.GetAudience()) != 99 {
+		t.Fatalf("unknown audience enum not preserved: got %d want 99", rt.GetAudience())
+	}
+	if int32(rt.GetTools()[0].GetVisibility()) != 99 {
+		t.Fatalf("unknown visibility enum not preserved: got %d want 99", rt.GetTools()[0].GetVisibility())
+	}
+
+	// (c) The 160 unknown-FIELD retention still holds on an audience-bearing
+	// spec (an old consumer strips nothing).
+	wire, err := proto.Marshal(spec)
+	if err != nil {
+		t.Fatalf("marshal audience spec: %v", err)
+	}
+	future := protowire.AppendTag(nil, 4001, protowire.BytesType)
+	future = protowire.AppendString(future, "field-from-version-n-plus-1")
+	wire = append(wire, future...)
+	var fc experiencev1.AgentSpec
+	if err := proto.Unmarshal(wire, &fc); err != nil {
+		t.Fatalf("version-N consumer must accept version-N+1 bytes: %v", err)
+	}
+	rewire, err := proto.Marshal(&fc)
+	if err != nil {
+		t.Fatalf("re-marshal: %v", err)
+	}
+	if !bytes.Contains(rewire, future) {
+		t.Fatalf("unknown future field not preserved across re-serialize on an audience-bearing spec")
+	}
+}
