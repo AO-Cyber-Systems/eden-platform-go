@@ -2583,6 +2583,307 @@ func (x *ValidateSpecResponse) GetProblems() []*ValidationProblem {
 	return nil
 }
 
+// KnowledgePolicy grounds the agent: which knowledge sources it may retrieve
+// from (source_refs) and whether it may ONLY answer from retrieved grounding
+// (grounded_only = the helpdesk "answer from KB or escalate" posture).
+type KnowledgePolicy struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SourceRefs    []string               `protobuf:"bytes,1,rep,name=source_refs,json=sourceRefs,proto3" json:"source_refs,omitempty"`        // knowledge source refs (e.g. kb://helpdesk/articles)
+	GroundedOnly  bool                   `protobuf:"varint,2,opt,name=grounded_only,json=groundedOnly,proto3" json:"grounded_only,omitempty"` // true = answer only from retrieved grounding
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *KnowledgePolicy) Reset() {
+	*x = KnowledgePolicy{}
+	mi := &file_experience_v1_experience_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KnowledgePolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KnowledgePolicy) ProtoMessage() {}
+
+func (x *KnowledgePolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KnowledgePolicy.ProtoReflect.Descriptor instead.
+func (*KnowledgePolicy) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *KnowledgePolicy) GetSourceRefs() []string {
+	if x != nil {
+		return x.SourceRefs
+	}
+	return nil
+}
+
+func (x *KnowledgePolicy) GetGroundedOnly() bool {
+	if x != nil {
+		return x.GroundedOnly
+	}
+	return false
+}
+
+// HitlPolicy is the human-in-the-loop escalation contract: escalate on low
+// confidence (below confidence_floor) and on any WRITE tool call beyond the
+// allowlisted set (escalate_on_write_beyond names the writes the agent MAY
+// perform autonomously; every other write escalates to a human).
+type HitlPolicy struct {
+	state                   protoimpl.MessageState `protogen:"open.v1"`
+	EscalateOnLowConfidence bool                   `protobuf:"varint,1,opt,name=escalate_on_low_confidence,json=escalateOnLowConfidence,proto3" json:"escalate_on_low_confidence,omitempty"` // escalate when confidence < floor
+	ConfidenceFloor         float64                `protobuf:"fixed64,2,opt,name=confidence_floor,json=confidenceFloor,proto3" json:"confidence_floor,omitempty"`                            // [0,1] confidence threshold
+	EscalateOnWriteBeyond   []string               `protobuf:"bytes,3,rep,name=escalate_on_write_beyond,json=escalateOnWriteBeyond,proto3" json:"escalate_on_write_beyond,omitempty"`        // writes allowed WITHOUT escalation
+	unknownFields           protoimpl.UnknownFields
+	sizeCache               protoimpl.SizeCache
+}
+
+func (x *HitlPolicy) Reset() {
+	*x = HitlPolicy{}
+	mi := &file_experience_v1_experience_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HitlPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HitlPolicy) ProtoMessage() {}
+
+func (x *HitlPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HitlPolicy.ProtoReflect.Descriptor instead.
+func (*HitlPolicy) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *HitlPolicy) GetEscalateOnLowConfidence() bool {
+	if x != nil {
+		return x.EscalateOnLowConfidence
+	}
+	return false
+}
+
+func (x *HitlPolicy) GetConfidenceFloor() float64 {
+	if x != nil {
+		return x.ConfidenceFloor
+	}
+	return 0
+}
+
+func (x *HitlPolicy) GetEscalateOnWriteBeyond() []string {
+	if x != nil {
+		return x.EscalateOnWriteBeyond
+	}
+	return nil
+}
+
+// BudgetPolicy caps an agent run: max reasoning/tool steps and max tokens.
+// max_steps is validated into (0, ceiling] by ValidateAgentSpec (fail-closed:
+// an unset/zero budget is NOT dispatchable).
+type BudgetPolicy struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	MaxSteps      int32                  `protobuf:"varint,1,opt,name=max_steps,json=maxSteps,proto3" json:"max_steps,omitempty"`    // max agent steps per run (validator: 0 < n <= ceiling)
+	MaxTokens     int32                  `protobuf:"varint,2,opt,name=max_tokens,json=maxTokens,proto3" json:"max_tokens,omitempty"` // max tokens per run (0 = runtime default)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BudgetPolicy) Reset() {
+	*x = BudgetPolicy{}
+	mi := &file_experience_v1_experience_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BudgetPolicy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BudgetPolicy) ProtoMessage() {}
+
+func (x *BudgetPolicy) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BudgetPolicy.ProtoReflect.Descriptor instead.
+func (*BudgetPolicy) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *BudgetPolicy) GetMaxSteps() int32 {
+	if x != nil {
+		return x.MaxSteps
+	}
+	return 0
+}
+
+func (x *BudgetPolicy) GetMaxTokens() int32 {
+	if x != nil {
+		return x.MaxTokens
+	}
+	return 0
+}
+
+// AgentSpec is the reusable, versioned agent contract. A flow's agent node
+// references an AgentSpec by id (wired in 160-03); the spec itself is authored
+// once and reused across every channel/flow.
+type AgentSpec struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                // stable spec id (authored in eden-biz)
+	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`                      // versioned contract (semver-ish, e.g. "1.0.0")
+	CompanyId     string                 `protobuf:"bytes,3,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"` // owning tenant scope -- OVERWRITTEN by principal at store (non-leaking)
+	Persona       string                 `protobuf:"bytes,4,opt,name=persona,proto3" json:"persona,omitempty"`                      // system prompt / grounding persona (TYPED, not a config blob)
+	ModelRef      string                 `protobuf:"bytes,5,opt,name=model_ref,json=modelRef,proto3" json:"model_ref,omitempty"`    // AOCore /v1/models catalog asset id (first-class model selection)
+	Node          *AgentNode             `protobuf:"bytes,6,opt,name=node,proto3" json:"node,omitempty"`                            // COMPOSES the frozen 140 AgentNode (tool_ids + io_envelope_schema)
+	Tools         []*ToolDefinition      `protobuf:"bytes,7,rep,name=tools,proto3" json:"tools,omitempty"`                          // resolved typed tool contracts (frozen 140 type)
+	Knowledge     *KnowledgePolicy       `protobuf:"bytes,8,opt,name=knowledge,proto3" json:"knowledge,omitempty"`
+	Hitl          *HitlPolicy            `protobuf:"bytes,9,opt,name=hitl,proto3" json:"hitl,omitempty"`
+	Budget        *BudgetPolicy          `protobuf:"bytes,10,opt,name=budget,proto3" json:"budget,omitempty"`
+	Lifecycle     string                 `protobuf:"bytes,11,opt,name=lifecycle,proto3" json:"lifecycle,omitempty"` // draft|active|retired
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AgentSpec) Reset() {
+	*x = AgentSpec{}
+	mi := &file_experience_v1_experience_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AgentSpec) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AgentSpec) ProtoMessage() {}
+
+func (x *AgentSpec) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AgentSpec.ProtoReflect.Descriptor instead.
+func (*AgentSpec) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *AgentSpec) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AgentSpec) GetVersion() string {
+	if x != nil {
+		return x.Version
+	}
+	return ""
+}
+
+func (x *AgentSpec) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *AgentSpec) GetPersona() string {
+	if x != nil {
+		return x.Persona
+	}
+	return ""
+}
+
+func (x *AgentSpec) GetModelRef() string {
+	if x != nil {
+		return x.ModelRef
+	}
+	return ""
+}
+
+func (x *AgentSpec) GetNode() *AgentNode {
+	if x != nil {
+		return x.Node
+	}
+	return nil
+}
+
+func (x *AgentSpec) GetTools() []*ToolDefinition {
+	if x != nil {
+		return x.Tools
+	}
+	return nil
+}
+
+func (x *AgentSpec) GetKnowledge() *KnowledgePolicy {
+	if x != nil {
+		return x.Knowledge
+	}
+	return nil
+}
+
+func (x *AgentSpec) GetHitl() *HitlPolicy {
+	if x != nil {
+		return x.Hitl
+	}
+	return nil
+}
+
+func (x *AgentSpec) GetBudget() *BudgetPolicy {
+	if x != nil {
+		return x.Budget
+	}
+	return nil
+}
+
+func (x *AgentSpec) GetLifecycle() string {
+	if x != nil {
+		return x.Lifecycle
+	}
+	return ""
+}
+
 var File_experience_v1_experience_proto protoreflect.FileDescriptor
 
 const file_experience_v1_experience_proto_rawDesc = "" +
@@ -2778,7 +3079,34 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\amessage\x18\x03 \x01(\tR\amessage\"j\n" +
 	"\x14ValidateSpecResponse\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12<\n" +
-	"\bproblems\x18\x02 \x03(\v2 .experience.v1.ValidationProblemR\bproblems*\xb7\x01\n" +
+	"\bproblems\x18\x02 \x03(\v2 .experience.v1.ValidationProblemR\bproblems\"W\n" +
+	"\x0fKnowledgePolicy\x12\x1f\n" +
+	"\vsource_refs\x18\x01 \x03(\tR\n" +
+	"sourceRefs\x12#\n" +
+	"\rgrounded_only\x18\x02 \x01(\bR\fgroundedOnly\"\xad\x01\n" +
+	"\n" +
+	"HitlPolicy\x12;\n" +
+	"\x1aescalate_on_low_confidence\x18\x01 \x01(\bR\x17escalateOnLowConfidence\x12)\n" +
+	"\x10confidence_floor\x18\x02 \x01(\x01R\x0fconfidenceFloor\x127\n" +
+	"\x18escalate_on_write_beyond\x18\x03 \x03(\tR\x15escalateOnWriteBeyond\"J\n" +
+	"\fBudgetPolicy\x12\x1b\n" +
+	"\tmax_steps\x18\x01 \x01(\x05R\bmaxSteps\x12\x1d\n" +
+	"\n" +
+	"max_tokens\x18\x02 \x01(\x05R\tmaxTokens\"\xb4\x03\n" +
+	"\tAgentSpec\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
+	"\aversion\x18\x02 \x01(\tR\aversion\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x03 \x01(\tR\tcompanyId\x12\x18\n" +
+	"\apersona\x18\x04 \x01(\tR\apersona\x12\x1b\n" +
+	"\tmodel_ref\x18\x05 \x01(\tR\bmodelRef\x12,\n" +
+	"\x04node\x18\x06 \x01(\v2\x18.experience.v1.AgentNodeR\x04node\x123\n" +
+	"\x05tools\x18\a \x03(\v2\x1d.experience.v1.ToolDefinitionR\x05tools\x12<\n" +
+	"\tknowledge\x18\b \x01(\v2\x1e.experience.v1.KnowledgePolicyR\tknowledge\x12-\n" +
+	"\x04hitl\x18\t \x01(\v2\x19.experience.v1.HitlPolicyR\x04hitl\x123\n" +
+	"\x06budget\x18\n" +
+	" \x01(\v2\x1b.experience.v1.BudgetPolicyR\x06budget\x12\x1c\n" +
+	"\tlifecycle\x18\v \x01(\tR\tlifecycleJ\x04\b\f\x10\x14*\xb7\x01\n" +
 	"\x14UnknownSurfacePolicy\x12&\n" +
 	"\"UNKNOWN_SURFACE_POLICY_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dUNKNOWN_SURFACE_POLICY_IGNORE\x10\x01\x12(\n" +
@@ -2843,7 +3171,7 @@ func file_experience_v1_experience_proto_rawDescGZIP() []byte {
 }
 
 var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 36)
+var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
 var file_experience_v1_experience_proto_goTypes = []any{
 	(UnknownSurfacePolicy)(0),       // 0: experience.v1.UnknownSurfacePolicy
 	(TransportKind)(0),              // 1: experience.v1.TransportKind
@@ -2882,14 +3210,18 @@ var file_experience_v1_experience_proto_goTypes = []any{
 	(*ValidateSpecRequest)(nil),     // 34: experience.v1.ValidateSpecRequest
 	(*ValidationProblem)(nil),       // 35: experience.v1.ValidationProblem
 	(*ValidateSpecResponse)(nil),    // 36: experience.v1.ValidateSpecResponse
-	nil,                             // 37: experience.v1.ExperienceSpec.SurfaceOfflineEntry
-	nil,                             // 38: experience.v1.ExperienceSpec.FlagOverridesEntry
-	nil,                             // 39: experience.v1.ExperienceSpec.CustomFieldsEntry
-	nil,                             // 40: experience.v1.ExperienceSpec.RulePolicyEntry
-	nil,                             // 41: experience.v1.NavEdge.ParamBindingsEntry
-	nil,                             // 42: experience.v1.ThemeSpec.ColorOverridesEntry
-	nil,                             // 43: experience.v1.TermSet.OverridesEntry
-	nil,                             // 44: experience.v1.SigningSpec.ByPlatformEntry
+	(*KnowledgePolicy)(nil),         // 37: experience.v1.KnowledgePolicy
+	(*HitlPolicy)(nil),              // 38: experience.v1.HitlPolicy
+	(*BudgetPolicy)(nil),            // 39: experience.v1.BudgetPolicy
+	(*AgentSpec)(nil),               // 40: experience.v1.AgentSpec
+	nil,                             // 41: experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	nil,                             // 42: experience.v1.ExperienceSpec.FlagOverridesEntry
+	nil,                             // 43: experience.v1.ExperienceSpec.CustomFieldsEntry
+	nil,                             // 44: experience.v1.ExperienceSpec.RulePolicyEntry
+	nil,                             // 45: experience.v1.NavEdge.ParamBindingsEntry
+	nil,                             // 46: experience.v1.ThemeSpec.ColorOverridesEntry
+	nil,                             // 47: experience.v1.TermSet.OverridesEntry
+	nil,                             // 48: experience.v1.SigningSpec.ByPlatformEntry
 }
 var file_experience_v1_experience_proto_depIdxs = []int32{
 	10, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
@@ -2901,47 +3233,52 @@ var file_experience_v1_experience_proto_depIdxs = []int32{
 	18, // 6: experience.v1.ExperienceSpec.theme:type_name -> experience.v1.ThemeSpec
 	19, // 7: experience.v1.ExperienceSpec.terms:type_name -> experience.v1.TermSet
 	20, // 8: experience.v1.ExperienceSpec.locale:type_name -> experience.v1.LocaleSpec
-	37, // 9: experience.v1.ExperienceSpec.surface_offline:type_name -> experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	41, // 9: experience.v1.ExperienceSpec.surface_offline:type_name -> experience.v1.ExperienceSpec.SurfaceOfflineEntry
 	13, // 10: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
 	22, // 11: experience.v1.ExperienceSpec.tools:type_name -> experience.v1.ToolDefinition
 	23, // 12: experience.v1.ExperienceSpec.agent_nodes:type_name -> experience.v1.AgentNode
 	27, // 13: experience.v1.ExperienceSpec.resolution_context:type_name -> experience.v1.ResolutionContext
 	28, // 14: experience.v1.ExperienceSpec.locked_surfaces:type_name -> experience.v1.LockedSurface
 	29, // 15: experience.v1.ExperienceSpec.action_gates:type_name -> experience.v1.ActionGate
-	38, // 16: experience.v1.ExperienceSpec.flag_overrides:type_name -> experience.v1.ExperienceSpec.FlagOverridesEntry
-	39, // 17: experience.v1.ExperienceSpec.custom_fields:type_name -> experience.v1.ExperienceSpec.CustomFieldsEntry
-	40, // 18: experience.v1.ExperienceSpec.rule_policy:type_name -> experience.v1.ExperienceSpec.RulePolicyEntry
+	42, // 16: experience.v1.ExperienceSpec.flag_overrides:type_name -> experience.v1.ExperienceSpec.FlagOverridesEntry
+	43, // 17: experience.v1.ExperienceSpec.custom_fields:type_name -> experience.v1.ExperienceSpec.CustomFieldsEntry
+	44, // 18: experience.v1.ExperienceSpec.rule_policy:type_name -> experience.v1.ExperienceSpec.RulePolicyEntry
 	3,  // 19: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
 	1,  // 20: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
 	2,  // 21: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
 	4,  // 22: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
 	5,  // 23: experience.v1.NavSlot.placement:type_name -> experience.v1.Placement
-	41, // 24: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
+	45, // 24: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
 	14, // 25: experience.v1.NavGraph.slots:type_name -> experience.v1.NavSlot
 	15, // 26: experience.v1.NavGraph.edges:type_name -> experience.v1.NavEdge
-	42, // 27: experience.v1.ThemeSpec.color_overrides:type_name -> experience.v1.ThemeSpec.ColorOverridesEntry
-	43, // 28: experience.v1.TermSet.overrides:type_name -> experience.v1.TermSet.OverridesEntry
+	46, // 27: experience.v1.ThemeSpec.color_overrides:type_name -> experience.v1.ThemeSpec.ColorOverridesEntry
+	47, // 28: experience.v1.TermSet.overrides:type_name -> experience.v1.TermSet.OverridesEntry
 	6,  // 29: experience.v1.OfflineSpec.policy:type_name -> experience.v1.OfflinePolicy
 	7,  // 30: experience.v1.OfflineSpec.conflict_policy:type_name -> experience.v1.ConflictPolicy
 	8,  // 31: experience.v1.ToolDefinition.side_effect:type_name -> experience.v1.SideEffect
-	44, // 32: experience.v1.SigningSpec.by_platform:type_name -> experience.v1.SigningSpec.ByPlatformEntry
+	48, // 32: experience.v1.SigningSpec.by_platform:type_name -> experience.v1.SigningSpec.ByPlatformEntry
 	9,  // 33: experience.v1.StoreSpecRequest.app_definition:type_name -> experience.v1.AppDefinition
 	12, // 34: experience.v1.ResolveSpecResponse.resolved_spec:type_name -> experience.v1.ExperienceSpec
 	9,  // 35: experience.v1.ValidateSpecRequest.app_definition:type_name -> experience.v1.AppDefinition
 	35, // 36: experience.v1.ValidateSpecResponse.problems:type_name -> experience.v1.ValidationProblem
-	21, // 37: experience.v1.ExperienceSpec.SurfaceOfflineEntry.value:type_name -> experience.v1.OfflineSpec
-	24, // 38: experience.v1.SigningSpec.ByPlatformEntry.value:type_name -> experience.v1.CredentialRef
-	30, // 39: experience.v1.ExperienceService.StoreSpec:input_type -> experience.v1.StoreSpecRequest
-	32, // 40: experience.v1.ExperienceService.ResolveSpec:input_type -> experience.v1.ResolveSpecRequest
-	34, // 41: experience.v1.ExperienceService.ValidateSpec:input_type -> experience.v1.ValidateSpecRequest
-	31, // 42: experience.v1.ExperienceService.StoreSpec:output_type -> experience.v1.StoreSpecResponse
-	33, // 43: experience.v1.ExperienceService.ResolveSpec:output_type -> experience.v1.ResolveSpecResponse
-	36, // 44: experience.v1.ExperienceService.ValidateSpec:output_type -> experience.v1.ValidateSpecResponse
-	42, // [42:45] is the sub-list for method output_type
-	39, // [39:42] is the sub-list for method input_type
-	39, // [39:39] is the sub-list for extension type_name
-	39, // [39:39] is the sub-list for extension extendee
-	0,  // [0:39] is the sub-list for field type_name
+	23, // 37: experience.v1.AgentSpec.node:type_name -> experience.v1.AgentNode
+	22, // 38: experience.v1.AgentSpec.tools:type_name -> experience.v1.ToolDefinition
+	37, // 39: experience.v1.AgentSpec.knowledge:type_name -> experience.v1.KnowledgePolicy
+	38, // 40: experience.v1.AgentSpec.hitl:type_name -> experience.v1.HitlPolicy
+	39, // 41: experience.v1.AgentSpec.budget:type_name -> experience.v1.BudgetPolicy
+	21, // 42: experience.v1.ExperienceSpec.SurfaceOfflineEntry.value:type_name -> experience.v1.OfflineSpec
+	24, // 43: experience.v1.SigningSpec.ByPlatformEntry.value:type_name -> experience.v1.CredentialRef
+	30, // 44: experience.v1.ExperienceService.StoreSpec:input_type -> experience.v1.StoreSpecRequest
+	32, // 45: experience.v1.ExperienceService.ResolveSpec:input_type -> experience.v1.ResolveSpecRequest
+	34, // 46: experience.v1.ExperienceService.ValidateSpec:input_type -> experience.v1.ValidateSpecRequest
+	31, // 47: experience.v1.ExperienceService.StoreSpec:output_type -> experience.v1.StoreSpecResponse
+	33, // 48: experience.v1.ExperienceService.ResolveSpec:output_type -> experience.v1.ResolveSpecResponse
+	36, // 49: experience.v1.ExperienceService.ValidateSpec:output_type -> experience.v1.ValidateSpecResponse
+	47, // [47:50] is the sub-list for method output_type
+	44, // [44:47] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_experience_v1_experience_proto_init() }
@@ -2955,7 +3292,7 @@ func file_experience_v1_experience_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_experience_v1_experience_proto_rawDesc), len(file_experience_v1_experience_proto_rawDesc)),
 			NumEnums:      9,
-			NumMessages:   36,
+			NumMessages:   40,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

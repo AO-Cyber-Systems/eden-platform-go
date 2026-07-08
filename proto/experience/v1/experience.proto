@@ -545,3 +545,68 @@ service ExperienceService {
   rpc ResolveSpec(ResolveSpecRequest) returns (ResolveSpecResponse);
   rpc ValidateSpec(ValidateSpecRequest) returns (ValidateSpecResponse);
 }
+
+// --- 160-01 AgentSpec (reusable versioned agent contract) -------------------
+//
+// ADDITIVE-ONLY: this block adds NEW messages with their own field numbers. It
+// does NOT modify any frozen 140 message shape -- AgentNode / ToolDefinition /
+// ExperienceSpec / AppDefinition are untouched. Adding new messages is a
+// non-breaking (MINOR) change to the frozen v1 contract per the 140-12 policy.
+//
+// AgentSpec is the ONE authored agent definition reused across every channel /
+// flow (obj 161/162 keystone). It COMPOSES the frozen AgentNode (field 6) and
+// ToolDefinition (field 7) -- composition, never a fork -- and adds the
+// authored-agent surface: persona / model_ref / knowledge / hitl / budget /
+// lifecycle / version. Every load-bearing value is a TYPED field (NEVER a
+// config_json blob -- the frozen-contract discipline of this proto).
+//
+// TENANCY: company_id is the owning tenant scope. At the store sink it is
+// OVERWRITTEN by the authenticated principal's scope (a body value can never
+// plant a spec under another tenant -- the StoreSpecRequest precedent). At
+// validate/resolve time, a principal whose scope diverges from company_id gets
+// a SINGLE permission-denied, identical whether the spec exists or not (no
+// existence oracle) -- machine-checked in platform/experience/agentspec.go.
+
+// KnowledgePolicy grounds the agent: which knowledge sources it may retrieve
+// from (source_refs) and whether it may ONLY answer from retrieved grounding
+// (grounded_only = the helpdesk "answer from KB or escalate" posture).
+message KnowledgePolicy {
+  repeated string source_refs = 1;  // knowledge source refs (e.g. kb://helpdesk/articles)
+  bool grounded_only = 2;           // true = answer only from retrieved grounding
+}
+
+// HitlPolicy is the human-in-the-loop escalation contract: escalate on low
+// confidence (below confidence_floor) and on any WRITE tool call beyond the
+// allowlisted set (escalate_on_write_beyond names the writes the agent MAY
+// perform autonomously; every other write escalates to a human).
+message HitlPolicy {
+  bool escalate_on_low_confidence = 1;         // escalate when confidence < floor
+  double confidence_floor = 2;                 // [0,1] confidence threshold
+  repeated string escalate_on_write_beyond = 3; // writes allowed WITHOUT escalation
+}
+
+// BudgetPolicy caps an agent run: max reasoning/tool steps and max tokens.
+// max_steps is validated into (0, ceiling] by ValidateAgentSpec (fail-closed:
+// an unset/zero budget is NOT dispatchable).
+message BudgetPolicy {
+  int32 max_steps = 1;   // max agent steps per run (validator: 0 < n <= ceiling)
+  int32 max_tokens = 2;  // max tokens per run (0 = runtime default)
+}
+
+// AgentSpec is the reusable, versioned agent contract. A flow's agent node
+// references an AgentSpec by id (wired in 160-03); the spec itself is authored
+// once and reused across every channel/flow.
+message AgentSpec {
+  string id = 1;          // stable spec id (authored in eden-biz)
+  string version = 2;     // versioned contract (semver-ish, e.g. "1.0.0")
+  string company_id = 3;  // owning tenant scope -- OVERWRITTEN by principal at store (non-leaking)
+  string persona = 4;     // system prompt / grounding persona (TYPED, not a config blob)
+  string model_ref = 5;   // AOCore /v1/models catalog asset id (first-class model selection)
+  AgentNode node = 6;     // COMPOSES the frozen 140 AgentNode (tool_ids + io_envelope_schema)
+  repeated ToolDefinition tools = 7;  // resolved typed tool contracts (frozen 140 type)
+  KnowledgePolicy knowledge = 8;
+  HitlPolicy hitl = 9;
+  BudgetPolicy budget = 10;
+  string lifecycle = 11;  // draft|active|retired
+  reserved 12 to 19;      // runtime/flow-binding seam (160-03+), reserved-now-cheap
+}
