@@ -185,3 +185,52 @@ func WithMaxSteps(n int32) AgentSpecOption {
 func WithVersion(v string) AgentSpecOption {
 	return func(s *experiencev1.AgentSpec) { s.Version = v }
 }
+
+// --- 161-01: the AUDIENCE dimension ------------------------------------------
+
+// External-audience binding defaults (161-01). Hand-built constants: the
+// external helpdesk voice answers in brand voice, may only search the KB, and
+// escalates to a human support rep.
+const (
+	ExternalBindingPersona   = "brand-voice helpdesk: answer warmly from the public KB only"
+	ExternalEscalationTarget = "human-support"
+)
+
+// WithAudience sets the spec-level audience declaration (161-01 field 20).
+func WithAudience(a experiencev1.AgentAudience) AgentSpecOption {
+	return func(s *experiencev1.AgentSpec) { s.Audience = a }
+}
+
+// WithAudienceBinding APPENDS a per-audience binding (161-01 field 21) --
+// call once per audience to compose a BOTH-shaped spec.
+func WithAudienceBinding(b *experiencev1.AudienceBinding) AgentSpecOption {
+	return func(s *experiencev1.AgentSpec) {
+		s.AudienceBindings = append(s.AudienceBindings, b)
+	}
+}
+
+// WithToolVisibility sets tools[toolIdx].visibility (161-01 ToolDefinition
+// field 6). toolIdx follows the fixture's binding order (0 = kb.article.search,
+// 1 = crm.contact.read, 2 = helpdesk.ticket.create, 3 = comms.message.send).
+// Out-of-range indexes are ignored (compose-safe on WithTools-replaced specs).
+func WithToolVisibility(toolIdx int, v experiencev1.ToolVisibility) AgentSpecOption {
+	return func(s *experiencev1.AgentSpec) {
+		if toolIdx < 0 || toolIdx >= len(s.Tools) {
+			return
+		}
+		s.Tools[toolIdx].Visibility = v
+	}
+}
+
+// NewExternalAudienceBinding returns the hand-built external-audience override
+// set: KB-search only (the customer-safe read), grounded on the helpdesk KB,
+// brand-voice persona, escalating to a human support rep. Fresh struct per call.
+func NewExternalAudienceBinding() *experiencev1.AudienceBinding {
+	return &experiencev1.AudienceBinding{
+		Audience:         experiencev1.AgentAudience_AGENT_AUDIENCE_EXTERNAL,
+		ToolIds:          []string{HelpdeskToolKBSearch},
+		KnowledgeIds:     []string{DefaultKnowledgeSourceRef},
+		Persona:          ExternalBindingPersona,
+		EscalationTarget: ExternalEscalationTarget,
+	}
+}
