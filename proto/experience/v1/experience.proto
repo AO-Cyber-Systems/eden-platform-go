@@ -393,6 +393,20 @@ message ToolDefinition {
   string output_schema = 3;    // JSON-Schema string (typed envelope, not a blob)
   SideEffect side_effect = 4;  // dispatcher gate (read/write/external)
   string idempotency_key = 5;  // replay key (load-bearing for write/external)
+  // 161-01 additive: audience exposure class. UNSPECIFIED is fail-closed --
+  // interpreted internal_only; a tool is NEVER implicitly external-safe.
+  ToolVisibility visibility = 6;
+}
+
+// ToolVisibility classifies a tool's audience exposure (161-01). UNSPECIFIED=0
+// is fail-closed: an unclassified tool is INTERNAL_ONLY -- external exposure is
+// always an explicit authoring decision, never a default. EXTERNAL_SAFE means
+// the adapter is customer-scoped (filters by the requesting customer identity,
+// not just company) and may be bound on an external-audience agent.
+enum ToolVisibility {
+  TOOL_VISIBILITY_UNSPECIFIED = 0;    // fail-closed -- internal_only
+  TOOL_VISIBILITY_INTERNAL_ONLY = 1;  // staff-facing only (company-scoped)
+  TOOL_VISIBILITY_EXTERNAL_SAFE = 2;  // customer-scoped; bindable on external audiences
 }
 
 // AgentNode is an agent step binding a set of tool ids under a TYPED
@@ -609,4 +623,34 @@ message AgentSpec {
   BudgetPolicy budget = 10;
   string lifecycle = 11;  // draft|active|retired
   reserved 12 to 19;      // runtime/flow-binding seam (160-03+), reserved-now-cheap
+  // 161-01 additive: the AUDIENCE dimension. One spec serves internal staff AND
+  // external customers (NOT two agents) -- per-audience tools/knowledge/persona/
+  // escalation ride the bindings. UNSPECIFIED audience is back-compat INTERNAL
+  // (external is NEVER implicit). Machine-checked in agentspec.go: an external
+  // binding may only reference visibility=EXTERNAL_SAFE tools (deny-by-default).
+  AgentAudience audience = 20;
+  repeated AudienceBinding audience_bindings = 21;
+}
+
+// AgentAudience declares WHO an agent serves (161-01). UNSPECIFIED=0 is the
+// back-compat value: a 160-era spec with no audience field means INTERNAL --
+// external exposure is always an explicit authoring decision, never implicit.
+enum AgentAudience {
+  AGENT_AUDIENCE_UNSPECIFIED = 0;  // back-compat: treated as INTERNAL (external is NEVER implicit)
+  AGENT_AUDIENCE_INTERNAL = 1;     // staff assist (company-wide data scope)
+  AGENT_AUDIENCE_EXTERNAL = 2;     // customer-facing (customer-scoped tools only)
+  AGENT_AUDIENCE_BOTH = 3;         // one spec, both audiences via bindings
+}
+
+// AudienceBinding is the per-audience override set an AgentSpec carries
+// (161-01): which tools/knowledge the audience may use, the persona voice, and
+// where the agent escalates. tool_ids reference the spec's tools by adapter_id
+// (binding subset-of spec tools -- validated); an EXTERNAL binding may reference
+// ONLY visibility=EXTERNAL_SAFE tools (deny-by-default, agentspec.go).
+message AudienceBinding {
+  AgentAudience audience = 1;        // which audience this binding configures
+  repeated string tool_ids = 2;      // subset of the spec's tools (by adapter_id)
+  repeated string knowledge_ids = 3; // subset of knowledge source refs for this audience
+  string persona = 4;                // audience-voice persona override (e.g. brand voice)
+  string escalation_target = 5;      // where this audience escalates (e.g. human-support)
 }

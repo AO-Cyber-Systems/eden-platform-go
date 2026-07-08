@@ -48,6 +48,23 @@ const (
 	// curated-allowlist membership check itself is the eden-biz sink's job
 	// (per-scope registry); the CONTRACT requires the FK to be present.
 	AgentSpecMissingAdapterID AgentSpecCode = "agentspec.missing_adapter_id"
+
+	// --- 161-01 audience codes -------------------------------------------------
+
+	// AgentSpecMissingExternalBinding -- the spec declares an EXTERNAL or BOTH
+	// audience but carries no external-facing AudienceBinding. An external
+	// audience without an explicit override set would inherit the full internal
+	// tool surface; fail-closed.
+	AgentSpecMissingExternalBinding AgentSpecCode = "agentspec.missing_external_binding"
+	// AgentSpecBindingUnknownTool -- an AudienceBinding references a tool_id
+	// that is not among the spec's bound tools (binding must be a subset of the
+	// spec's tool set, by adapter_id).
+	AgentSpecBindingUnknownTool AgentSpecCode = "agentspec.binding_unknown_tool"
+	// AgentSpecExternalToolNotSafe -- an external-facing AudienceBinding
+	// references a tool whose visibility is not EXTERNAL_SAFE. UNSPECIFIED and
+	// INTERNAL_ONLY both reject (fail-closed: a tool is NEVER implicitly
+	// external) -- the 160 allowlist-at-write mirror, deny-by-default.
+	AgentSpecExternalToolNotSafe AgentSpecCode = "agentspec.external_tool_not_safe"
 )
 
 // AgentSpecMaxStepsCeiling is the upper bound ValidateAgentSpec allows for
@@ -145,6 +162,90 @@ func ValidateAgentSpec(spec *experiencev1.AgentSpec, principalScope string) []Ag
 				Code:    AgentSpecMissingAdapterID,
 				Message: "every bound tool must name its curated-allowlist adapter_id",
 			})
+		}
+	}
+
+	// (6) 161-01 audience rules (same-tenant spec only -- rule 0 already
+	// guaranteed the principal owns this spec, so naming tool ids here is
+	// builder feedback, not an oracle).
+	errs = append(errs, validateAudience(spec)...)
+
+	return errs
+}
+
+// externalFacing reports whether a binding configures the EXTERNAL audience.
+// BOTH is treated as external-facing (fail-closed: anything that CAN serve an
+// external customer obeys the external safety rules).
+func externalFacing(a experiencev1.AgentAudience) bool {
+	return a == experiencev1.AgentAudience_AGENT_AUDIENCE_EXTERNAL ||
+		a == experiencev1.AgentAudience_AGENT_AUDIENCE_BOTH
+}
+
+// validateAudience machine-checks the 161-01 audience dimension. Audience
+// normalization is FAIL-CLOSED toward internal: AGENT_AUDIENCE_UNSPECIFIED (a
+// 160-era spec with no audience field) means INTERNAL -- external exposure is
+// always explicit, never a default.
+//
+// Rules (accumulated, mirroring the content rules above):
+//
+//	a. an EXTERNAL or BOTH spec must carry an external-facing AudienceBinding
+//	   (AgentSpecMissingExternalBinding);
+//	b. every binding's tool_ids must be a subset of the spec's tools, matched by
+//	   adapter_id -- how the spec names tools (AgentSpecBindingUnknownTool);
+//	c. every tool referenced by an EXTERNAL-facing binding must carry
+//	   visibility == TOOL_VISIBILITY_EXTERNAL_SAFE; UNSPECIFIED and
+//	   INTERNAL_ONLY both reject (AgentSpecExternalToolNotSafe, deny-by-default).
+//	   An INTERNAL binding may reference any spec tool.
+func validateAudience(spec *experiencev1.AgentSpec) []AgentSpecError {
+	var errs []AgentSpecError
+
+	// The spec names tools by adapter_id (AgentNode.tool_ids and
+	// AudienceBinding.tool_ids both reference that identity).
+	visibilityByTool := make(map[string]experiencev1.ToolVisibility, len(spec.GetTools()))
+	for _, tool := range spec.GetTools() {
+		if id := tool.GetAdapterId(); id != "" {
+			visibilityByTool[id] = tool.GetVisibility()
+		}
+	}
+
+	// (a) EXTERNAL/BOTH requires an explicit external-facing binding.
+	if externalFacing(spec.GetAudience()) {
+		hasExternal := false
+		for _, b := range spec.GetAudienceBindings() {
+			if externalFacing(b.GetAudience()) {
+				hasExternal = true
+				break
+			}
+		}
+		if !hasExternal {
+			errs = append(errs, AgentSpecError{
+				Code:    AgentSpecMissingExternalBinding,
+				Message: "an external or both audience requires an explicit EXTERNAL audience binding",
+			})
+		}
+	}
+
+	for _, b := range spec.GetAudienceBindings() {
+		for _, toolID := range b.GetToolIds() {
+			// (b) binding subset-of spec tools.
+			vis, known := visibilityByTool[toolID]
+			if !known {
+				errs = append(errs, AgentSpecError{
+					Code:    AgentSpecBindingUnknownTool,
+					Message: fmt.Sprintf("audience binding references %q, which is not among the spec's tools", toolID),
+				})
+				continue
+			}
+			// (c) external-facing bindings may only reference EXTERNAL_SAFE
+			// tools; UNSPECIFIED is internal_only (fail-closed).
+			if externalFacing(b.GetAudience()) &&
+				vis != experiencev1.ToolVisibility_TOOL_VISIBILITY_EXTERNAL_SAFE {
+				errs = append(errs, AgentSpecError{
+					Code: AgentSpecExternalToolNotSafe,
+					Message: fmt.Sprintf(
+						"external audience binding references %q, which is not visibility=EXTERNAL_SAFE (unspecified is internal_only)", toolID),
+				})
+			}
 		}
 	}
 

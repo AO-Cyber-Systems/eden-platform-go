@@ -529,6 +529,115 @@ func (SideEffect) EnumDescriptor() ([]byte, []int) {
 	return file_experience_v1_experience_proto_rawDescGZIP(), []int{8}
 }
 
+// ToolVisibility classifies a tool's audience exposure (161-01). UNSPECIFIED=0
+// is fail-closed: an unclassified tool is INTERNAL_ONLY -- external exposure is
+// always an explicit authoring decision, never a default. EXTERNAL_SAFE means
+// the adapter is customer-scoped (filters by the requesting customer identity,
+// not just company) and may be bound on an external-audience agent.
+type ToolVisibility int32
+
+const (
+	ToolVisibility_TOOL_VISIBILITY_UNSPECIFIED   ToolVisibility = 0 // fail-closed -- internal_only
+	ToolVisibility_TOOL_VISIBILITY_INTERNAL_ONLY ToolVisibility = 1 // staff-facing only (company-scoped)
+	ToolVisibility_TOOL_VISIBILITY_EXTERNAL_SAFE ToolVisibility = 2 // customer-scoped; bindable on external audiences
+)
+
+// Enum value maps for ToolVisibility.
+var (
+	ToolVisibility_name = map[int32]string{
+		0: "TOOL_VISIBILITY_UNSPECIFIED",
+		1: "TOOL_VISIBILITY_INTERNAL_ONLY",
+		2: "TOOL_VISIBILITY_EXTERNAL_SAFE",
+	}
+	ToolVisibility_value = map[string]int32{
+		"TOOL_VISIBILITY_UNSPECIFIED":   0,
+		"TOOL_VISIBILITY_INTERNAL_ONLY": 1,
+		"TOOL_VISIBILITY_EXTERNAL_SAFE": 2,
+	}
+)
+
+func (x ToolVisibility) Enum() *ToolVisibility {
+	p := new(ToolVisibility)
+	*p = x
+	return p
+}
+
+func (x ToolVisibility) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ToolVisibility) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[9].Descriptor()
+}
+
+func (ToolVisibility) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[9]
+}
+
+func (x ToolVisibility) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ToolVisibility.Descriptor instead.
+func (ToolVisibility) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{9}
+}
+
+// AgentAudience declares WHO an agent serves (161-01). UNSPECIFIED=0 is the
+// back-compat value: a 160-era spec with no audience field means INTERNAL --
+// external exposure is always an explicit authoring decision, never implicit.
+type AgentAudience int32
+
+const (
+	AgentAudience_AGENT_AUDIENCE_UNSPECIFIED AgentAudience = 0 // back-compat: treated as INTERNAL (external is NEVER implicit)
+	AgentAudience_AGENT_AUDIENCE_INTERNAL    AgentAudience = 1 // staff assist (company-wide data scope)
+	AgentAudience_AGENT_AUDIENCE_EXTERNAL    AgentAudience = 2 // customer-facing (customer-scoped tools only)
+	AgentAudience_AGENT_AUDIENCE_BOTH        AgentAudience = 3 // one spec, both audiences via bindings
+)
+
+// Enum value maps for AgentAudience.
+var (
+	AgentAudience_name = map[int32]string{
+		0: "AGENT_AUDIENCE_UNSPECIFIED",
+		1: "AGENT_AUDIENCE_INTERNAL",
+		2: "AGENT_AUDIENCE_EXTERNAL",
+		3: "AGENT_AUDIENCE_BOTH",
+	}
+	AgentAudience_value = map[string]int32{
+		"AGENT_AUDIENCE_UNSPECIFIED": 0,
+		"AGENT_AUDIENCE_INTERNAL":    1,
+		"AGENT_AUDIENCE_EXTERNAL":    2,
+		"AGENT_AUDIENCE_BOTH":        3,
+	}
+)
+
+func (x AgentAudience) Enum() *AgentAudience {
+	p := new(AgentAudience)
+	*p = x
+	return p
+}
+
+func (x AgentAudience) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AgentAudience) Descriptor() protoreflect.EnumDescriptor {
+	return file_experience_v1_experience_proto_enumTypes[10].Descriptor()
+}
+
+func (AgentAudience) Type() protoreflect.EnumType {
+	return &file_experience_v1_experience_proto_enumTypes[10]
+}
+
+func (x AgentAudience) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AgentAudience.Descriptor instead.
+func (AgentAudience) EnumDescriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{10}
+}
+
 // AppDefinition: build-time definition feeding BOTH the runtime resolver AND
 // the per-company native build pipeline (layered output).
 type AppDefinition struct {
@@ -1662,8 +1771,11 @@ type ToolDefinition struct {
 	OutputSchema   string                 `protobuf:"bytes,3,opt,name=output_schema,json=outputSchema,proto3" json:"output_schema,omitempty"`                          // JSON-Schema string (typed envelope, not a blob)
 	SideEffect     SideEffect             `protobuf:"varint,4,opt,name=side_effect,json=sideEffect,proto3,enum=experience.v1.SideEffect" json:"side_effect,omitempty"` // dispatcher gate (read/write/external)
 	IdempotencyKey string                 `protobuf:"bytes,5,opt,name=idempotency_key,json=idempotencyKey,proto3" json:"idempotency_key,omitempty"`                    // replay key (load-bearing for write/external)
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// 161-01 additive: audience exposure class. UNSPECIFIED is fail-closed --
+	// interpreted internal_only; a tool is NEVER implicitly external-safe.
+	Visibility    ToolVisibility `protobuf:"varint,6,opt,name=visibility,proto3,enum=experience.v1.ToolVisibility" json:"visibility,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ToolDefinition) Reset() {
@@ -1729,6 +1841,13 @@ func (x *ToolDefinition) GetIdempotencyKey() string {
 		return x.IdempotencyKey
 	}
 	return ""
+}
+
+func (x *ToolDefinition) GetVisibility() ToolVisibility {
+	if x != nil {
+		return x.Visibility
+	}
+	return ToolVisibility_TOOL_VISIBILITY_UNSPECIFIED
 }
 
 // AgentNode is an agent step binding a set of tool ids under a TYPED
@@ -2761,20 +2880,27 @@ func (x *BudgetPolicy) GetMaxTokens() int32 {
 // references an AgentSpec by id (wired in 160-03); the spec itself is authored
 // once and reused across every channel/flow.
 type AgentSpec struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                // stable spec id (authored in eden-biz)
-	Version       string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`                      // versioned contract (semver-ish, e.g. "1.0.0")
-	CompanyId     string                 `protobuf:"bytes,3,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"` // owning tenant scope -- OVERWRITTEN by principal at store (non-leaking)
-	Persona       string                 `protobuf:"bytes,4,opt,name=persona,proto3" json:"persona,omitempty"`                      // system prompt / grounding persona (TYPED, not a config blob)
-	ModelRef      string                 `protobuf:"bytes,5,opt,name=model_ref,json=modelRef,proto3" json:"model_ref,omitempty"`    // AOCore /v1/models catalog asset id (first-class model selection)
-	Node          *AgentNode             `protobuf:"bytes,6,opt,name=node,proto3" json:"node,omitempty"`                            // COMPOSES the frozen 140 AgentNode (tool_ids + io_envelope_schema)
-	Tools         []*ToolDefinition      `protobuf:"bytes,7,rep,name=tools,proto3" json:"tools,omitempty"`                          // resolved typed tool contracts (frozen 140 type)
-	Knowledge     *KnowledgePolicy       `protobuf:"bytes,8,opt,name=knowledge,proto3" json:"knowledge,omitempty"`
-	Hitl          *HitlPolicy            `protobuf:"bytes,9,opt,name=hitl,proto3" json:"hitl,omitempty"`
-	Budget        *BudgetPolicy          `protobuf:"bytes,10,opt,name=budget,proto3" json:"budget,omitempty"`
-	Lifecycle     string                 `protobuf:"bytes,11,opt,name=lifecycle,proto3" json:"lifecycle,omitempty"` // draft|active|retired
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`                                // stable spec id (authored in eden-biz)
+	Version   string                 `protobuf:"bytes,2,opt,name=version,proto3" json:"version,omitempty"`                      // versioned contract (semver-ish, e.g. "1.0.0")
+	CompanyId string                 `protobuf:"bytes,3,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"` // owning tenant scope -- OVERWRITTEN by principal at store (non-leaking)
+	Persona   string                 `protobuf:"bytes,4,opt,name=persona,proto3" json:"persona,omitempty"`                      // system prompt / grounding persona (TYPED, not a config blob)
+	ModelRef  string                 `protobuf:"bytes,5,opt,name=model_ref,json=modelRef,proto3" json:"model_ref,omitempty"`    // AOCore /v1/models catalog asset id (first-class model selection)
+	Node      *AgentNode             `protobuf:"bytes,6,opt,name=node,proto3" json:"node,omitempty"`                            // COMPOSES the frozen 140 AgentNode (tool_ids + io_envelope_schema)
+	Tools     []*ToolDefinition      `protobuf:"bytes,7,rep,name=tools,proto3" json:"tools,omitempty"`                          // resolved typed tool contracts (frozen 140 type)
+	Knowledge *KnowledgePolicy       `protobuf:"bytes,8,opt,name=knowledge,proto3" json:"knowledge,omitempty"`
+	Hitl      *HitlPolicy            `protobuf:"bytes,9,opt,name=hitl,proto3" json:"hitl,omitempty"`
+	Budget    *BudgetPolicy          `protobuf:"bytes,10,opt,name=budget,proto3" json:"budget,omitempty"`
+	Lifecycle string                 `protobuf:"bytes,11,opt,name=lifecycle,proto3" json:"lifecycle,omitempty"` // draft|active|retired
+	// 161-01 additive: the AUDIENCE dimension. One spec serves internal staff AND
+	// external customers (NOT two agents) -- per-audience tools/knowledge/persona/
+	// escalation ride the bindings. UNSPECIFIED audience is back-compat INTERNAL
+	// (external is NEVER implicit). Machine-checked in agentspec.go: an external
+	// binding may only reference visibility=EXTERNAL_SAFE tools (deny-by-default).
+	Audience         AgentAudience      `protobuf:"varint,20,opt,name=audience,proto3,enum=experience.v1.AgentAudience" json:"audience,omitempty"`
+	AudienceBindings []*AudienceBinding `protobuf:"bytes,21,rep,name=audience_bindings,json=audienceBindings,proto3" json:"audience_bindings,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
 }
 
 func (x *AgentSpec) Reset() {
@@ -2880,6 +3006,101 @@ func (x *AgentSpec) GetBudget() *BudgetPolicy {
 func (x *AgentSpec) GetLifecycle() string {
 	if x != nil {
 		return x.Lifecycle
+	}
+	return ""
+}
+
+func (x *AgentSpec) GetAudience() AgentAudience {
+	if x != nil {
+		return x.Audience
+	}
+	return AgentAudience_AGENT_AUDIENCE_UNSPECIFIED
+}
+
+func (x *AgentSpec) GetAudienceBindings() []*AudienceBinding {
+	if x != nil {
+		return x.AudienceBindings
+	}
+	return nil
+}
+
+// AudienceBinding is the per-audience override set an AgentSpec carries
+// (161-01): which tools/knowledge the audience may use, the persona voice, and
+// where the agent escalates. tool_ids reference the spec's tools by adapter_id
+// (binding subset-of spec tools -- validated); an EXTERNAL binding may reference
+// ONLY visibility=EXTERNAL_SAFE tools (deny-by-default, agentspec.go).
+type AudienceBinding struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Audience         AgentAudience          `protobuf:"varint,1,opt,name=audience,proto3,enum=experience.v1.AgentAudience" json:"audience,omitempty"`       // which audience this binding configures
+	ToolIds          []string               `protobuf:"bytes,2,rep,name=tool_ids,json=toolIds,proto3" json:"tool_ids,omitempty"`                            // subset of the spec's tools (by adapter_id)
+	KnowledgeIds     []string               `protobuf:"bytes,3,rep,name=knowledge_ids,json=knowledgeIds,proto3" json:"knowledge_ids,omitempty"`             // subset of knowledge source refs for this audience
+	Persona          string                 `protobuf:"bytes,4,opt,name=persona,proto3" json:"persona,omitempty"`                                           // audience-voice persona override (e.g. brand voice)
+	EscalationTarget string                 `protobuf:"bytes,5,opt,name=escalation_target,json=escalationTarget,proto3" json:"escalation_target,omitempty"` // where this audience escalates (e.g. human-support)
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *AudienceBinding) Reset() {
+	*x = AudienceBinding{}
+	mi := &file_experience_v1_experience_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AudienceBinding) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AudienceBinding) ProtoMessage() {}
+
+func (x *AudienceBinding) ProtoReflect() protoreflect.Message {
+	mi := &file_experience_v1_experience_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AudienceBinding.ProtoReflect.Descriptor instead.
+func (*AudienceBinding) Descriptor() ([]byte, []int) {
+	return file_experience_v1_experience_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *AudienceBinding) GetAudience() AgentAudience {
+	if x != nil {
+		return x.Audience
+	}
+	return AgentAudience_AGENT_AUDIENCE_UNSPECIFIED
+}
+
+func (x *AudienceBinding) GetToolIds() []string {
+	if x != nil {
+		return x.ToolIds
+	}
+	return nil
+}
+
+func (x *AudienceBinding) GetKnowledgeIds() []string {
+	if x != nil {
+		return x.KnowledgeIds
+	}
+	return nil
+}
+
+func (x *AudienceBinding) GetPersona() string {
+	if x != nil {
+		return x.Persona
+	}
+	return ""
+}
+
+func (x *AudienceBinding) GetEscalationTarget() string {
+	if x != nil {
+		return x.EscalationTarget
 	}
 	return ""
 }
@@ -3004,7 +3225,7 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x06policy\x18\x01 \x01(\x0e2\x1c.experience.v1.OfflinePolicyR\x06policy\x12*\n" +
 	"\x11cache_ttl_seconds\x18\x02 \x01(\rR\x0fcacheTtlSeconds\x12F\n" +
 	"\x0fconflict_policy\x18\x03 \x01(\x0e2\x1d.experience.v1.ConflictPolicyR\x0econflictPolicy\x125\n" +
-	"\x17read_only_grace_seconds\x18\x04 \x01(\rR\x14readOnlyGraceSeconds\"\xdc\x01\n" +
+	"\x17read_only_grace_seconds\x18\x04 \x01(\rR\x14readOnlyGraceSeconds\"\x9b\x02\n" +
 	"\x0eToolDefinition\x12\x1d\n" +
 	"\n" +
 	"adapter_id\x18\x01 \x01(\tR\tadapterId\x12!\n" +
@@ -3012,7 +3233,10 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\routput_schema\x18\x03 \x01(\tR\foutputSchema\x12:\n" +
 	"\vside_effect\x18\x04 \x01(\x0e2\x19.experience.v1.SideEffectR\n" +
 	"sideEffect\x12'\n" +
-	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\"T\n" +
+	"\x0fidempotency_key\x18\x05 \x01(\tR\x0eidempotencyKey\x12=\n" +
+	"\n" +
+	"visibility\x18\x06 \x01(\x0e2\x1d.experience.v1.ToolVisibilityR\n" +
+	"visibility\"T\n" +
 	"\tAgentNode\x12\x19\n" +
 	"\btool_ids\x18\x01 \x03(\tR\atoolIds\x12,\n" +
 	"\x12io_envelope_schema\x18\x02 \x01(\tR\x10ioEnvelopeSchema\";\n" +
@@ -3092,7 +3316,7 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\fBudgetPolicy\x12\x1b\n" +
 	"\tmax_steps\x18\x01 \x01(\x05R\bmaxSteps\x12\x1d\n" +
 	"\n" +
-	"max_tokens\x18\x02 \x01(\x05R\tmaxTokens\"\xb4\x03\n" +
+	"max_tokens\x18\x02 \x01(\x05R\tmaxTokens\"\xbb\x04\n" +
 	"\tAgentSpec\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\aversion\x18\x02 \x01(\tR\aversion\x12\x1d\n" +
@@ -3106,7 +3330,15 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x04hitl\x18\t \x01(\v2\x19.experience.v1.HitlPolicyR\x04hitl\x123\n" +
 	"\x06budget\x18\n" +
 	" \x01(\v2\x1b.experience.v1.BudgetPolicyR\x06budget\x12\x1c\n" +
-	"\tlifecycle\x18\v \x01(\tR\tlifecycleJ\x04\b\f\x10\x14*\xb7\x01\n" +
+	"\tlifecycle\x18\v \x01(\tR\tlifecycle\x128\n" +
+	"\baudience\x18\x14 \x01(\x0e2\x1c.experience.v1.AgentAudienceR\baudience\x12K\n" +
+	"\x11audience_bindings\x18\x15 \x03(\v2\x1e.experience.v1.AudienceBindingR\x10audienceBindingsJ\x04\b\f\x10\x14\"\xd2\x01\n" +
+	"\x0fAudienceBinding\x128\n" +
+	"\baudience\x18\x01 \x01(\x0e2\x1c.experience.v1.AgentAudienceR\baudience\x12\x19\n" +
+	"\btool_ids\x18\x02 \x03(\tR\atoolIds\x12#\n" +
+	"\rknowledge_ids\x18\x03 \x03(\tR\fknowledgeIds\x12\x18\n" +
+	"\apersona\x18\x04 \x01(\tR\apersona\x12+\n" +
+	"\x11escalation_target\x18\x05 \x01(\tR\x10escalationTarget*\xb7\x01\n" +
 	"\x14UnknownSurfacePolicy\x12&\n" +
 	"\"UNKNOWN_SURFACE_POLICY_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dUNKNOWN_SURFACE_POLICY_IGNORE\x10\x01\x12(\n" +
@@ -3152,7 +3384,16 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x17SIDE_EFFECT_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10SIDE_EFFECT_READ\x10\x01\x12\x15\n" +
 	"\x11SIDE_EFFECT_WRITE\x10\x02\x12\x18\n" +
-	"\x14SIDE_EFFECT_EXTERNAL\x10\x032\x92\x02\n" +
+	"\x14SIDE_EFFECT_EXTERNAL\x10\x03*w\n" +
+	"\x0eToolVisibility\x12\x1f\n" +
+	"\x1bTOOL_VISIBILITY_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dTOOL_VISIBILITY_INTERNAL_ONLY\x10\x01\x12!\n" +
+	"\x1dTOOL_VISIBILITY_EXTERNAL_SAFE\x10\x02*\x82\x01\n" +
+	"\rAgentAudience\x12\x1e\n" +
+	"\x1aAGENT_AUDIENCE_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17AGENT_AUDIENCE_INTERNAL\x10\x01\x12\x1b\n" +
+	"\x17AGENT_AUDIENCE_EXTERNAL\x10\x02\x12\x17\n" +
+	"\x13AGENT_AUDIENCE_BOTH\x10\x032\x92\x02\n" +
 	"\x11ExperienceService\x12N\n" +
 	"\tStoreSpec\x12\x1f.experience.v1.StoreSpecRequest\x1a .experience.v1.StoreSpecResponse\x12T\n" +
 	"\vResolveSpec\x12!.experience.v1.ResolveSpecRequest\x1a\".experience.v1.ResolveSpecResponse\x12W\n" +
@@ -3170,8 +3411,8 @@ func file_experience_v1_experience_proto_rawDescGZIP() []byte {
 	return file_experience_v1_experience_proto_rawDescData
 }
 
-var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 9)
-var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
+var file_experience_v1_experience_proto_enumTypes = make([]protoimpl.EnumInfo, 11)
+var file_experience_v1_experience_proto_msgTypes = make([]protoimpl.MessageInfo, 41)
 var file_experience_v1_experience_proto_goTypes = []any{
 	(UnknownSurfacePolicy)(0),       // 0: experience.v1.UnknownSurfacePolicy
 	(TransportKind)(0),              // 1: experience.v1.TransportKind
@@ -3182,103 +3423,110 @@ var file_experience_v1_experience_proto_goTypes = []any{
 	(OfflinePolicy)(0),              // 6: experience.v1.OfflinePolicy
 	(ConflictPolicy)(0),             // 7: experience.v1.ConflictPolicy
 	(SideEffect)(0),                 // 8: experience.v1.SideEffect
-	(*AppDefinition)(nil),           // 9: experience.v1.AppDefinition
-	(*AppMeta)(nil),                 // 10: experience.v1.AppMeta
-	(*SurfaceRegistryManifest)(nil), // 11: experience.v1.SurfaceRegistryManifest
-	(*ExperienceSpec)(nil),          // 12: experience.v1.ExperienceSpec
-	(*ServiceTransportBinding)(nil), // 13: experience.v1.ServiceTransportBinding
-	(*NavSlot)(nil),                 // 14: experience.v1.NavSlot
-	(*NavEdge)(nil),                 // 15: experience.v1.NavEdge
-	(*NavGraph)(nil),                // 16: experience.v1.NavGraph
-	(*DeepLinkSpec)(nil),            // 17: experience.v1.DeepLinkSpec
-	(*ThemeSpec)(nil),               // 18: experience.v1.ThemeSpec
-	(*TermSet)(nil),                 // 19: experience.v1.TermSet
-	(*LocaleSpec)(nil),              // 20: experience.v1.LocaleSpec
-	(*OfflineSpec)(nil),             // 21: experience.v1.OfflineSpec
-	(*ToolDefinition)(nil),          // 22: experience.v1.ToolDefinition
-	(*AgentNode)(nil),               // 23: experience.v1.AgentNode
-	(*CredentialRef)(nil),           // 24: experience.v1.CredentialRef
-	(*SigningSpec)(nil),             // 25: experience.v1.SigningSpec
-	(*TelemetryEnvelope)(nil),       // 26: experience.v1.TelemetryEnvelope
-	(*ResolutionContext)(nil),       // 27: experience.v1.ResolutionContext
-	(*LockedSurface)(nil),           // 28: experience.v1.LockedSurface
-	(*ActionGate)(nil),              // 29: experience.v1.ActionGate
-	(*StoreSpecRequest)(nil),        // 30: experience.v1.StoreSpecRequest
-	(*StoreSpecResponse)(nil),       // 31: experience.v1.StoreSpecResponse
-	(*ResolveSpecRequest)(nil),      // 32: experience.v1.ResolveSpecRequest
-	(*ResolveSpecResponse)(nil),     // 33: experience.v1.ResolveSpecResponse
-	(*ValidateSpecRequest)(nil),     // 34: experience.v1.ValidateSpecRequest
-	(*ValidationProblem)(nil),       // 35: experience.v1.ValidationProblem
-	(*ValidateSpecResponse)(nil),    // 36: experience.v1.ValidateSpecResponse
-	(*KnowledgePolicy)(nil),         // 37: experience.v1.KnowledgePolicy
-	(*HitlPolicy)(nil),              // 38: experience.v1.HitlPolicy
-	(*BudgetPolicy)(nil),            // 39: experience.v1.BudgetPolicy
-	(*AgentSpec)(nil),               // 40: experience.v1.AgentSpec
-	nil,                             // 41: experience.v1.ExperienceSpec.SurfaceOfflineEntry
-	nil,                             // 42: experience.v1.ExperienceSpec.FlagOverridesEntry
-	nil,                             // 43: experience.v1.ExperienceSpec.CustomFieldsEntry
-	nil,                             // 44: experience.v1.ExperienceSpec.RulePolicyEntry
-	nil,                             // 45: experience.v1.NavEdge.ParamBindingsEntry
-	nil,                             // 46: experience.v1.ThemeSpec.ColorOverridesEntry
-	nil,                             // 47: experience.v1.TermSet.OverridesEntry
-	nil,                             // 48: experience.v1.SigningSpec.ByPlatformEntry
+	(ToolVisibility)(0),             // 9: experience.v1.ToolVisibility
+	(AgentAudience)(0),              // 10: experience.v1.AgentAudience
+	(*AppDefinition)(nil),           // 11: experience.v1.AppDefinition
+	(*AppMeta)(nil),                 // 12: experience.v1.AppMeta
+	(*SurfaceRegistryManifest)(nil), // 13: experience.v1.SurfaceRegistryManifest
+	(*ExperienceSpec)(nil),          // 14: experience.v1.ExperienceSpec
+	(*ServiceTransportBinding)(nil), // 15: experience.v1.ServiceTransportBinding
+	(*NavSlot)(nil),                 // 16: experience.v1.NavSlot
+	(*NavEdge)(nil),                 // 17: experience.v1.NavEdge
+	(*NavGraph)(nil),                // 18: experience.v1.NavGraph
+	(*DeepLinkSpec)(nil),            // 19: experience.v1.DeepLinkSpec
+	(*ThemeSpec)(nil),               // 20: experience.v1.ThemeSpec
+	(*TermSet)(nil),                 // 21: experience.v1.TermSet
+	(*LocaleSpec)(nil),              // 22: experience.v1.LocaleSpec
+	(*OfflineSpec)(nil),             // 23: experience.v1.OfflineSpec
+	(*ToolDefinition)(nil),          // 24: experience.v1.ToolDefinition
+	(*AgentNode)(nil),               // 25: experience.v1.AgentNode
+	(*CredentialRef)(nil),           // 26: experience.v1.CredentialRef
+	(*SigningSpec)(nil),             // 27: experience.v1.SigningSpec
+	(*TelemetryEnvelope)(nil),       // 28: experience.v1.TelemetryEnvelope
+	(*ResolutionContext)(nil),       // 29: experience.v1.ResolutionContext
+	(*LockedSurface)(nil),           // 30: experience.v1.LockedSurface
+	(*ActionGate)(nil),              // 31: experience.v1.ActionGate
+	(*StoreSpecRequest)(nil),        // 32: experience.v1.StoreSpecRequest
+	(*StoreSpecResponse)(nil),       // 33: experience.v1.StoreSpecResponse
+	(*ResolveSpecRequest)(nil),      // 34: experience.v1.ResolveSpecRequest
+	(*ResolveSpecResponse)(nil),     // 35: experience.v1.ResolveSpecResponse
+	(*ValidateSpecRequest)(nil),     // 36: experience.v1.ValidateSpecRequest
+	(*ValidationProblem)(nil),       // 37: experience.v1.ValidationProblem
+	(*ValidateSpecResponse)(nil),    // 38: experience.v1.ValidateSpecResponse
+	(*KnowledgePolicy)(nil),         // 39: experience.v1.KnowledgePolicy
+	(*HitlPolicy)(nil),              // 40: experience.v1.HitlPolicy
+	(*BudgetPolicy)(nil),            // 41: experience.v1.BudgetPolicy
+	(*AgentSpec)(nil),               // 42: experience.v1.AgentSpec
+	(*AudienceBinding)(nil),         // 43: experience.v1.AudienceBinding
+	nil,                             // 44: experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	nil,                             // 45: experience.v1.ExperienceSpec.FlagOverridesEntry
+	nil,                             // 46: experience.v1.ExperienceSpec.CustomFieldsEntry
+	nil,                             // 47: experience.v1.ExperienceSpec.RulePolicyEntry
+	nil,                             // 48: experience.v1.NavEdge.ParamBindingsEntry
+	nil,                             // 49: experience.v1.ThemeSpec.ColorOverridesEntry
+	nil,                             // 50: experience.v1.TermSet.OverridesEntry
+	nil,                             // 51: experience.v1.SigningSpec.ByPlatformEntry
 }
 var file_experience_v1_experience_proto_depIdxs = []int32{
-	10, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
-	12, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
-	17, // 2: experience.v1.AppDefinition.deep_link:type_name -> experience.v1.DeepLinkSpec
-	25, // 3: experience.v1.AppDefinition.signing:type_name -> experience.v1.SigningSpec
+	12, // 0: experience.v1.AppDefinition.meta:type_name -> experience.v1.AppMeta
+	14, // 1: experience.v1.AppDefinition.spec:type_name -> experience.v1.ExperienceSpec
+	19, // 2: experience.v1.AppDefinition.deep_link:type_name -> experience.v1.DeepLinkSpec
+	27, // 3: experience.v1.AppDefinition.signing:type_name -> experience.v1.SigningSpec
 	0,  // 4: experience.v1.ExperienceSpec.unknown_surface_policy:type_name -> experience.v1.UnknownSurfacePolicy
-	16, // 5: experience.v1.ExperienceSpec.nav_graph:type_name -> experience.v1.NavGraph
-	18, // 6: experience.v1.ExperienceSpec.theme:type_name -> experience.v1.ThemeSpec
-	19, // 7: experience.v1.ExperienceSpec.terms:type_name -> experience.v1.TermSet
-	20, // 8: experience.v1.ExperienceSpec.locale:type_name -> experience.v1.LocaleSpec
-	41, // 9: experience.v1.ExperienceSpec.surface_offline:type_name -> experience.v1.ExperienceSpec.SurfaceOfflineEntry
-	13, // 10: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
-	22, // 11: experience.v1.ExperienceSpec.tools:type_name -> experience.v1.ToolDefinition
-	23, // 12: experience.v1.ExperienceSpec.agent_nodes:type_name -> experience.v1.AgentNode
-	27, // 13: experience.v1.ExperienceSpec.resolution_context:type_name -> experience.v1.ResolutionContext
-	28, // 14: experience.v1.ExperienceSpec.locked_surfaces:type_name -> experience.v1.LockedSurface
-	29, // 15: experience.v1.ExperienceSpec.action_gates:type_name -> experience.v1.ActionGate
-	42, // 16: experience.v1.ExperienceSpec.flag_overrides:type_name -> experience.v1.ExperienceSpec.FlagOverridesEntry
-	43, // 17: experience.v1.ExperienceSpec.custom_fields:type_name -> experience.v1.ExperienceSpec.CustomFieldsEntry
-	44, // 18: experience.v1.ExperienceSpec.rule_policy:type_name -> experience.v1.ExperienceSpec.RulePolicyEntry
+	18, // 5: experience.v1.ExperienceSpec.nav_graph:type_name -> experience.v1.NavGraph
+	20, // 6: experience.v1.ExperienceSpec.theme:type_name -> experience.v1.ThemeSpec
+	21, // 7: experience.v1.ExperienceSpec.terms:type_name -> experience.v1.TermSet
+	22, // 8: experience.v1.ExperienceSpec.locale:type_name -> experience.v1.LocaleSpec
+	44, // 9: experience.v1.ExperienceSpec.surface_offline:type_name -> experience.v1.ExperienceSpec.SurfaceOfflineEntry
+	15, // 10: experience.v1.ExperienceSpec.bindings:type_name -> experience.v1.ServiceTransportBinding
+	24, // 11: experience.v1.ExperienceSpec.tools:type_name -> experience.v1.ToolDefinition
+	25, // 12: experience.v1.ExperienceSpec.agent_nodes:type_name -> experience.v1.AgentNode
+	29, // 13: experience.v1.ExperienceSpec.resolution_context:type_name -> experience.v1.ResolutionContext
+	30, // 14: experience.v1.ExperienceSpec.locked_surfaces:type_name -> experience.v1.LockedSurface
+	31, // 15: experience.v1.ExperienceSpec.action_gates:type_name -> experience.v1.ActionGate
+	45, // 16: experience.v1.ExperienceSpec.flag_overrides:type_name -> experience.v1.ExperienceSpec.FlagOverridesEntry
+	46, // 17: experience.v1.ExperienceSpec.custom_fields:type_name -> experience.v1.ExperienceSpec.CustomFieldsEntry
+	47, // 18: experience.v1.ExperienceSpec.rule_policy:type_name -> experience.v1.ExperienceSpec.RulePolicyEntry
 	3,  // 19: experience.v1.ServiceTransportBinding.operations:type_name -> experience.v1.Operation
 	1,  // 20: experience.v1.ServiceTransportBinding.transport_kind:type_name -> experience.v1.TransportKind
 	2,  // 21: experience.v1.ServiceTransportBinding.scope_authority:type_name -> experience.v1.ScopeAuthority
 	4,  // 22: experience.v1.ServiceTransportBinding.pagination:type_name -> experience.v1.PaginationKind
 	5,  // 23: experience.v1.NavSlot.placement:type_name -> experience.v1.Placement
-	45, // 24: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
-	14, // 25: experience.v1.NavGraph.slots:type_name -> experience.v1.NavSlot
-	15, // 26: experience.v1.NavGraph.edges:type_name -> experience.v1.NavEdge
-	46, // 27: experience.v1.ThemeSpec.color_overrides:type_name -> experience.v1.ThemeSpec.ColorOverridesEntry
-	47, // 28: experience.v1.TermSet.overrides:type_name -> experience.v1.TermSet.OverridesEntry
+	48, // 24: experience.v1.NavEdge.param_bindings:type_name -> experience.v1.NavEdge.ParamBindingsEntry
+	16, // 25: experience.v1.NavGraph.slots:type_name -> experience.v1.NavSlot
+	17, // 26: experience.v1.NavGraph.edges:type_name -> experience.v1.NavEdge
+	49, // 27: experience.v1.ThemeSpec.color_overrides:type_name -> experience.v1.ThemeSpec.ColorOverridesEntry
+	50, // 28: experience.v1.TermSet.overrides:type_name -> experience.v1.TermSet.OverridesEntry
 	6,  // 29: experience.v1.OfflineSpec.policy:type_name -> experience.v1.OfflinePolicy
 	7,  // 30: experience.v1.OfflineSpec.conflict_policy:type_name -> experience.v1.ConflictPolicy
 	8,  // 31: experience.v1.ToolDefinition.side_effect:type_name -> experience.v1.SideEffect
-	48, // 32: experience.v1.SigningSpec.by_platform:type_name -> experience.v1.SigningSpec.ByPlatformEntry
-	9,  // 33: experience.v1.StoreSpecRequest.app_definition:type_name -> experience.v1.AppDefinition
-	12, // 34: experience.v1.ResolveSpecResponse.resolved_spec:type_name -> experience.v1.ExperienceSpec
-	9,  // 35: experience.v1.ValidateSpecRequest.app_definition:type_name -> experience.v1.AppDefinition
-	35, // 36: experience.v1.ValidateSpecResponse.problems:type_name -> experience.v1.ValidationProblem
-	23, // 37: experience.v1.AgentSpec.node:type_name -> experience.v1.AgentNode
-	22, // 38: experience.v1.AgentSpec.tools:type_name -> experience.v1.ToolDefinition
-	37, // 39: experience.v1.AgentSpec.knowledge:type_name -> experience.v1.KnowledgePolicy
-	38, // 40: experience.v1.AgentSpec.hitl:type_name -> experience.v1.HitlPolicy
-	39, // 41: experience.v1.AgentSpec.budget:type_name -> experience.v1.BudgetPolicy
-	21, // 42: experience.v1.ExperienceSpec.SurfaceOfflineEntry.value:type_name -> experience.v1.OfflineSpec
-	24, // 43: experience.v1.SigningSpec.ByPlatformEntry.value:type_name -> experience.v1.CredentialRef
-	30, // 44: experience.v1.ExperienceService.StoreSpec:input_type -> experience.v1.StoreSpecRequest
-	32, // 45: experience.v1.ExperienceService.ResolveSpec:input_type -> experience.v1.ResolveSpecRequest
-	34, // 46: experience.v1.ExperienceService.ValidateSpec:input_type -> experience.v1.ValidateSpecRequest
-	31, // 47: experience.v1.ExperienceService.StoreSpec:output_type -> experience.v1.StoreSpecResponse
-	33, // 48: experience.v1.ExperienceService.ResolveSpec:output_type -> experience.v1.ResolveSpecResponse
-	36, // 49: experience.v1.ExperienceService.ValidateSpec:output_type -> experience.v1.ValidateSpecResponse
-	47, // [47:50] is the sub-list for method output_type
-	44, // [44:47] is the sub-list for method input_type
-	44, // [44:44] is the sub-list for extension type_name
-	44, // [44:44] is the sub-list for extension extendee
-	0,  // [0:44] is the sub-list for field type_name
+	9,  // 32: experience.v1.ToolDefinition.visibility:type_name -> experience.v1.ToolVisibility
+	51, // 33: experience.v1.SigningSpec.by_platform:type_name -> experience.v1.SigningSpec.ByPlatformEntry
+	11, // 34: experience.v1.StoreSpecRequest.app_definition:type_name -> experience.v1.AppDefinition
+	14, // 35: experience.v1.ResolveSpecResponse.resolved_spec:type_name -> experience.v1.ExperienceSpec
+	11, // 36: experience.v1.ValidateSpecRequest.app_definition:type_name -> experience.v1.AppDefinition
+	37, // 37: experience.v1.ValidateSpecResponse.problems:type_name -> experience.v1.ValidationProblem
+	25, // 38: experience.v1.AgentSpec.node:type_name -> experience.v1.AgentNode
+	24, // 39: experience.v1.AgentSpec.tools:type_name -> experience.v1.ToolDefinition
+	39, // 40: experience.v1.AgentSpec.knowledge:type_name -> experience.v1.KnowledgePolicy
+	40, // 41: experience.v1.AgentSpec.hitl:type_name -> experience.v1.HitlPolicy
+	41, // 42: experience.v1.AgentSpec.budget:type_name -> experience.v1.BudgetPolicy
+	10, // 43: experience.v1.AgentSpec.audience:type_name -> experience.v1.AgentAudience
+	43, // 44: experience.v1.AgentSpec.audience_bindings:type_name -> experience.v1.AudienceBinding
+	10, // 45: experience.v1.AudienceBinding.audience:type_name -> experience.v1.AgentAudience
+	23, // 46: experience.v1.ExperienceSpec.SurfaceOfflineEntry.value:type_name -> experience.v1.OfflineSpec
+	26, // 47: experience.v1.SigningSpec.ByPlatformEntry.value:type_name -> experience.v1.CredentialRef
+	32, // 48: experience.v1.ExperienceService.StoreSpec:input_type -> experience.v1.StoreSpecRequest
+	34, // 49: experience.v1.ExperienceService.ResolveSpec:input_type -> experience.v1.ResolveSpecRequest
+	36, // 50: experience.v1.ExperienceService.ValidateSpec:input_type -> experience.v1.ValidateSpecRequest
+	33, // 51: experience.v1.ExperienceService.StoreSpec:output_type -> experience.v1.StoreSpecResponse
+	35, // 52: experience.v1.ExperienceService.ResolveSpec:output_type -> experience.v1.ResolveSpecResponse
+	38, // 53: experience.v1.ExperienceService.ValidateSpec:output_type -> experience.v1.ValidateSpecResponse
+	51, // [51:54] is the sub-list for method output_type
+	48, // [48:51] is the sub-list for method input_type
+	48, // [48:48] is the sub-list for extension type_name
+	48, // [48:48] is the sub-list for extension extendee
+	0,  // [0:48] is the sub-list for field type_name
 }
 
 func init() { file_experience_v1_experience_proto_init() }
@@ -3291,8 +3539,8 @@ func file_experience_v1_experience_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_experience_v1_experience_proto_rawDesc), len(file_experience_v1_experience_proto_rawDesc)),
-			NumEnums:      9,
-			NumMessages:   40,
+			NumEnums:      11,
+			NumMessages:   41,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
