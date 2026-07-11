@@ -107,54 +107,75 @@ func (s *SSOService) InitiateOIDC(ctx context.Context, companyID uuid.UUID, prov
 		return "", "", fmt.Errorf("create OIDC provider: %w", err)
 	}
 
+	// Generate a per-authorization PKCE verifier (RFC 7636, 32 octets). AOID is
+	// OAuth 2.1 PKCE-mandatory, so the authorize URL MUST carry an S256
+	// code_challenge; the verifier is threaded through the state JWT so it
+	// survives the stateless redirect and can be replayed on Exchange. The
+	// params are additive and transparent to IdPs (Google/Microsoft/customer
+	// OIDC) that do not enforce PKCE.
+	verifier := oauth2.GenerateVerifier()
+
 	// Generate state as signed JWT (stateless, works across instances)
-	state, err = s.createStateJWT(companyID, provider, redirectURI)
+	state, err = s.createStateJWT(companyID, provider, redirectURI, verifier)
 	if err != nil {
 		return "", "", fmt.Errorf("create state: %w", err)
 	}
 
-	authURL = cached.config.AuthCodeURL(state)
+	authURL = cached.config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
 	return authURL, state, nil
 }
 
 // createStateJWT creates a short-lived signed JWT encoding the SSO flow context.
-func (s *SSOService) createStateJWT(companyID uuid.UUID, provider, redirectURI string) (string, error) {
+// The PKCE verifier is carried as a 4th "|"-delimited field so it survives the
+// stateless redirect. Legacy states written before PKCE carried only the first
+// three fields; parseStateJWT still accepts that shape (empty verifier).
+func (s *SSOService) createStateJWT(companyID uuid.UUID, provider, redirectURI, verifier string) (string, error) {
 	// Reuse JWTManager to sign. Encode context as subject with a 10-minute expiry.
-	// Format: "companyID:provider:redirectURI"
-	subject := companyID.String() + "|" + provider + "|" + redirectURI
+	// Format: "companyID|provider|redirectURI|pkceVerifier"
+	subject := companyID.String() + "|" + provider + "|" + redirectURI + "|" + verifier
 	return s.jwtManager.CreateShortLivedToken(subject, 10*time.Minute)
 }
 
-// parseStateJWT decodes and validates the state JWT, returning companyID, provider, and redirectURI.
-func (s *SSOService) parseStateJWT(stateJWT string) (companyID uuid.UUID, provider, redirectURI string, err error) {
+// parseStateJWT decodes and validates the state JWT, returning companyID,
+// provider, redirectURI, and the PKCE verifier.
+//
+// Back-compat: a legacy 3-field state (companyID|provider|redirectURI, written
+// before PKCE) parses cleanly and yields an empty verifier, so an in-flight
+// redirect issued just before deploy does not 500. Fewer than 3 fields is still
+// malformed. The PKCE addition does not weaken state validation.
+func (s *SSOService) parseStateJWT(stateJWT string) (companyID uuid.UUID, provider, redirectURI, verifier string, err error) {
 	subject, err := s.jwtManager.ValidateShortLivedToken(stateJWT)
 	if err != nil {
-		return uuid.Nil, "", "", fmt.Errorf("invalid state: %w", err)
+		return uuid.Nil, "", "", "", fmt.Errorf("invalid state: %w", err)
 	}
 
-	parts := strings.SplitN(subject, "|", 3)
-	if len(parts) != 3 {
-		return uuid.Nil, "", "", fmt.Errorf("malformed state")
+	parts := strings.SplitN(subject, "|", 4)
+	if len(parts) < 3 {
+		return uuid.Nil, "", "", "", fmt.Errorf("malformed state")
 	}
 
 	companyID, err = uuid.Parse(parts[0])
 	if err != nil {
-		return uuid.Nil, "", "", fmt.Errorf("invalid company_id in state")
+		return uuid.Nil, "", "", "", fmt.Errorf("invalid company_id in state")
 	}
 
-	return companyID, parts[1], parts[2], nil
+	if len(parts) == 4 {
+		verifier = parts[3]
+	}
+
+	return companyID, parts[1], parts[2], verifier, nil
 }
 
 // HandleOIDCCallbackWithState handles the OIDC redirect callback using the state JWT.
 // Extracts companyID and provider from state, exchanges code, provisions user, stores OAuth tokens.
 // Returns AuthResponse and the redirectURI from state (so caller knows where to send the user).
 func (s *SSOService) HandleOIDCCallbackWithState(ctx context.Context, code, stateJWT string) (*AuthResponse, string, error) {
-	companyID, provider, redirectURI, err := s.parseStateJWT(stateJWT)
+	companyID, provider, redirectURI, verifier, err := s.parseStateJWT(stateJWT)
 	if err != nil {
 		return nil, "", fmt.Errorf("invalid state: %w", err)
 	}
 
-	resp, err := s.HandleOIDCCallback(ctx, code, provider, companyID)
+	resp, err := s.HandleOIDCCallbackWithVerifier(ctx, code, provider, companyID, verifier)
 	if err != nil {
 		return nil, "", err
 	}
@@ -165,7 +186,21 @@ func (s *SSOService) HandleOIDCCallbackWithState(ctx context.Context, code, stat
 // HandleOIDCCallback handles the OIDC redirect callback with authorization code.
 // Performs JIT provisioning: creates user if not found, links to company.
 // Stores the OAuth access/refresh tokens for future API use.
+//
+// This public signature is preserved for backward compatibility. It delegates
+// to HandleOIDCCallbackWithVerifier with an empty PKCE verifier, which is
+// byte-for-byte the pre-PKCE Exchange behavior (no code_verifier posted).
 func (s *SSOService) HandleOIDCCallback(ctx context.Context, code, provider string, companyID uuid.UUID) (*AuthResponse, error) {
+	return s.HandleOIDCCallbackWithVerifier(ctx, code, provider, companyID, "")
+}
+
+// HandleOIDCCallbackWithVerifier is HandleOIDCCallback with an explicit PKCE
+// verifier. When verifier is non-empty, the code exchange posts the matching
+// code_verifier (required by AOID's OAuth 2.1 PKCE-mandatory /oauth/token).
+// When verifier is empty, NO code_verifier is sent — keeping the exchange
+// byte-for-byte identical to the pre-PKCE path so existing Google/Microsoft/
+// customer OIDC SSO (and any in-flight legacy state) is unaffected.
+func (s *SSOService) HandleOIDCCallbackWithVerifier(ctx context.Context, code, provider string, companyID uuid.UUID, verifier string) (*AuthResponse, error) {
 	ssoConfig, err := s.store.GetSSOConfig(ctx, companyID, provider)
 	if err != nil {
 		return nil, fmt.Errorf("SSO provider %q not configured for this company", provider)
@@ -176,8 +211,13 @@ func (s *SSOService) HandleOIDCCallback(ctx context.Context, code, provider stri
 		return nil, fmt.Errorf("create OIDC provider: %w", err)
 	}
 
-	// Exchange code for tokens
-	oauth2Token, err := cached.config.Exchange(ctx, code)
+	// Exchange code for tokens. Only attach the PKCE verifier when present, so
+	// the empty-verifier path is identical to the legacy/non-PKCE exchange.
+	var exchangeOpts []oauth2.AuthCodeOption
+	if verifier != "" {
+		exchangeOpts = append(exchangeOpts, oauth2.VerifierOption(verifier))
+	}
+	oauth2Token, err := cached.config.Exchange(ctx, code, exchangeOpts...)
 	if err != nil {
 		return nil, fmt.Errorf("exchange authorization code: %w", err)
 	}
@@ -188,8 +228,9 @@ func (s *SSOService) HandleOIDCCallback(ctx context.Context, code, provider stri
 		return nil, fmt.Errorf("no id_token in token response")
 	}
 
-	verifier := cached.provider.Verifier(&gooidc.Config{ClientID: ssoConfig.ClientID})
-	idToken, err := verifier.Verify(ctx, rawIDToken)
+	// Named idTokenVerifier to avoid shadowing the PKCE code verifier parameter.
+	idTokenVerifier := cached.provider.Verifier(&gooidc.Config{ClientID: ssoConfig.ClientID})
+	idToken, err := idTokenVerifier.Verify(ctx, rawIDToken)
 	if err != nil {
 		return nil, fmt.Errorf("verify ID token: %w", err)
 	}

@@ -26,13 +26,11 @@ func (s *SSOService) StateVerifierForTest(t *testing.T, stateJWT string) string 
 // ParseStateForTest exposes parseStateJWT to the external test package.
 func (s *SSOService) ParseStateForTest(t *testing.T, stateJWT string) (uuid.UUID, string, string, string) {
 	t.Helper()
-	companyID, provider, redirectURI, err := s.parseStateJWT(stateJWT)
+	companyID, provider, redirectURI, verifier, err := s.parseStateJWT(stateJWT)
 	if err != nil {
 		t.Fatalf("parseStateJWT: %v", err)
 	}
-	// Current (PKCE-less) parseStateJWT returns no verifier — reported empty.
-	// The GREEN slice threads the verifier through and updates this seam.
-	return companyID, provider, redirectURI, ""
+	return companyID, provider, redirectURI, verifier
 }
 
 // LegacyStateForTest builds a state JWT in the OLD 3-field
