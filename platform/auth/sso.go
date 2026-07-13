@@ -366,9 +366,15 @@ func (s *SSOService) handleOIDCCallbackHTTP(w http.ResponseWriter, r *http.Reque
 
 	// Redirect based on the redirectURI encoded in the state JWT.
 	if redirectURI != "" && redirectURI != "json" {
-		// Append tokens as query params for desktop Flutter or portal redirect.
-		sep := "?"
-		if strings.Contains(redirectURI, "?") {
+		// Append tokens in the URL FRAGMENT (not the query). eden access/refresh
+		// tokens are ML-DSA-65 (~4.8KB each); a ~9.6KB query URL trips nginx's
+		// large_client_header_buffers (HTTP 414) on the SPA host. A fragment is
+		// NEVER sent to the server, so the SPA host only ever sees GET <path> and
+		// the SPA reads the tokens from location.hash client-side. Bonus: tokens
+		// stay out of access logs / the Referer header. (Web SSO callback pages
+		// read window.location.hash; the eden-biz BizSsoCompleteScreen already does.)
+		sep := "#"
+		if strings.Contains(redirectURI, "#") {
 			sep = "&"
 		}
 		target := fmt.Sprintf("%s%saccess_token=%s&refresh_token=%s", redirectURI, sep, resp.AccessToken, resp.RefreshToken)
