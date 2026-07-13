@@ -42,16 +42,24 @@ type ResponseFormat struct {
 
 // ChatRequest is the body of POST /v1/chat/completions.
 type ChatRequest struct {
-	Model          string          `json:"model"`
-	Messages       []ChatMessage   `json:"messages"`
-	Temperature    *float64        `json:"temperature,omitempty"`
-	MaxTokens      *int            `json:"max_tokens,omitempty"`
-	TopP           *float64        `json:"top_p,omitempty"`
-	Stop           []string        `json:"stop,omitempty"`
-	Stream         bool            `json:"stream,omitempty"`
-	User           string          `json:"user,omitempty"`
-	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
+	Model          string            `json:"model"`
+	Messages       []ChatMessage     `json:"messages"`
+	Temperature    *float64          `json:"temperature,omitempty"`
+	MaxTokens      *int              `json:"max_tokens,omitempty"`
+	TopP           *float64          `json:"top_p,omitempty"`
+	Stop           []string          `json:"stop,omitempty"`
+	Stream         bool              `json:"stream,omitempty"`
+	User           string            `json:"user,omitempty"`
+	ResponseFormat *ResponseFormat   `json:"response_format,omitempty"`
+	// ExtraHeaders are applied as HTTP request headers on every outbound call
+	// to the AOCore gateway. They are never serialised into the JSON body.
+	// Ranging over a nil map is safe (zero iterations).
+	ExtraHeaders map[string]string `json:"-"`
 }
+
+// extraHeaderMap satisfies the extraHeaders interface used by transport.doJSON
+// to thread per-request HTTP headers into do() without changing its signature.
+func (r ChatRequest) extraHeaderMap() map[string]string { return r.ExtraHeaders }
 
 // Usage holds token consumption returned in chat / embedding responses.
 type Usage struct {
