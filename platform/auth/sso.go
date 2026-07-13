@@ -130,10 +130,16 @@ func (s *SSOService) InitiateOIDC(ctx context.Context, companyID uuid.UUID, prov
 // stateless redirect. Legacy states written before PKCE carried only the first
 // three fields; parseStateJWT still accepts that shape (empty verifier).
 func (s *SSOService) createStateJWT(companyID uuid.UUID, provider, redirectURI, verifier string) (string, error) {
-	// Reuse JWTManager to sign. Encode context as subject with a 10-minute expiry.
+	// Encode context as subject with a 10-minute expiry.
 	// Format: "companyID|provider|redirectURI|pkceVerifier"
 	subject := companyID.String() + "|" + provider + "|" + redirectURI + "|" + verifier
-	return s.jwtManager.CreateShortLivedToken(subject, 10*time.Minute)
+	// Sign with a COMPACT HS256 signature, not the ~3.3KB ML-DSA-65 one. The
+	// state is a short-lived, self-verified CSRF/PKCE carrier, and an upstream
+	// OIDC provider (AO ID) embeds it into a cookie whose total must stay under
+	// the browser's ~4KB per-cookie limit — an ML-DSA state (~4.8KB) overflows it,
+	// the browser drops the cookie, and the login dead-ends at "No pending login
+	// request". See JWTManager.CreateCompactShortLivedToken.
+	return s.jwtManager.CreateCompactShortLivedToken(subject, 10*time.Minute)
 }
 
 // parseStateJWT decodes and validates the state JWT, returning companyID,
@@ -144,9 +150,15 @@ func (s *SSOService) createStateJWT(companyID uuid.UUID, provider, redirectURI, 
 // redirect issued just before deploy does not 500. Fewer than 3 fields is still
 // malformed. The PKCE addition does not weaken state validation.
 func (s *SSOService) parseStateJWT(stateJWT string) (companyID uuid.UUID, provider, redirectURI, verifier string, err error) {
-	subject, err := s.jwtManager.ValidateShortLivedToken(stateJWT)
+	subject, err := s.jwtManager.ValidateCompactShortLivedToken(stateJWT)
 	if err != nil {
-		return uuid.Nil, "", "", "", fmt.Errorf("invalid state: %w", err)
+		// Back-compat: a state minted before the compact-signature switch (or by a
+		// not-yet-rolled replica during a deploy) carries an ML-DSA-65 signature.
+		// Fall back so in-flight logins across a rolling deploy don't 500.
+		subject, err = s.jwtManager.ValidateShortLivedToken(stateJWT)
+		if err != nil {
+			return uuid.Nil, "", "", "", fmt.Errorf("invalid state: %w", err)
+		}
 	}
 
 	parts := strings.SplitN(subject, "|", 4)

@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"fmt"
 	"log/slog"
 	"os"
@@ -359,6 +360,73 @@ func (m *JWTManager) ValidateShortLivedToken(tokenStr string) (string, error) {
 	token, err := jwt.ParseWithClaims(tokenStr, claims, m.keyfunc)
 	if err != nil {
 		return "", fmt.Errorf("parse short-lived token: %w", err)
+	}
+	if !token.Valid {
+		return "", fmt.Errorf("invalid token")
+	}
+	return claims.Subject, nil
+}
+
+// stateHMACKey derives a stable 32-byte HMAC key from the active ML-DSA-65
+// signing key. It exists so short-lived, SELF-VERIFIED tokens (SSO state, email
+// verification) can carry a COMPACT HS256 signature (~32 bytes) instead of the
+// ~3.3KB ML-DSA-65 one. That size matters when an upstream party embeds the
+// token somewhere bounded — e.g. AO ID stuffs the SSO `state` into a cookie
+// whose TOTAL must stay under the browser's ~4KB per-cookie limit; an ML-DSA
+// state overflows it and the browser silently drops the cookie.
+//
+// Derivation is deterministic from the active key material, so every replica
+// computes the same key with NO extra config/secret. Domain-separated so it can
+// never collide with any other use of the key bytes.
+func (m *JWTManager) stateHMACKey() ([]byte, error) {
+	entry, ok := m.keys[m.activeKID]
+	if !ok || entry.PrivateKey == nil {
+		return nil, fmt.Errorf("no active signing key")
+	}
+	h := sha256.New()
+	h.Write([]byte("eden-platform/short-lived-hs256/v1\x00"))
+	h.Write(entry.PrivateKey.Bytes())
+	return h.Sum(nil), nil
+}
+
+// CreateCompactShortLivedToken mints a short-lived token like
+// CreateShortLivedToken but with a compact HS256 signature (see stateHMACKey),
+// so the token stays small. Use ONLY for tokens this same service both signs and
+// verifies (SSO state, email/verify links) — NEVER for tokens verified by other
+// parties through the ML-DSA JWKS.
+func (m *JWTManager) CreateCompactShortLivedToken(subject string, expiry time.Duration) (string, error) {
+	key, err := m.stateHMACKey()
+	if err != nil {
+		return "", err
+	}
+	now := time.Now()
+	claims := &jwt.RegisteredClaims{
+		Subject:   subject,
+		Issuer:    m.config.Issuer,
+		ExpiresAt: jwt.NewNumericDate(now.Add(expiry)),
+		IssuedAt:  jwt.NewNumericDate(now),
+		ID:        generateJTI(),
+	}
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(key)
+}
+
+// ValidateCompactShortLivedToken parses and validates a token minted by
+// CreateCompactShortLivedToken, returning the subject. Rejects any non-HS256 alg
+// (defence against alg-confusion with the ML-DSA path).
+func (m *JWTManager) ValidateCompactShortLivedToken(tokenStr string) (string, error) {
+	key, err := m.stateHMACKey()
+	if err != nil {
+		return "", err
+	}
+	claims := &jwt.RegisteredClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
+		if t.Method.Alg() != jwt.SigningMethodHS256.Alg() {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return key, nil
+	})
+	if err != nil {
+		return "", fmt.Errorf("parse compact short-lived token: %w", err)
 	}
 	if !token.Valid {
 		return "", fmt.Errorf("invalid token")
