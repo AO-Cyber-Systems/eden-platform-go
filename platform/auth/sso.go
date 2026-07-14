@@ -364,17 +364,18 @@ func (s *SSOService) handleOIDCCallbackHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Redirect based on the redirectURI encoded in the state JWT.
+	// Redirect based on the redirectURI encoded in the state JWT, appending the
+	// tokens as query params. Callers targeting a HASH-routed SPA should point the
+	// redirectURI at the in-app route in the URL fragment (e.g.
+	// "https://host/#/auth/complete") — the tokens then land INSIDE the fragment
+	// ("…/#/auth/complete?access_token=…"), which (a) is never sent to the origin
+	// so a ~9.6KB URL from ML-DSA tokens can't 414 the SPA nginx, and (b) is parsed
+	// by the SPA router as the route's query. (A path-routed SPA can pass a plain
+	// path and read window.location.search, at the cost of the tokens hitting the
+	// request line.)
 	if redirectURI != "" && redirectURI != "json" {
-		// Append tokens in the URL FRAGMENT (not the query). eden access/refresh
-		// tokens are ML-DSA-65 (~4.8KB each); a ~9.6KB query URL trips nginx's
-		// large_client_header_buffers (HTTP 414) on the SPA host. A fragment is
-		// NEVER sent to the server, so the SPA host only ever sees GET <path> and
-		// the SPA reads the tokens from location.hash client-side. Bonus: tokens
-		// stay out of access logs / the Referer header. (Web SSO callback pages
-		// read window.location.hash; the eden-biz BizSsoCompleteScreen already does.)
-		sep := "#"
-		if strings.Contains(redirectURI, "#") {
+		sep := "?"
+		if strings.Contains(redirectURI, "?") {
 			sep = "&"
 		}
 		target := fmt.Sprintf("%s%saccess_token=%s&refresh_token=%s", redirectURI, sep, resp.AccessToken, resp.RefreshToken)
