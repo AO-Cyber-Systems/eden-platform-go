@@ -48,6 +48,9 @@ const (
 	// AccountAdminServiceUpdateAccountProcedure is the fully-qualified name of the
 	// AccountAdminService's UpdateAccount RPC.
 	AccountAdminServiceUpdateAccountProcedure = "/platform.v1.AccountAdminService/UpdateAccount"
+	// AccountAdminServiceAssistedAccountRecoveryProcedure is the fully-qualified name of the
+	// AccountAdminService's AssistedAccountRecovery RPC.
+	AccountAdminServiceAssistedAccountRecoveryProcedure = "/platform.v1.AccountAdminService/AssistedAccountRecovery"
 	// AccountAdminServiceSuspendAccountProcedure is the fully-qualified name of the
 	// AccountAdminService's SuspendAccount RPC.
 	AccountAdminServiceSuspendAccountProcedure = "/platform.v1.AccountAdminService/SuspendAccount"
@@ -128,6 +131,34 @@ type AccountAdminServiceClient interface {
 	// org_affiliation, clearance). Status transitions go through
 	// Suspend/Recover/Deprovision.
 	UpdateAccount(context.Context, *connect.Request[v1.UpdateAccountRequest]) (*connect.Response[v1.UpdateAccountResponse], error)
+	// AssistedAccountRecovery repoints an account's sign-in email to a new
+	// address and starts a password recovery to it, as ONE operation, for the
+	// case where the holder can no longer reach their REGISTERED mailbox and so
+	// cannot use the anonymous self-service recovery flow.
+	//
+	// This is NOT RecoverAccount: that RPC only flips a suspended account back to
+	// "active" (a status change, no credential effect). This one changes the
+	// sign-in email and begins a password recovery.
+	//
+	// Deliberately NOT UpdateAccount: UpdateAccount also mutates clearance and
+	// expires_at, so authorizing a broad admin population for it would grant
+	// clearance mutation as a side effect. This RPC cannot touch clearance
+	// because its request does not carry the field.
+	//
+	// Authorization and assurance are enforced by the AOID handler + interceptors,
+	// NOT by this contract: a session- or cert-derived admin, a per-procedure
+	// allowlist, an entitlement distinct from any auto-granted 'admin', and — for
+	// session callers — an AAL2+ session. The assurance level is read from the
+	// authenticated session context and is DELIBERATELY NOT a wire field: a
+	// body-carried capability/step-up field would be a spoofable authority
+	// surface, and authority on this service always comes from the session/cert,
+	// never the request body.
+	//
+	// Side effects the handler owns: the recovery link goes to new_email; the
+	// PRIOR address (and contact_email, if set) is notified out-of-band so the
+	// legitimate owner witnesses the change. The response is intentionally empty
+	// — no token or recovery URL is ever returned on the wire.
+	AssistedAccountRecovery(context.Context, *connect.Request[v1.AssistedAccountRecoveryRequest]) (*connect.Response[v1.AssistedAccountRecoveryResponse], error)
 	// SuspendAccount transitions the account to "suspended". Attributes retained.
 	SuspendAccount(context.Context, *connect.Request[v1.SuspendAccountRequest]) (*connect.Response[v1.SuspendAccountResponse], error)
 	// RecoverAccount transitions a suspended account back to "active".
@@ -216,6 +247,12 @@ func NewAccountAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+AccountAdminServiceUpdateAccountProcedure,
 			connect.WithSchema(accountAdminServiceMethods.ByName("UpdateAccount")),
+			connect.WithClientOptions(opts...),
+		),
+		assistedAccountRecovery: connect.NewClient[v1.AssistedAccountRecoveryRequest, v1.AssistedAccountRecoveryResponse](
+			httpClient,
+			baseURL+AccountAdminServiceAssistedAccountRecoveryProcedure,
+			connect.WithSchema(accountAdminServiceMethods.ByName("AssistedAccountRecovery")),
 			connect.WithClientOptions(opts...),
 		),
 		suspendAccount: connect.NewClient[v1.SuspendAccountRequest, v1.SuspendAccountResponse](
@@ -354,6 +391,7 @@ type accountAdminServiceClient struct {
 	getAccount                    *connect.Client[v1.GetAccountRequest, v1.GetAccountResponse]
 	listAccounts                  *connect.Client[v1.ListAccountsRequest, v1.ListAccountsResponse]
 	updateAccount                 *connect.Client[v1.UpdateAccountRequest, v1.UpdateAccountResponse]
+	assistedAccountRecovery       *connect.Client[v1.AssistedAccountRecoveryRequest, v1.AssistedAccountRecoveryResponse]
 	suspendAccount                *connect.Client[v1.SuspendAccountRequest, v1.SuspendAccountResponse]
 	recoverAccount                *connect.Client[v1.RecoverAccountRequest, v1.RecoverAccountResponse]
 	deprovisionAccount            *connect.Client[v1.DeprovisionAccountRequest, v1.DeprovisionAccountResponse]
@@ -400,6 +438,11 @@ func (c *accountAdminServiceClient) ListAccounts(ctx context.Context, req *conne
 // UpdateAccount calls platform.v1.AccountAdminService.UpdateAccount.
 func (c *accountAdminServiceClient) UpdateAccount(ctx context.Context, req *connect.Request[v1.UpdateAccountRequest]) (*connect.Response[v1.UpdateAccountResponse], error) {
 	return c.updateAccount.CallUnary(ctx, req)
+}
+
+// AssistedAccountRecovery calls platform.v1.AccountAdminService.AssistedAccountRecovery.
+func (c *accountAdminServiceClient) AssistedAccountRecovery(ctx context.Context, req *connect.Request[v1.AssistedAccountRecoveryRequest]) (*connect.Response[v1.AssistedAccountRecoveryResponse], error) {
+	return c.assistedAccountRecovery.CallUnary(ctx, req)
 }
 
 // SuspendAccount calls platform.v1.AccountAdminService.SuspendAccount.
@@ -523,6 +566,34 @@ type AccountAdminServiceHandler interface {
 	// org_affiliation, clearance). Status transitions go through
 	// Suspend/Recover/Deprovision.
 	UpdateAccount(context.Context, *connect.Request[v1.UpdateAccountRequest]) (*connect.Response[v1.UpdateAccountResponse], error)
+	// AssistedAccountRecovery repoints an account's sign-in email to a new
+	// address and starts a password recovery to it, as ONE operation, for the
+	// case where the holder can no longer reach their REGISTERED mailbox and so
+	// cannot use the anonymous self-service recovery flow.
+	//
+	// This is NOT RecoverAccount: that RPC only flips a suspended account back to
+	// "active" (a status change, no credential effect). This one changes the
+	// sign-in email and begins a password recovery.
+	//
+	// Deliberately NOT UpdateAccount: UpdateAccount also mutates clearance and
+	// expires_at, so authorizing a broad admin population for it would grant
+	// clearance mutation as a side effect. This RPC cannot touch clearance
+	// because its request does not carry the field.
+	//
+	// Authorization and assurance are enforced by the AOID handler + interceptors,
+	// NOT by this contract: a session- or cert-derived admin, a per-procedure
+	// allowlist, an entitlement distinct from any auto-granted 'admin', and — for
+	// session callers — an AAL2+ session. The assurance level is read from the
+	// authenticated session context and is DELIBERATELY NOT a wire field: a
+	// body-carried capability/step-up field would be a spoofable authority
+	// surface, and authority on this service always comes from the session/cert,
+	// never the request body.
+	//
+	// Side effects the handler owns: the recovery link goes to new_email; the
+	// PRIOR address (and contact_email, if set) is notified out-of-band so the
+	// legitimate owner witnesses the change. The response is intentionally empty
+	// — no token or recovery URL is ever returned on the wire.
+	AssistedAccountRecovery(context.Context, *connect.Request[v1.AssistedAccountRecoveryRequest]) (*connect.Response[v1.AssistedAccountRecoveryResponse], error)
 	// SuspendAccount transitions the account to "suspended". Attributes retained.
 	SuspendAccount(context.Context, *connect.Request[v1.SuspendAccountRequest]) (*connect.Response[v1.SuspendAccountResponse], error)
 	// RecoverAccount transitions a suspended account back to "active".
@@ -607,6 +678,12 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 		AccountAdminServiceUpdateAccountProcedure,
 		svc.UpdateAccount,
 		connect.WithSchema(accountAdminServiceMethods.ByName("UpdateAccount")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountAdminServiceAssistedAccountRecoveryHandler := connect.NewUnaryHandler(
+		AccountAdminServiceAssistedAccountRecoveryProcedure,
+		svc.AssistedAccountRecovery,
+		connect.WithSchema(accountAdminServiceMethods.ByName("AssistedAccountRecovery")),
 		connect.WithHandlerOptions(opts...),
 	)
 	accountAdminServiceSuspendAccountHandler := connect.NewUnaryHandler(
@@ -747,6 +824,8 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 			accountAdminServiceListAccountsHandler.ServeHTTP(w, r)
 		case AccountAdminServiceUpdateAccountProcedure:
 			accountAdminServiceUpdateAccountHandler.ServeHTTP(w, r)
+		case AccountAdminServiceAssistedAccountRecoveryProcedure:
+			accountAdminServiceAssistedAccountRecoveryHandler.ServeHTTP(w, r)
 		case AccountAdminServiceSuspendAccountProcedure:
 			accountAdminServiceSuspendAccountHandler.ServeHTTP(w, r)
 		case AccountAdminServiceRecoverAccountProcedure:
@@ -816,6 +895,10 @@ func (UnimplementedAccountAdminServiceHandler) ListAccounts(context.Context, *co
 
 func (UnimplementedAccountAdminServiceHandler) UpdateAccount(context.Context, *connect.Request[v1.UpdateAccountRequest]) (*connect.Response[v1.UpdateAccountResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.UpdateAccount is not implemented"))
+}
+
+func (UnimplementedAccountAdminServiceHandler) AssistedAccountRecovery(context.Context, *connect.Request[v1.AssistedAccountRecoveryRequest]) (*connect.Response[v1.AssistedAccountRecoveryResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.AssistedAccountRecovery is not implemented"))
 }
 
 func (UnimplementedAccountAdminServiceHandler) SuspendAccount(context.Context, *connect.Request[v1.SuspendAccountRequest]) (*connect.Response[v1.SuspendAccountResponse], error) {

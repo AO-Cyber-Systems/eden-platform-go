@@ -3,6 +3,63 @@
 
 ## Table of Contents
 
+- [experience/v1/experience.proto](#experience_v1_experience-proto)
+    - [ActionGate](#experience-v1-ActionGate)
+    - [AgentNode](#experience-v1-AgentNode)
+    - [AgentSpec](#experience-v1-AgentSpec)
+    - [AppDefinition](#experience-v1-AppDefinition)
+    - [AppMeta](#experience-v1-AppMeta)
+    - [AudienceBinding](#experience-v1-AudienceBinding)
+    - [BudgetPolicy](#experience-v1-BudgetPolicy)
+    - [CredentialRef](#experience-v1-CredentialRef)
+    - [DeepLinkSpec](#experience-v1-DeepLinkSpec)
+    - [ExperienceSpec](#experience-v1-ExperienceSpec)
+    - [ExperienceSpec.CustomFieldsEntry](#experience-v1-ExperienceSpec-CustomFieldsEntry)
+    - [ExperienceSpec.FlagOverridesEntry](#experience-v1-ExperienceSpec-FlagOverridesEntry)
+    - [ExperienceSpec.RulePolicyEntry](#experience-v1-ExperienceSpec-RulePolicyEntry)
+    - [ExperienceSpec.SurfaceOfflineEntry](#experience-v1-ExperienceSpec-SurfaceOfflineEntry)
+    - [HitlPolicy](#experience-v1-HitlPolicy)
+    - [KnowledgePolicy](#experience-v1-KnowledgePolicy)
+    - [LocaleSpec](#experience-v1-LocaleSpec)
+    - [LockedSurface](#experience-v1-LockedSurface)
+    - [NavEdge](#experience-v1-NavEdge)
+    - [NavEdge.ParamBindingsEntry](#experience-v1-NavEdge-ParamBindingsEntry)
+    - [NavGraph](#experience-v1-NavGraph)
+    - [NavSlot](#experience-v1-NavSlot)
+    - [OfflineSpec](#experience-v1-OfflineSpec)
+    - [ResolutionContext](#experience-v1-ResolutionContext)
+    - [ResolveSpecRequest](#experience-v1-ResolveSpecRequest)
+    - [ResolveSpecResponse](#experience-v1-ResolveSpecResponse)
+    - [ServiceTransportBinding](#experience-v1-ServiceTransportBinding)
+    - [SigningSpec](#experience-v1-SigningSpec)
+    - [SigningSpec.ByPlatformEntry](#experience-v1-SigningSpec-ByPlatformEntry)
+    - [StoreSpecRequest](#experience-v1-StoreSpecRequest)
+    - [StoreSpecResponse](#experience-v1-StoreSpecResponse)
+    - [SurfaceRegistryManifest](#experience-v1-SurfaceRegistryManifest)
+    - [TelemetryEnvelope](#experience-v1-TelemetryEnvelope)
+    - [TermSet](#experience-v1-TermSet)
+    - [TermSet.OverridesEntry](#experience-v1-TermSet-OverridesEntry)
+    - [ThemeSpec](#experience-v1-ThemeSpec)
+    - [ThemeSpec.ColorOverridesEntry](#experience-v1-ThemeSpec-ColorOverridesEntry)
+    - [ToolDefinition](#experience-v1-ToolDefinition)
+    - [ValidateSpecRequest](#experience-v1-ValidateSpecRequest)
+    - [ValidateSpecResponse](#experience-v1-ValidateSpecResponse)
+    - [ValidationProblem](#experience-v1-ValidationProblem)
+  
+    - [AgentAudience](#experience-v1-AgentAudience)
+    - [ConflictPolicy](#experience-v1-ConflictPolicy)
+    - [OfflinePolicy](#experience-v1-OfflinePolicy)
+    - [Operation](#experience-v1-Operation)
+    - [PaginationKind](#experience-v1-PaginationKind)
+    - [Placement](#experience-v1-Placement)
+    - [ScopeAuthority](#experience-v1-ScopeAuthority)
+    - [SideEffect](#experience-v1-SideEffect)
+    - [ToolVisibility](#experience-v1-ToolVisibility)
+    - [TransportKind](#experience-v1-TransportKind)
+    - [UnknownSurfacePolicy](#experience-v1-UnknownSurfacePolicy)
+  
+    - [ExperienceService](#experience-v1-ExperienceService)
+  
 - [platform/v1/ac2_evidence.proto](#platform_v1_ac2_evidence-proto)
     - [AC2EvidenceServiceGetAccountInventoryRequest](#platform-v1-AC2EvidenceServiceGetAccountInventoryRequest)
     - [AC2EvidenceServiceGetAccountInventoryResponse](#platform-v1-AC2EvidenceServiceGetAccountInventoryResponse)
@@ -166,6 +223,9 @@
     - [PasswordLoginCompleteResponse](#platform-v1-PasswordLoginCompleteResponse)
     - [PasswordLoginStartRequest](#platform-v1-PasswordLoginStartRequest)
     - [PasswordLoginStartResponse](#platform-v1-PasswordLoginStartResponse)
+    - [ResolveWorkspace](#platform-v1-ResolveWorkspace)
+    - [ResolveWorkspacesByEmailRequest](#platform-v1-ResolveWorkspacesByEmailRequest)
+    - [ResolveWorkspacesByEmailResponse](#platform-v1-ResolveWorkspacesByEmailResponse)
     - [RevokeMyCredentialRequest](#platform-v1-RevokeMyCredentialRequest)
     - [RevokeMyCredentialResponse](#platform-v1-RevokeMyCredentialResponse)
     - [RevokeMySessionRequest](#platform-v1-RevokeMySessionRequest)
@@ -173,6 +233,8 @@
     - [SessionSummary](#platform-v1-SessionSummary)
     - [WhoAmIRequest](#platform-v1-WhoAmIRequest)
     - [WhoAmIResponse](#platform-v1-WhoAmIResponse)
+  
+    - [ResolveStatus](#platform-v1-ResolveStatus)
   
     - [AuthnService](#platform-v1-AuthnService)
     - [EndUserSessionService](#platform-v1-EndUserSessionService)
@@ -321,6 +383,8 @@
     - [AccountData](#platform-v1-AccountData)
     - [AddAccountToGroupRequest](#platform-v1-AddAccountToGroupRequest)
     - [AddAccountToGroupResponse](#platform-v1-AddAccountToGroupResponse)
+    - [AssistedAccountRecoveryRequest](#platform-v1-AssistedAccountRecoveryRequest)
+    - [AssistedAccountRecoveryResponse](#platform-v1-AssistedAccountRecoveryResponse)
     - [ClearanceInfo](#platform-v1-ClearanceInfo)
     - [CreateTenantRequest](#platform-v1-CreateTenantRequest)
     - [CreateTenantResponse](#platform-v1-CreateTenantResponse)
@@ -441,6 +505,1045 @@
     - [WebhookService](#platform-v1-WebhookService)
   
 - [Scalar Value Types](#scalar-value-types)
+
+
+
+<a name="experience_v1_experience-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## experience/v1/experience.proto
+
+
+
+<a name="experience-v1-ActionGate"></a>
+
+### ActionGate
+ActionGate gates a single action_id behind an entitlement_key. Reserved-cheap
+seam on ExperienceSpec.action_gates (field 80) -- typed up front so the frozen
+proto never has to migrate to add per-action entitlement gating.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| action_id | [string](#string) |  |  |
+| entitlement_key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-AgentNode"></a>
+
+### AgentNode
+AgentNode is an agent step binding a set of tool ids under a TYPED
+io_envelope_schema. The io-envelope is the SWAP-STABLE seam: the stub
+dispatcher AND the real LLM dispatcher (obj 144) both read/write THIS envelope,
+so the dispatcher swap is envelope-preserving with NO contract change.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| tool_ids | [string](#string) | repeated | tool ids this node may call |
+| io_envelope_schema | [string](#string) |  | JSON-Schema io envelope (swap-stable seam) |
+
+
+
+
+
+
+<a name="experience-v1-AgentSpec"></a>
+
+### AgentSpec
+AgentSpec is the reusable, versioned agent contract. A flow&#39;s agent node
+references an AgentSpec by id (wired in 160-03); the spec itself is authored
+once and reused across every channel/flow.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | stable spec id (authored in eden-biz) |
+| version | [string](#string) |  | versioned contract (semver-ish, e.g. &#34;1.0.0&#34;) |
+| company_id | [string](#string) |  | owning tenant scope -- OVERWRITTEN by principal at store (non-leaking) |
+| persona | [string](#string) |  | system prompt / grounding persona (TYPED, not a config blob) |
+| model_ref | [string](#string) |  | AOCore /v1/models catalog asset id (first-class model selection) |
+| node | [AgentNode](#experience-v1-AgentNode) |  | COMPOSES the frozen 140 AgentNode (tool_ids &#43; io_envelope_schema) |
+| tools | [ToolDefinition](#experience-v1-ToolDefinition) | repeated | resolved typed tool contracts (frozen 140 type) |
+| knowledge | [KnowledgePolicy](#experience-v1-KnowledgePolicy) |  |  |
+| hitl | [HitlPolicy](#experience-v1-HitlPolicy) |  |  |
+| budget | [BudgetPolicy](#experience-v1-BudgetPolicy) |  |  |
+| lifecycle | [string](#string) |  | draft|active|retired |
+| audience | [AgentAudience](#experience-v1-AgentAudience) |  | 161-01 additive: the AUDIENCE dimension. One spec serves internal staff AND external customers (NOT two agents) -- per-audience tools/knowledge/persona/ escalation ride the bindings. UNSPECIFIED audience is back-compat INTERNAL (external is NEVER implicit). Machine-checked in agentspec.go: an external binding may only reference visibility=EXTERNAL_SAFE tools (deny-by-default). |
+| audience_bindings | [AudienceBinding](#experience-v1-AudienceBinding) | repeated |  |
+
+
+
+
+
+
+<a name="experience-v1-AppDefinition"></a>
+
+### AppDefinition
+AppDefinition: build-time definition feeding BOTH the runtime resolver AND
+the per-company native build pipeline (layered output).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| meta | [AppMeta](#experience-v1-AppMeta) |  |  |
+| spec | [ExperienceSpec](#experience-v1-ExperienceSpec) |  |  |
+| min_binary_version | [string](#string) |  | Min app binary version that can render specs from this definition (IRREVERSIBLE floor). |
+| contract_version | [string](#string) |  | Version of the experience.v1 contract this definition conforms to. |
+| deep_link | [DeepLinkSpec](#experience-v1-DeepLinkSpec) |  | 140-05 un-reserved field 10 from the 10-19 nav range for DeepLinkSpec; 11..19 stay reserved. DeepLink lives HERE (not on the spec) because a store binary commits to its url scheme &#43; route templates at submit time and can&#39;t change them post-submit -- it is a BUILD-time, not a resolved-spec, value. |
+| signing | [SigningSpec](#experience-v1-SigningSpec) |  | 140-07 un-reserved field 20 from the 20-29 signing range for SigningSpec; 21..29 stay reserved. Signing lives HERE (BUILD-time, like DeepLinkSpec) -- a store binary commits to its signing identity at submit time. SigningSpec stores a per-platform CredentialRef (ref &#43; custody), NEVER inline material. |
+| app_service_slots | [string](#string) | repeated | 140-07 un-reserved field 30 from the 30-39 app-service-slot range for the build-time service-slot refs (search/notify/export/attach/print/audit); 31..39 stay reserved. |
+
+
+
+
+
+
+<a name="experience-v1-AppMeta"></a>
+
+### AppMeta
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| bundle_id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-AudienceBinding"></a>
+
+### AudienceBinding
+AudienceBinding is the per-audience override set an AgentSpec carries
+(161-01): which tools/knowledge the audience may use, the persona voice, and
+where the agent escalates. tool_ids reference the spec&#39;s tools by adapter_id
+(binding subset-of spec tools -- validated); an EXTERNAL binding may reference
+ONLY visibility=EXTERNAL_SAFE tools (deny-by-default, agentspec.go).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| audience | [AgentAudience](#experience-v1-AgentAudience) |  | which audience this binding configures |
+| tool_ids | [string](#string) | repeated | subset of the spec&#39;s tools (by adapter_id) |
+| knowledge_ids | [string](#string) | repeated | subset of knowledge source refs for this audience |
+| persona | [string](#string) |  | audience-voice persona override (e.g. brand voice) |
+| escalation_target | [string](#string) |  | where this audience escalates (e.g. human-support) |
+
+
+
+
+
+
+<a name="experience-v1-BudgetPolicy"></a>
+
+### BudgetPolicy
+BudgetPolicy caps an agent run: max reasoning/tool steps and max tokens.
+max_steps is validated into (0, ceiling] by ValidateAgentSpec (fail-closed:
+an unset/zero budget is NOT dispatchable).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| max_steps | [int32](#int32) |  | max agent steps per run (validator: 0 &lt; n &lt;= ceiling) |
+| max_tokens | [int32](#int32) |  | max tokens per run (0 = runtime default) |
+
+
+
+
+
+
+<a name="experience-v1-CredentialRef"></a>
+
+### CredentialRef
+CredentialRef is a REFERENCE to signing material held in a custody system
+(1Password / KMS), NEVER the material itself. ref is the pointer (e.g.
+op://AOCyber/ios-dist-cert); custody names the system holding it.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ref | [string](#string) |  | pointer into the custody system (op://..., kms://...) |
+| custody | [string](#string) |  | custody system name (e.g. &#34;1password&#34;, &#34;kms&#34;) |
+
+
+
+
+
+
+<a name="experience-v1-DeepLinkSpec"></a>
+
+### DeepLinkSpec
+DeepLinkSpec is the url scheme &#43; route templates a store binary commits to at
+submit time. It lives on AppDefinition (BUILD-time), never on a resolved
+ExperienceSpec, because a published store binary CANNOT change these
+post-submit -- they are frozen the moment the binary ships.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url_scheme | [string](#string) |  | e.g. &#34;edenbiz&#34; (edenbiz://...) |
+| route_templates | [string](#string) | repeated | e.g. &#34;/customers/:id&#34;, &#34;/invoices/:id/pay&#34; |
+
+
+
+
+
+
+<a name="experience-v1-ExperienceSpec"></a>
+
+### ExperienceSpec
+ExperienceSpec: server-authoritative, content-hashed, client-cacheable spec
+resolved per {role,entitlements,form_factor,tenant,org}. The 3 version axes
+are ORTHOGONAL; bumping one must not change another&#39;s serialized value.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spec_schema_version | [string](#string) |  | schema version of THIS message |
+| surface_contract_version | [string](#string) |  | FeatureSurface contract version |
+| content_hash | [string](#string) |  | hash of resolved spec (rollback id &#43; cache key) |
+| contract_version | [string](#string) |  | experience.v1 contract version (140-12 compat signal) |
+| min_binary_version | [string](#string) |  | floor binary version that can render this spec |
+| tenant_id | [string](#string) |  | Tenancy: RESERVED here, ENFORCED in 140-08/09 (company scope &#43; aocore org scope). |
+| org_id | [string](#string) |  |  |
+| referenced_surface_ids | [string](#string) | repeated | 140-03 un-reserved 10..11 from the &#34;SurfaceRegistryManifest &#43; granted surfaces&#34; range; 12..19 stay reserved for granted-surface refs.
+
+surface ids this spec references (negotiated vs the binary&#39;s manifest) |
+| unknown_surface_policy | [UnknownSurfacePolicy](#experience-v1-UnknownSurfacePolicy) |  | how the binary handles a referenced surface it does not know |
+| nav_graph | [NavGraph](#experience-v1-NavGraph) |  | 140-05 un-reserved field 20 from the 20-29 nav range for the NavGraph; 21..29 stay reserved for later nav seams. |
+| theme | [ThemeSpec](#experience-v1-ThemeSpec) |  | 140-06 un-reserved 30/31/32 from the 30-39 presentation range for the typed presentation surface (ThemeSpec &#43; TermSet &#43; LocaleSpec); 33..39 stay reserved. LocaleSpec.timezone is the net-new LOAD-BEARING field (absent everywhere today, required for scheduling/field). TermSet is PRESENTATION- ONLY -- a Job-&gt;Visit relabel for display; logic keys off entity/surface ids, never the displayed term.
+
+brand preset &#43; logo &#43; color overrides &#43; density |
+| terms | [TermSet](#experience-v1-TermSet) |  | presentation-only term overrides (e.g. job-&gt;visit) |
+| locale | [LocaleSpec](#experience-v1-LocaleSpec) |  | locale &#43; currency &#43; IANA timezone (tz load-bearing) |
+| surface_offline | [ExperienceSpec.SurfaceOfflineEntry](#experience-v1-ExperienceSpec-SurfaceOfflineEntry) | repeated | 140-06 un-reserved field 40 from the 40-49 offline range for the PER-SURFACE OfflineSpec map (keyed by surface_id); 41..49 stay reserved. Offline is per-surface and STRUCTURED (policy/cache_ttl/conflict_policy/grace), NEVER a bare global offlineCapable bool -- gates G1/G5 reason over the structure.
+
+per-surface offline policy, keyed by surface_id |
+| bindings | [ServiceTransportBinding](#experience-v1-ServiceTransportBinding) | repeated | 140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.
+
+service&lt;-&gt;transport bindings (transport- AND scope-agnostic) |
+| tools | [ToolDefinition](#experience-v1-ToolDefinition) | repeated | 140-07 un-reserved 60/61 from the 60-69 tool/agent range; 62..69 stay reserved. ToolDefinition is TYPED (adapter allowlist FK &#43; JSON-Schema envelopes &#43; side_effect &#43; idempotency_key), NEVER a config_json blob. AgentNode carries a typed io_envelope_schema -- the swap-stable seam the real LLM dispatcher (obj 144) plugs into without a contract change.
+
+curated-allowlist-bound tools |
+| agent_nodes | [AgentNode](#experience-v1-AgentNode) | repeated | agent nodes (io-envelope-preserving) |
+| resolution_context | [ResolutionContext](#experience-v1-ResolutionContext) |  | 140-07 un-reserved 70/71 from the 70-79 telemetry/resolution range; 72..79 stay reserved. ResolutionContext is the provenance of THIS resolution (tenant/org &#43; resolved_at &#43; resolver_version); LockedSurface carries an upsell_reason for a surface gated behind an entitlement. The TelemetryEnvelope message itself is a top-level message (emitted on the runtime wire, not a resolved-spec field) -- only resolution_context &#43; locked_surfaces live here.
+
+provenance of this resolution |
+| locked_surfaces | [LockedSurface](#experience-v1-LockedSurface) | repeated | surfaces gated behind an upsell |
+| action_gates | [ActionGate](#experience-v1-ActionGate) | repeated | 140-07 un-reserved 80..86 from the 80-89 reserved-cheap range; 87..89 stay reserved. These are reserved-NOW-cheap seams: typed-but-empty-friendly fields a frozen-forever proto must reserve up front rather than migrate to add. server_killable (86) is the REQUIRED fast-rollback kill flag for the generated fleet (a customer-own store account gives no kill switch otherwise).
+
+per-action entitlement gates |
+| flag_overrides | [ExperienceSpec.FlagOverridesEntry](#experience-v1-ExperienceSpec-FlagOverridesEntry) | repeated | feature-flag overrides |
+| variant | [string](#string) |  | A/B or cohort variant |
+| declared_states | [string](#string) | repeated | render states (populated/empty/error/...) |
+| custom_fields | [ExperienceSpec.CustomFieldsEntry](#experience-v1-ExperienceSpec-CustomFieldsEntry) | repeated | vertical/builder custom fields |
+| rule_policy | [ExperienceSpec.RulePolicyEntry](#experience-v1-ExperienceSpec-RulePolicyEntry) | repeated | rule-policy hints (e.g. refund -&gt; approval) |
+| server_killable | [bool](#bool) |  | REQUIRED fast-rollback kill flag |
+
+
+
+
+
+
+<a name="experience-v1-ExperienceSpec-CustomFieldsEntry"></a>
+
+### ExperienceSpec.CustomFieldsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-ExperienceSpec-FlagOverridesEntry"></a>
+
+### ExperienceSpec.FlagOverridesEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-ExperienceSpec-RulePolicyEntry"></a>
+
+### ExperienceSpec.RulePolicyEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-ExperienceSpec-SurfaceOfflineEntry"></a>
+
+### ExperienceSpec.SurfaceOfflineEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [OfflineSpec](#experience-v1-OfflineSpec) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-HitlPolicy"></a>
+
+### HitlPolicy
+HitlPolicy is the human-in-the-loop escalation contract: escalate on low
+confidence (below confidence_floor) and on any WRITE tool call beyond the
+allowlisted set (escalate_on_write_beyond names the writes the agent MAY
+perform autonomously; every other write escalates to a human).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| escalate_on_low_confidence | [bool](#bool) |  | escalate when confidence &lt; floor |
+| confidence_floor | [double](#double) |  | [0,1] confidence threshold |
+| escalate_on_write_beyond | [string](#string) | repeated | writes allowed WITHOUT escalation |
+
+
+
+
+
+
+<a name="experience-v1-KnowledgePolicy"></a>
+
+### KnowledgePolicy
+KnowledgePolicy grounds the agent: which knowledge sources it may retrieve
+from (source_refs) and whether it may ONLY answer from retrieved grounding
+(grounded_only = the helpdesk &#34;answer from KB or escalate&#34; posture).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| source_refs | [string](#string) | repeated | knowledge source refs (e.g. kb://helpdesk/articles) |
+| grounded_only | [bool](#bool) |  | true = answer only from retrieved grounding |
+
+
+
+
+
+
+<a name="experience-v1-LocaleSpec"></a>
+
+### LocaleSpec
+LocaleSpec is the per-resolution locale surface. timezone is the net-new
+LOAD-BEARING field: it is absent everywhere in the product today and is
+required to resolve local appointment times on scheduling/field surfaces.
+Modeled as an IANA tz string (e.g. &#34;America/New_York&#34;). currency is a field
+here -- it is NEVER hardcoded to USD at the contract level.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| locale | [string](#string) |  | BCP-47 locale (e.g. &#34;en-US&#34;) |
+| currency | [string](#string) |  | ISO-4217 currency (e.g. &#34;USD&#34;) -- NOT hardcoded |
+| timezone | [string](#string) |  | IANA timezone (e.g. &#34;America/New_York&#34;) -- load-bearing for scheduling |
+
+
+
+
+
+
+<a name="experience-v1-LockedSurface"></a>
+
+### LockedSurface
+LockedSurface is a surface gated behind an entitlement upsell: the surface_id
+the requesting scope is NOT entitled to &#43; the upsell_reason shown to the user.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| surface_id | [string](#string) |  |  |
+| upsell_reason | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-NavEdge"></a>
+
+### NavEdge
+NavEdge is a TYPED transition from one surface to another carrying the
+selection passed across the hop. param_bindings maps a target input name to a
+source selection expression (e.g. {&#34;customerId&#34;: &#34;$selection.id&#34;}); trigger
+names the gesture/event that fires the edge (e.g. &#34;onSelect&#34;). This typed
+param-passing is what makes the graph compose FLOWS, not a launcher.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| from_surface_id | [string](#string) |  | source surface |
+| to_surface_id | [string](#string) |  | target surface |
+| param_bindings | [NavEdge.ParamBindingsEntry](#experience-v1-NavEdge-ParamBindingsEntry) | repeated | target input &lt;- source selection expr |
+| trigger | [string](#string) |  | gesture/event that fires the edge |
+
+
+
+
+
+
+<a name="experience-v1-NavEdge-ParamBindingsEntry"></a>
+
+### NavEdge.ParamBindingsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-NavGraph"></a>
+
+### NavGraph
+NavGraph is the typed navigation graph for a resolved ExperienceSpec.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| landing_surface_id | [string](#string) |  | the surface shown first (must be a slot) |
+| slots | [NavSlot](#experience-v1-NavSlot) | repeated | placed surfaces (the nav chrome) |
+| edges | [NavEdge](#experience-v1-NavEdge) | repeated | typed inter-surface transitions |
+
+
+
+
+
+
+<a name="experience-v1-NavSlot"></a>
+
+### NavSlot
+NavSlot places one surface in the navigation at a Placement &#43; order.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| surface_id | [string](#string) |  | the FeatureSurface this slot shows |
+| placement | [Placement](#experience-v1-Placement) |  | primary / more / detail-only |
+| order | [int32](#int32) |  | sort order within the placement |
+
+
+
+
+
+
+<a name="experience-v1-OfflineSpec"></a>
+
+### OfflineSpec
+OfflineSpec is the STRUCTURED per-surface offline policy -- NOT a bare bool. A
+bare offlineCapable bool cannot express a conflict strategy or a grace window;
+gates G1/G5 reason over these four typed fields. Attached PER-SURFACE via
+ExperienceSpec.surface_offline (keyed by surface_id), never one global flag.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| policy | [OfflinePolicy](#experience-v1-OfflinePolicy) |  | offline behavior for this surface |
+| cache_ttl_seconds | [uint32](#uint32) |  | how long cached reads stay valid offline |
+| conflict_policy | [ConflictPolicy](#experience-v1-ConflictPolicy) |  | how a queued write reconciles at sync |
+| read_only_grace_seconds | [uint32](#uint32) |  | grace window the surface stays read-only after going offline |
+
+
+
+
+
+
+<a name="experience-v1-ResolutionContext"></a>
+
+### ResolutionContext
+ResolutionContext is the provenance of a resolved ExperienceSpec: which
+tenant/org it was resolved for, when, and by which resolver version. Lives on
+ExperienceSpec.resolution_context (field 70).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| tenant_id | [string](#string) |  |  |
+| org_id | [string](#string) |  |  |
+| resolved_at | [string](#string) |  | RFC3339 resolution timestamp |
+| resolver_version | [string](#string) |  | resolver build/version that produced the spec |
+
+
+
+
+
+
+<a name="experience-v1-ResolveSpecRequest"></a>
+
+### ResolveSpecRequest
+ResolveSpecRequest asks the server to resolve a stored spec for the
+principal&#39;s scope, role, and form_factor. The tuple&#39;s tenant/org come from the
+authenticated principal -- NOT from this message. role &#43; form_factor are the
+non-authority resolution axes the caller legitimately supplies.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| app_def_id | [string](#string) |  |  |
+| role | [string](#string) |  |  |
+| form_factor | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-ResolveSpecResponse"></a>
+
+### ResolveSpecResponse
+ResolveSpecResponse carries the filtered &#43; content-hashed ResolvedSpec (only
+the surfaces the principal&#39;s entitlement set GRANTS; ungranted surfaces become
+locked_surfaces on the spec).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| resolved_spec | [ExperienceSpec](#experience-v1-ExperienceSpec) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-ServiceTransportBinding"></a>
+
+### ServiceTransportBinding
+ServiceTransportBinding binds one entity&#39;s service to a transport &#43; scope.
+It is the anchor every later message references for identity &#43; scope. It is
+transport- AND scope-agnostic so the SAME ExperienceSpec can drive eden-biz
+(CONNECT/COMPANY) and aocore (REST_OPENAPI/ORG) through one Repository
+abstraction (the runtime two-transport proof lands in 140-11).
+
+NO authority field (company_id/org_id) lives here that a REST handler could
+bind from the request BODY -- scope_authority selects WHICH scope the
+verified AOID identity projects to; the scope VALUE is resolved at runtime
+from the identity context, never the body (binding.ResolveScope).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| entity | [string](#string) |  | logical entity (e.g. &#34;Invoice&#34;, &#34;Tenant&#34;) |
+| service_package | [string](#string) |  | backend service package / namespace |
+| service_name | [string](#string) |  | backend service name |
+| operations | [Operation](#experience-v1-Operation) | repeated | reads AND writes this binding exposes |
+| transport_kind | [TransportKind](#experience-v1-TransportKind) |  | CONNECT (biz) | REST_OPENAPI (aocore) |
+| scope_authority | [ScopeAuthority](#experience-v1-ScopeAuthority) |  | COMPANY (biz) | ORG (aocore) projection target |
+| pagination | [PaginationKind](#experience-v1-PaginationKind) |  | LIST pagination contract |
+| repo_interface_id | [string](#string) |  | Repository abstraction id (140-11 two-transport proof) |
+
+
+
+
+
+
+<a name="experience-v1-SigningSpec"></a>
+
+### SigningSpec
+SigningSpec is the per-platform signing identity, keyed by platform
+(ios|android). It carries CredentialRefs (ref &#43; custody) for BOTH platforms,
+NEVER inline cert/key bytes. Lives on AppDefinition (BUILD-time) -- a store
+binary commits to its signing identity at submit time.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| by_platform | [SigningSpec.ByPlatformEntry](#experience-v1-SigningSpec-ByPlatformEntry) | repeated | platform -&gt; credential reference |
+
+
+
+
+
+
+<a name="experience-v1-SigningSpec-ByPlatformEntry"></a>
+
+### SigningSpec.ByPlatformEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [CredentialRef](#experience-v1-CredentialRef) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-StoreSpecRequest"></a>
+
+### StoreSpecRequest
+StoreSpecRequest stores an AppDefinition (carrying its ExperienceSpec) under
+the AUTHENTICATED principal&#39;s scope. The app_definition&#39;s tenant_id/org_id (on
+its nested spec) are OVERWRITTEN by the principal scope server-side -- a body
+value cannot plant a spec under another tenant.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| app_definition | [AppDefinition](#experience-v1-AppDefinition) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-StoreSpecResponse"></a>
+
+### StoreSpecResponse
+StoreSpecResponse returns the stored spec&#39;s identity &#43; content hash/version so
+the caller can address it later (ResolveSpec / ValidateSpec by app_def_id).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| app_def_id | [string](#string) |  |  |
+| content_hash | [string](#string) |  |  |
+| spec_schema_version | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-SurfaceRegistryManifest"></a>
+
+### SurfaceRegistryManifest
+SurfaceRegistryManifest: the artifact a BINARY compiles in and negotiates a
+resolved ExperienceSpec against. It is NOT served on the spec — it is the
+binary&#39;s own statement of which surfaces it can render &#43; which
+surface_contract_version it speaks. version_negotiation reads
+known_surface_ids to decide ignore/block/degrade for unknown surfaces.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contract_version | [string](#string) |  | surface contract version the binary speaks |
+| known_surface_ids | [string](#string) | repeated | surfaces this binary can render |
+
+
+
+
+
+
+<a name="experience-v1-TelemetryEnvelope"></a>
+
+### TelemetryEnvelope
+TelemetryEnvelope carries every observability ID in-schema (NOT a free blob).
+Emitted on the runtime telemetry wire. tenant_id is the REQUESTING tenant only
+-- it is never an other-tenant id (no cross-tenant telemetry bleed).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spec_id | [string](#string) |  |  |
+| spec_version | [string](#string) |  |  |
+| surface_id | [string](#string) |  |  |
+| binding_id | [string](#string) |  |  |
+| entitlement_set_hash | [string](#string) |  |  |
+| brand | [string](#string) |  |  |
+| theme_profile | [string](#string) |  |  |
+| form_factor | [string](#string) |  |  |
+| build_sha | [string](#string) |  |  |
+| compliance_profile | [string](#string) |  |  |
+| tenant_id | [string](#string) |  | REQUESTING tenant only -- never another tenant&#39;s id |
+
+
+
+
+
+
+<a name="experience-v1-TermSet"></a>
+
+### TermSet
+TermSet is the PRESENTATION-ONLY term-override map (e.g. {&#34;job&#34;: &#34;visit&#34;}).
+IMPORTANT: it is a DISPLAY relabel only -- it MUST NEVER be load-bearing for
+logic. The runtime keys off the logical entity/surface id (the map KEY), and
+the value is purely the label shown to the user. The TermResolver (build-spec
+section 9) routes every displayed string through this map; no branch ever
+keys off the resolved label.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| overrides | [TermSet.OverridesEntry](#experience-v1-TermSet-OverridesEntry) | repeated | logical term -&gt; displayed label (presentation-only) |
+
+
+
+
+
+
+<a name="experience-v1-TermSet-OverridesEntry"></a>
+
+### TermSet.OverridesEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-ThemeSpec"></a>
+
+### ThemeSpec
+ThemeSpec is the per-company brand surface: a named brand_preset, a logo_ref,
+an arbitrary color-override map (token -&gt; hex, no fixed schema so a builder can
+override any subset of brand tokens), and a density token.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| brand_preset | [string](#string) |  | named brand preset the build starts from |
+| logo_ref | [string](#string) |  | asset ref for the company logo |
+| color_overrides | [ThemeSpec.ColorOverridesEntry](#experience-v1-ThemeSpec-ColorOverridesEntry) | repeated | brand token -&gt; value (e.g. &#34;primary&#34; -&gt; &#34;#0A84FF&#34;) |
+| density | [string](#string) |  | density token (e.g. &#34;comfortable&#34; | &#34;compact&#34;) |
+
+
+
+
+
+
+<a name="experience-v1-ThemeSpec-ColorOverridesEntry"></a>
+
+### ThemeSpec.ColorOverridesEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-ToolDefinition"></a>
+
+### ToolDefinition
+ToolDefinition is the TYPED tool contract. adapter_id is a curated-allowlist FK
+(NO arbitrary binding). input_schema/output_schema are JSON-Schema STRINGS (a
+typed envelope), NOT a free config_json blob. side_effect gates the dispatcher.
+idempotency_key is load-bearing for WRITE/EXTERNAL replays.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| adapter_id | [string](#string) |  | curated-allowlist FK (no arbitrary RPC/SQL) |
+| input_schema | [string](#string) |  | JSON-Schema string (typed envelope, not a blob) |
+| output_schema | [string](#string) |  | JSON-Schema string (typed envelope, not a blob) |
+| side_effect | [SideEffect](#experience-v1-SideEffect) |  | dispatcher gate (read/write/external) |
+| idempotency_key | [string](#string) |  | replay key (load-bearing for write/external) |
+| visibility | [ToolVisibility](#experience-v1-ToolVisibility) |  | 161-01 additive: audience exposure class. UNSPECIFIED is fail-closed -- interpreted internal_only; a tool is NEVER implicitly external-safe. |
+
+
+
+
+
+
+<a name="experience-v1-ValidateSpecRequest"></a>
+
+### ValidateSpecRequest
+ValidateSpecRequest validates an AppDefinition&#39;s spec for coherence (140-05
+nav rules) &#43; version conformance (140-03) under the principal&#39;s scope. The
+spec&#39;s scope is overwritten by the principal scope before validation.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| app_definition | [AppDefinition](#experience-v1-AppDefinition) |  |  |
+
+
+
+
+
+
+<a name="experience-v1-ValidateSpecResponse"></a>
+
+### ValidateSpecResponse
+ValidateSpecResponse returns valid &#43; the accumulated problems (empty when
+coherent -- the validator never short-circuits, so the builder sees every
+problem at once).
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| valid | [bool](#bool) |  |  |
+| problems | [ValidationProblem](#experience-v1-ValidationProblem) | repeated |  |
+
+
+
+
+
+
+<a name="experience-v1-ValidationProblem"></a>
+
+### ValidationProblem
+ValidationProblem is one machine-checked coherence/version violation. code is
+a stable token (e.g. nav.too_many_primary) so clients branch without string
+matching; surface_id names the offending surface when surface-scoped.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [string](#string) |  |  |
+| surface_id | [string](#string) |  |  |
+| message | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+
+<a name="experience-v1-AgentAudience"></a>
+
+### AgentAudience
+AgentAudience declares WHO an agent serves (161-01). UNSPECIFIED=0 is the
+back-compat value: a 160-era spec with no audience field means INTERNAL --
+external exposure is always an explicit authoring decision, never implicit.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| AGENT_AUDIENCE_UNSPECIFIED | 0 | back-compat: treated as INTERNAL (external is NEVER implicit) |
+| AGENT_AUDIENCE_INTERNAL | 1 | staff assist (company-wide data scope) |
+| AGENT_AUDIENCE_EXTERNAL | 2 | customer-facing (customer-scoped tools only) |
+| AGENT_AUDIENCE_BOTH | 3 | one spec, both audiences via bindings |
+
+
+
+<a name="experience-v1-ConflictPolicy"></a>
+
+### ConflictPolicy
+ConflictPolicy is how a queued offline write reconciles against server state
+at sync time. UNSPECIFIED=0 fails SAFE (treated as MANUAL_RECONCILE -- never
+silently drop a conflicting write). LAST_WRITE_WINS = the later timestamp
+wins. SERVER_WINS = the server copy wins, the queued write is discarded.
+MANUAL_RECONCILE = surface the conflict to the user.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CONFLICT_POLICY_UNSPECIFIED | 0 | fail-safe -&gt; treated as MANUAL_RECONCILE |
+| CONFLICT_POLICY_LAST_WRITE_WINS | 1 | later write wins |
+| CONFLICT_POLICY_SERVER_WINS | 2 | server copy wins, queued write discarded |
+| CONFLICT_POLICY_MANUAL_RECONCILE | 3 | surface the conflict to the user |
+
+
+
+<a name="experience-v1-OfflinePolicy"></a>
+
+### OfflinePolicy
+OfflinePolicy is the per-surface offline behavior. UNSPECIFIED=0 fails SAFE
+(treated as NONE -- no offline). NONE = online-only. READ_CACHE = serve cached
+reads offline, no writes. READ_WRITE_QUEUE = cache reads AND queue writes for
+later sync (the field-service offline-first mode).
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OFFLINE_POLICY_UNSPECIFIED | 0 | fail-safe -&gt; treated as NONE |
+| OFFLINE_POLICY_NONE | 1 | online-only, no offline behavior |
+| OFFLINE_POLICY_READ_CACHE | 2 | serve cached reads offline; no writes |
+| OFFLINE_POLICY_READ_WRITE_QUEUE | 3 | cache reads &#43; queue writes for later sync |
+
+
+
+<a name="experience-v1-Operation"></a>
+
+### Operation
+Operation is a single read or write the binding exposes. The binding is NOT
+read-only: CREATE/UPDATE/DELETE are first-class alongside GET/LIST.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| OPERATION_UNSPECIFIED | 0 |  |
+| OPERATION_GET | 1 | read one |
+| OPERATION_LIST | 2 | read many |
+| OPERATION_CREATE | 3 | write (create) |
+| OPERATION_UPDATE | 4 | write (update) |
+| OPERATION_DELETE | 5 | write (delete) |
+
+
+
+<a name="experience-v1-PaginationKind"></a>
+
+### PaginationKind
+PaginationKind is the pagination contract a LIST operation honors, independent
+of transport (a CONNECT and a REST_OPENAPI binding can each use any kind).
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PAGINATION_KIND_UNSPECIFIED | 0 |  |
+| PAGINATION_KIND_NONE | 1 | no pagination |
+| PAGINATION_KIND_CURSOR | 2 | opaque page_token cursor |
+| PAGINATION_KIND_OFFSET | 3 | numeric offset/limit |
+
+
+
+<a name="experience-v1-Placement"></a>
+
+### Placement
+Placement is where a NavSlot&#39;s surface sits in the navigation chrome.
+UNSPECIFIED=0 is fail-safe (an unplaced slot is treated as not-shown rather
+than silently promoted into primary nav).
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PLACEMENT_UNSPECIFIED | 0 | unset -- not shown in primary/overflow nav |
+| PLACEMENT_PRIMARY | 1 | primary navigation (the &lt;=5-slot rail/tab bar) |
+| PLACEMENT_MORE | 2 | overflow / &#34;More&#34; menu |
+| PLACEMENT_DETAIL_ONLY | 3 | reachable only via an edge, never in the chrome |
+
+
+
+<a name="experience-v1-ScopeAuthority"></a>
+
+### ScopeAuthority
+ScopeAuthority is how a single AOID identity projects to a backend&#39;s tenant
+scope. COMPANY = eden-biz company scope; ORG = aocore org scope. UNSPECIFIED
+is fail-closed (not bindable). This enum is the proto-level mapping of the
+one identity to each backend -- the projection logic is binding.ResolveScope.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SCOPE_AUTHORITY_UNSPECIFIED | 0 | reserved / fail-closed |
+| SCOPE_AUTHORITY_COMPANY | 1 | eden-biz company scope |
+| SCOPE_AUTHORITY_ORG | 2 | aocore org scope |
+
+
+
+<a name="experience-v1-SideEffect"></a>
+
+### SideEffect
+SideEffect gates the tool dispatcher. UNSPECIFIED=0 is fail-closed (an
+unclassified tool is not dispatchable). READ = pure read. WRITE = mutates
+tenant data (idempotency_key load-bearing). EXTERNAL = outbound (webhooks etc.)
+-- representable but DEFERRED (out of scope; ValidateTooling warn-flags it).
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SIDE_EFFECT_UNSPECIFIED | 0 | fail-closed -- not dispatchable |
+| SIDE_EFFECT_READ | 1 | pure read |
+| SIDE_EFFECT_WRITE | 2 | mutates tenant data (idempotency_key matters) |
+| SIDE_EFFECT_EXTERNAL | 3 | outbound (webhooks) -- DEFERRED, representable |
+
+
+
+<a name="experience-v1-ToolVisibility"></a>
+
+### ToolVisibility
+ToolVisibility classifies a tool&#39;s audience exposure (161-01). UNSPECIFIED=0
+is fail-closed: an unclassified tool is INTERNAL_ONLY -- external exposure is
+always an explicit authoring decision, never a default. EXTERNAL_SAFE means
+the adapter is customer-scoped (filters by the requesting customer identity,
+not just company) and may be bound on an external-audience agent.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TOOL_VISIBILITY_UNSPECIFIED | 0 | fail-closed -- internal_only |
+| TOOL_VISIBILITY_INTERNAL_ONLY | 1 | staff-facing only (company-scoped) |
+| TOOL_VISIBILITY_EXTERNAL_SAFE | 2 | customer-scoped; bindable on external audiences |
+
+
+
+<a name="experience-v1-TransportKind"></a>
+
+### TransportKind
+TransportKind is the wire protocol a binding speaks. Room is reserved for
+future transports (e.g. GraphQL) by keeping UNSPECIFIED=0 fail-closed and
+numbering known transports sparsely-safe.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TRANSPORT_KIND_UNSPECIFIED | 0 | reserved / not-yet-bindable (forward-compat) |
+| TRANSPORT_KIND_CONNECT | 1 | eden-biz Connect RPC |
+| TRANSPORT_KIND_REST_OPENAPI | 2 | aocore REST / OpenAPI |
+
+
+
+<a name="experience-v1-UnknownSurfacePolicy"></a>
+
+### UnknownSurfacePolicy
+UnknownSurfacePolicy: how a running binary handles a resolved spec that
+references a FeatureSurface it does NOT know (i.e. not in the binary&#39;s
+compiled-in SurfaceRegistryManifest.known_surface_ids). IRREVERSIBLE: a v1
+spec carries this, and an old binary&#39;s behavior on a newer spec is frozen
+the moment a device caches that spec. UNSPECIFIED fails SAFE (block) so an
+unset policy can never silently render a surface the binary cannot handle.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| UNKNOWN_SURFACE_POLICY_UNSPECIFIED | 0 | fail-safe -&gt; treated as BLOCK_UPGRADE |
+| UNKNOWN_SURFACE_POLICY_IGNORE | 1 | drop the unknown surface, render the rest |
+| UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE | 2 | block &#43; prompt the user to upgrade the binary |
+| UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED | 3 | render the unknown surface with a degraded marker |
+
+
+ 
+
+ 
+
+
+<a name="experience-v1-ExperienceService"></a>
+
+### ExperienceService
+ExperienceService is the M0 server surface every consumer calls: store a spec,
+resolve it per principal scope, validate it. Tenancy is enforced at the
+service chokepoint (principal-derived scope), never from a request body.
+
+| Method Name | Request Type | Response Type | Description |
+| ----------- | ------------ | ------------- | ------------|
+| StoreSpec | [StoreSpecRequest](#experience-v1-StoreSpecRequest) | [StoreSpecResponse](#experience-v1-StoreSpecResponse) |  |
+| ResolveSpec | [ResolveSpecRequest](#experience-v1-ResolveSpecRequest) | [ResolveSpecResponse](#experience-v1-ResolveSpecResponse) |  |
+| ValidateSpec | [ValidateSpecRequest](#experience-v1-ValidateSpecRequest) | [ValidateSpecResponse](#experience-v1-ValidateSpecResponse) |  |
+
+ 
 
 
 
@@ -3064,6 +4167,53 @@ policy permits password-only login (rare; AAL1 only).
 
 
 
+<a name="platform-v1-ResolveWorkspace"></a>
+
+### ResolveWorkspace
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| tenant_id | [string](#string) |  |  |
+| display_name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="platform-v1-ResolveWorkspacesByEmailRequest"></a>
+
+### ResolveWorkspacesByEmailRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| email | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="platform-v1-ResolveWorkspacesByEmailResponse"></a>
+
+### ResolveWorkspacesByEmailResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [ResolveStatus](#platform-v1-ResolveStatus) |  |  |
+| workspaces | [ResolveWorkspace](#platform-v1-ResolveWorkspace) | repeated |  |
+
+
+
+
+
+
 <a name="platform-v1-RevokeMyCredentialRequest"></a>
 
 ### RevokeMyCredentialRequest
@@ -3169,6 +4319,20 @@ policy permits password-only login (rare; AAL1 only).
 
  
 
+
+<a name="platform-v1-ResolveStatus"></a>
+
+### ResolveStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| RESOLVE_STATUS_UNSPECIFIED | 0 |  |
+| RESOLVE_STATUS_ONE | 1 |  |
+| RESOLVE_STATUS_MANY | 2 |  |
+| RESOLVE_STATUS_NONE | 3 |  |
+
+
  
 
  
@@ -3193,6 +4357,7 @@ challenge, calls FinishStepUp, then retries the original RPC.
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| ResolveWorkspacesByEmail | [ResolveWorkspacesByEmailRequest](#platform-v1-ResolveWorkspacesByEmailRequest) | [ResolveWorkspacesByEmailResponse](#platform-v1-ResolveWorkspacesByEmailResponse) | === Pre-login workspace resolution (Obj 16 / LOGIN-01) === UNAUTHENTICATED, pre-login. Given an email, returns the workspaces (tenants) that email&#39;s identity may sign in to, so the client can run the email-first two-step flow. Enumeration-safe: a non-existent email and a legacy/unlinked email are INDISTINGUISHABLE (both RESOLVE_NONE). |
 | PasswordLoginStart | [PasswordLoginStartRequest](#platform-v1-PasswordLoginStartRequest) | [PasswordLoginStartResponse](#platform-v1-PasswordLoginStartResponse) | === Password flow === |
 | PasswordLoginComplete | [PasswordLoginCompleteRequest](#platform-v1-PasswordLoginCompleteRequest) | [PasswordLoginCompleteResponse](#platform-v1-PasswordLoginCompleteResponse) |  |
 | ChangePassword | [ChangePasswordRequest](#platform-v1-ChangePasswordRequest) | [ChangePasswordResponse](#platform-v1-ChangePasswordResponse) |  |
@@ -5567,6 +6732,40 @@ of error).
 
 
 
+<a name="platform-v1-AssistedAccountRecoveryRequest"></a>
+
+### AssistedAccountRecoveryRequest
+AssistedAccountRecoveryRequest — see AssistedAccountRecovery. Carries no
+actor, assurance, or step-up field: the admin identity and AAL are derived
+from the authenticated session/cert context, never from the wire, matching
+every other AccountAdminService mutation.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| tenant_id | [string](#string) |  | tenant_id is the target tenant (canonical field 1 for tenant scope). |
+| account_id | [string](#string) |  | account_id identifies the subject. Email is never an identifier here — it is unique per-tenant only, and it is the very field being changed. |
+| new_email | [string](#string) |  | new_email is the address the account is repointed to and where the recovery link is delivered. |
+| reason | [string](#string) |  | reason is required and recorded in the audit event. |
+
+
+
+
+
+
+<a name="platform-v1-AssistedAccountRecoveryResponse"></a>
+
+### AssistedAccountRecoveryResponse
+AssistedAccountRecoveryResponse is intentionally empty: success is the
+absence of an error, and no token or recovery URL is ever returned on the
+wire. Reserved for forward-compat additions (matches
+AccountAdminServiceClearAccountMFAFactorsResponse).
+
+
+
+
+
+
 <a name="platform-v1-ClearanceInfo"></a>
 
 ### ClearanceInfo
@@ -6380,6 +7579,15 @@ design backing this contract.
 | GetAccount | [GetAccountRequest](#platform-v1-GetAccountRequest) | [GetAccountResponse](#platform-v1-GetAccountResponse) | GetAccount retrieves a single account by id within the tenant. |
 | ListAccounts | [ListAccountsRequest](#platform-v1-ListAccountsRequest) | [ListAccountsResponse](#platform-v1-ListAccountsResponse) | ListAccounts returns a paginated list of accounts in the tenant. |
 | UpdateAccount | [UpdateAccountRequest](#platform-v1-UpdateAccountRequest) | [UpdateAccountResponse](#platform-v1-UpdateAccountResponse) | UpdateAccount mutates non-lifecycle attributes (display_name, email, org_affiliation, clearance). Status transitions go through Suspend/Recover/Deprovision. |
+| AssistedAccountRecovery | [AssistedAccountRecoveryRequest](#platform-v1-AssistedAccountRecoveryRequest) | [AssistedAccountRecoveryResponse](#platform-v1-AssistedAccountRecoveryResponse) | AssistedAccountRecovery repoints an account&#39;s sign-in email to a new address and starts a password recovery to it, as ONE operation, for the case where the holder can no longer reach their REGISTERED mailbox and so cannot use the anonymous self-service recovery flow.
+
+This is NOT RecoverAccount: that RPC only flips a suspended account back to &#34;active&#34; (a status change, no credential effect). This one changes the sign-in email and begins a password recovery.
+
+Deliberately NOT UpdateAccount: UpdateAccount also mutates clearance and expires_at, so authorizing a broad admin population for it would grant clearance mutation as a side effect. This RPC cannot touch clearance because its request does not carry the field.
+
+Authorization and assurance are enforced by the AOID handler &#43; interceptors, NOT by this contract: a session- or cert-derived admin, a per-procedure allowlist, an entitlement distinct from any auto-granted &#39;admin&#39;, and — for session callers — an AAL2&#43; session. The assurance level is read from the authenticated session context and is DELIBERATELY NOT a wire field: a body-carried capability/step-up field would be a spoofable authority surface, and authority on this service always comes from the session/cert, never the request body.
+
+Side effects the handler owns: the recovery link goes to new_email; the PRIOR address (and contact_email, if set) is notified out-of-band so the legitimate owner witnesses the change. The response is intentionally empty — no token or recovery URL is ever returned on the wire. |
 | SuspendAccount | [SuspendAccountRequest](#platform-v1-SuspendAccountRequest) | [SuspendAccountResponse](#platform-v1-SuspendAccountResponse) | SuspendAccount transitions the account to &#34;suspended&#34;. Attributes retained. |
 | RecoverAccount | [RecoverAccountRequest](#platform-v1-RecoverAccountRequest) | [RecoverAccountResponse](#platform-v1-RecoverAccountResponse) | RecoverAccount transitions a suspended account back to &#34;active&#34;. |
 | DeprovisionAccount | [DeprovisionAccountRequest](#platform-v1-DeprovisionAccountRequest) | [DeprovisionAccountResponse](#platform-v1-DeprovisionAccountResponse) | DeprovisionAccount transitions the account to &#34;deleted&#34; (soft delete). |
