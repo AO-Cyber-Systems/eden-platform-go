@@ -42,6 +42,35 @@ service AccountAdminService {
   // Suspend/Recover/Deprovision.
   rpc UpdateAccount(UpdateAccountRequest) returns (UpdateAccountResponse);
 
+  // AssistedAccountRecovery repoints an account's sign-in email to a new
+  // address and starts a password recovery to it, as ONE operation, for the
+  // case where the holder can no longer reach their REGISTERED mailbox and so
+  // cannot use the anonymous self-service recovery flow.
+  //
+  // This is NOT RecoverAccount: that RPC only flips a suspended account back to
+  // "active" (a status change, no credential effect). This one changes the
+  // sign-in email and begins a password recovery.
+  //
+  // Deliberately NOT UpdateAccount: UpdateAccount also mutates clearance and
+  // expires_at, so authorizing a broad admin population for it would grant
+  // clearance mutation as a side effect. This RPC cannot touch clearance
+  // because its request does not carry the field.
+  //
+  // Authorization and assurance are enforced by the AOID handler + interceptors,
+  // NOT by this contract: a session- or cert-derived admin, a per-procedure
+  // allowlist, an entitlement distinct from any auto-granted 'admin', and — for
+  // session callers — an AAL2+ session. The assurance level is read from the
+  // authenticated session context and is DELIBERATELY NOT a wire field: a
+  // body-carried capability/step-up field would be a spoofable authority
+  // surface, and authority on this service always comes from the session/cert,
+  // never the request body.
+  //
+  // Side effects the handler owns: the recovery link goes to new_email; the
+  // PRIOR address (and contact_email, if set) is notified out-of-band so the
+  // legitimate owner witnesses the change. The response is intentionally empty
+  // — no token or recovery URL is ever returned on the wire.
+  rpc AssistedAccountRecovery(AssistedAccountRecoveryRequest) returns (AssistedAccountRecoveryResponse);
+
   // SuspendAccount transitions the account to "suspended". Attributes retained.
   rpc SuspendAccount(SuspendAccountRequest) returns (SuspendAccountResponse);
 
@@ -287,6 +316,29 @@ message UpdateAccountRequest {
 message UpdateAccountResponse {
   AccountData account = 1;
 }
+
+// AssistedAccountRecoveryRequest — see AssistedAccountRecovery. Carries no
+// actor, assurance, or step-up field: the admin identity and AAL are derived
+// from the authenticated session/cert context, never from the wire, matching
+// every other AccountAdminService mutation.
+message AssistedAccountRecoveryRequest {
+  // tenant_id is the target tenant (canonical field 1 for tenant scope).
+  string tenant_id = 1;
+  // account_id identifies the subject. Email is never an identifier here — it
+  // is unique per-tenant only, and it is the very field being changed.
+  string account_id = 2;
+  // new_email is the address the account is repointed to and where the
+  // recovery link is delivered.
+  string new_email = 3;
+  // reason is required and recorded in the audit event.
+  string reason = 4;
+}
+
+// AssistedAccountRecoveryResponse is intentionally empty: success is the
+// absence of an error, and no token or recovery URL is ever returned on the
+// wire. Reserved for forward-compat additions (matches
+// AccountAdminServiceClearAccountMFAFactorsResponse).
+message AssistedAccountRecoveryResponse {}
 
 // SuspendAccountRequest transitions an account to "suspended".
 message SuspendAccountRequest {
