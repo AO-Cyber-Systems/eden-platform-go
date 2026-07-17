@@ -8,6 +8,7 @@ package email
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -80,8 +81,18 @@ type SMTPConfig struct {
 	Port     int
 	Username string
 	Password string
-	UseTLS   bool
-	UseAuth  bool
+	// UseTLS selects implicit TLS (SMTPS): the client opens a TLS connection at
+	// connect time instead of starting in plaintext and upgrading via STARTTLS.
+	// Required by providers that only accept implicit TLS — e.g. Cloudflare Email
+	// (smtp.mx.cloudflare.net:465), which rejects STARTTLS. It is also implied when
+	// Port == 465. When false, Send uses the stdlib plaintext+STARTTLS path (e.g.
+	// submission port 587).
+	UseTLS  bool
+	UseAuth bool
+	// TLSConfig optionally overrides the tls.Config used for implicit TLS. When
+	// nil, a default config verifying the server against the system roots with
+	// ServerName == Host (MinVersion TLS 1.2) is used. Primarily a test seam.
+	TLSConfig *tls.Config
 }
 
 // smtpSender is the production SMTP transport.
@@ -102,10 +113,6 @@ func (s *smtpSender) Send(ctx context.Context, msg Message) (SendResult, error) 
 	}
 
 	addr := fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
-	var auth smtp.Auth
-	if s.cfg.UseAuth {
-		auth = smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)
-	}
 
 	to := make([]string, 0, len(msg.To)+len(msg.Cc)+len(msg.Bcc))
 	for _, a := range msg.To {
@@ -118,10 +125,104 @@ func (s *smtpSender) Send(ctx context.Context, msg Message) (SendResult, error) 
 		to = append(to, a.Email)
 	}
 
+	// Implicit TLS (SMTPS, e.g. :465) and plaintext+STARTTLS (e.g. :587) need
+	// different dial paths; the stdlib smtp.SendMail only speaks the latter.
+	if s.implicitTLS() {
+		if err := s.sendImplicitTLS(ctx, addr, msg.From.Email, to, rendered); err != nil {
+			return SendResult{}, fmt.Errorf("email: smtp send (implicit tls): %w", err)
+		}
+		return SendResult{MessageID: messageID, AcceptedAt: time.Now().UTC()}, nil
+	}
+
+	var auth smtp.Auth
+	if s.cfg.UseAuth {
+		auth = smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)
+	}
 	if err := smtp.SendMail(addr, auth, msg.From.Email, to, rendered); err != nil {
 		return SendResult{}, fmt.Errorf("email: smtp send: %w", err)
 	}
 	return SendResult{MessageID: messageID, AcceptedAt: time.Now().UTC()}, nil
+}
+
+// implicitTLS reports whether Send should open a TLS connection at connect time
+// (SMTPS) rather than upgrading a plaintext connection via STARTTLS. True when
+// UseTLS is set or the port is the conventional implicit-TLS submission port 465.
+func (s *smtpSender) implicitTLS() bool {
+	return s.cfg.UseTLS || s.cfg.Port == 465
+}
+
+// sendImplicitTLS delivers rendered over an implicit-TLS (SMTPS) connection.
+// net/smtp has no built-in SMTPS dialer, so we dial TLS ourselves, wrap the
+// connection with smtp.NewClient, and drive the MAIL/RCPT/DATA sequence. AUTH
+// uses a TLS-aware PLAIN mechanism because the stdlib smtp.PlainAuth refuses to
+// send credentials when it cannot observe the connection as encrypted — which it
+// can't here, since the TLS was established before smtp.NewClient saw the socket.
+func (s *smtpSender) sendImplicitTLS(ctx context.Context, addr, from string, to []string, rendered []byte) error {
+	tlsCfg := s.cfg.TLSConfig
+	if tlsCfg == nil {
+		tlsCfg = &tls.Config{ServerName: s.cfg.Host, MinVersion: tls.VersionTLS12}
+	}
+	conn, err := (&tls.Dialer{Config: tlsCfg}).DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return fmt.Errorf("tls dial %s: %w", addr, err)
+	}
+	client, err := smtp.NewClient(conn, s.cfg.Host)
+	if err != nil {
+		_ = conn.Close()
+		return fmt.Errorf("smtp client: %w", err)
+	}
+	defer func() { _ = client.Close() }()
+
+	if s.cfg.UseAuth {
+		if ok, _ := client.Extension("AUTH"); ok {
+			auth := &tlsPlainAuth{username: s.cfg.Username, password: s.cfg.Password, host: s.cfg.Host}
+			if err := client.Auth(auth); err != nil {
+				return fmt.Errorf("auth: %w", err)
+			}
+		}
+	}
+	if err := client.Mail(from); err != nil {
+		return fmt.Errorf("MAIL FROM: %w", err)
+	}
+	for _, rcpt := range to {
+		if err := client.Rcpt(rcpt); err != nil {
+			return fmt.Errorf("RCPT TO %s: %w", rcpt, err)
+		}
+	}
+	w, err := client.Data()
+	if err != nil {
+		return fmt.Errorf("DATA: %w", err)
+	}
+	if _, err := w.Write(rendered); err != nil {
+		return fmt.Errorf("write body: %w", err)
+	}
+	if err := w.Close(); err != nil {
+		return fmt.Errorf("close body: %w", err)
+	}
+	return client.Quit()
+}
+
+// tlsPlainAuth is smtp.PlainAuth without the guard that rejects sending
+// credentials over a connection the stdlib can't see as TLS. It is used ONLY on
+// connections that are already implicit-TLS (see sendImplicitTLS), so credentials
+// never traverse plaintext.
+type tlsPlainAuth struct {
+	username, password, host string
+}
+
+func (a *tlsPlainAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+	if server.Name != a.host {
+		return "", nil, fmt.Errorf("email: unexpected smtp server name %q (want %q)", server.Name, a.host)
+	}
+	resp := []byte("\x00" + a.username + "\x00" + a.password)
+	return "PLAIN", resp, nil
+}
+
+func (a *tlsPlainAuth) Next(_ []byte, more bool) ([]byte, error) {
+	if more {
+		return nil, errors.New("email: unexpected server challenge in PLAIN auth")
+	}
+	return nil, nil
 }
 
 // Recorder is a test Sender that captures every Send and never networks.
