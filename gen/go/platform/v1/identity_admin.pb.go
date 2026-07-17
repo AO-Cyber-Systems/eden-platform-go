@@ -3942,6 +3942,280 @@ func (*AccountAdminServiceClearAccountMFAFactorsResponse) Descriptor() ([]byte, 
 	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{61}
 }
 
+type AccountAdminServiceListRecoveryEventsRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TenantId string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"` // required — tenant-scope anchor
+	// Subject of the lookup. Provide exactly one. When email is supplied the
+	// handler resolves it to the account within tenant_id (email is unique
+	// per-tenant only).
+	//
+	// Types that are valid to be assigned to Subject:
+	//
+	//	*AccountAdminServiceListRecoveryEventsRequest_AccountId
+	//	*AccountAdminServiceListRecoveryEventsRequest_Email
+	Subject       isAccountAdminServiceListRecoveryEventsRequest_Subject `protobuf_oneof:"subject"`
+	Reason        string                                                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"` // required — recorded in the account.recovery_events.viewed audit event
+	PageSize      int32                                                  `protobuf:"varint,5,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                                                 `protobuf:"bytes,6,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) Reset() {
+	*x = AccountAdminServiceListRecoveryEventsRequest{}
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AccountAdminServiceListRecoveryEventsRequest) ProtoMessage() {}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AccountAdminServiceListRecoveryEventsRequest.ProtoReflect.Descriptor instead.
+func (*AccountAdminServiceListRecoveryEventsRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) GetSubject() isAccountAdminServiceListRecoveryEventsRequest_Subject {
+	if x != nil {
+		return x.Subject
+	}
+	return nil
+}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) GetAccountId() string {
+	if x != nil {
+		if x, ok := x.Subject.(*AccountAdminServiceListRecoveryEventsRequest_AccountId); ok {
+			return x.AccountId
+		}
+	}
+	return ""
+}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) GetEmail() string {
+	if x != nil {
+		if x, ok := x.Subject.(*AccountAdminServiceListRecoveryEventsRequest_Email); ok {
+			return x.Email
+		}
+	}
+	return ""
+}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *AccountAdminServiceListRecoveryEventsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type isAccountAdminServiceListRecoveryEventsRequest_Subject interface {
+	isAccountAdminServiceListRecoveryEventsRequest_Subject()
+}
+
+type AccountAdminServiceListRecoveryEventsRequest_AccountId struct {
+	AccountId string `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3,oneof"`
+}
+
+type AccountAdminServiceListRecoveryEventsRequest_Email struct {
+	Email string `protobuf:"bytes,3,opt,name=email,proto3,oneof"`
+}
+
+func (*AccountAdminServiceListRecoveryEventsRequest_AccountId) isAccountAdminServiceListRecoveryEventsRequest_Subject() {
+}
+
+func (*AccountAdminServiceListRecoveryEventsRequest_Email) isAccountAdminServiceListRecoveryEventsRequest_Subject() {
+}
+
+// AccountAdminServiceRecoveryEvent is one recovery-token history row. The token
+// hash is deliberately NOT a field — it is never returned on the wire.
+type AccountAdminServiceRecoveryEvent struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	RequestedAt   *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=requested_at,json=requestedAt,proto3" json:"requested_at,omitempty"`
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	ConsumedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=consumed_at,json=consumedAt,proto3" json:"consumed_at,omitempty"`          // unset ⇒ never consumed
+	RefusedReason string                 `protobuf:"bytes,5,opt,name=refused_reason,json=refusedReason,proto3" json:"refused_reason,omitempty"` // "" ⇒ not refused
+	RequestingIp  string                 `protobuf:"bytes,6,opt,name=requesting_ip,json=requestingIp,proto3" json:"requesting_ip,omitempty"`
+	RequestingUa  string                 `protobuf:"bytes,7,opt,name=requesting_ua,json=requestingUa,proto3" json:"requesting_ua,omitempty"`
+	ConsumedIp    string                 `protobuf:"bytes,8,opt,name=consumed_ip,json=consumedIp,proto3" json:"consumed_ip,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AccountAdminServiceRecoveryEvent) Reset() {
+	*x = AccountAdminServiceRecoveryEvent{}
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AccountAdminServiceRecoveryEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AccountAdminServiceRecoveryEvent) ProtoMessage() {}
+
+func (x *AccountAdminServiceRecoveryEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AccountAdminServiceRecoveryEvent.ProtoReflect.Descriptor instead.
+func (*AccountAdminServiceRecoveryEvent) Descriptor() ([]byte, []int) {
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *AccountAdminServiceRecoveryEvent) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AccountAdminServiceRecoveryEvent) GetRequestedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.RequestedAt
+	}
+	return nil
+}
+
+func (x *AccountAdminServiceRecoveryEvent) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+func (x *AccountAdminServiceRecoveryEvent) GetConsumedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ConsumedAt
+	}
+	return nil
+}
+
+func (x *AccountAdminServiceRecoveryEvent) GetRefusedReason() string {
+	if x != nil {
+		return x.RefusedReason
+	}
+	return ""
+}
+
+func (x *AccountAdminServiceRecoveryEvent) GetRequestingIp() string {
+	if x != nil {
+		return x.RequestingIp
+	}
+	return ""
+}
+
+func (x *AccountAdminServiceRecoveryEvent) GetRequestingUa() string {
+	if x != nil {
+		return x.RequestingUa
+	}
+	return ""
+}
+
+func (x *AccountAdminServiceRecoveryEvent) GetConsumedIp() string {
+	if x != nil {
+		return x.ConsumedIp
+	}
+	return ""
+}
+
+type AccountAdminServiceListRecoveryEventsResponse struct {
+	state         protoimpl.MessageState              `protogen:"open.v1"`
+	Events        []*AccountAdminServiceRecoveryEvent `protobuf:"bytes,1,rep,name=events,proto3" json:"events,omitempty"`
+	NextPageToken string                              `protobuf:"bytes,2,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AccountAdminServiceListRecoveryEventsResponse) Reset() {
+	*x = AccountAdminServiceListRecoveryEventsResponse{}
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AccountAdminServiceListRecoveryEventsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AccountAdminServiceListRecoveryEventsResponse) ProtoMessage() {}
+
+func (x *AccountAdminServiceListRecoveryEventsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AccountAdminServiceListRecoveryEventsResponse.ProtoReflect.Descriptor instead.
+func (*AccountAdminServiceListRecoveryEventsResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *AccountAdminServiceListRecoveryEventsResponse) GetEvents() []*AccountAdminServiceRecoveryEvent {
+	if x != nil {
+		return x.Events
+	}
+	return nil
+}
+
+func (x *AccountAdminServiceListRecoveryEventsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
 var File_platform_v1_identity_admin_proto protoreflect.FileDescriptor
 
 const file_platform_v1_identity_admin_proto_rawDesc = "" +
@@ -4245,7 +4519,32 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"\n" +
 	"account_id\x18\x02 \x01(\tR\taccountId\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"3\n" +
-	"1AccountAdminServiceClearAccountMFAFactorsResponse2\xa0\x16\n" +
+	"1AccountAdminServiceClearAccountMFAFactorsResponse\"\xe3\x01\n" +
+	",AccountAdminServiceListRecoveryEventsRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1f\n" +
+	"\n" +
+	"account_id\x18\x02 \x01(\tH\x00R\taccountId\x12\x16\n" +
+	"\x05email\x18\x03 \x01(\tH\x00R\x05email\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\x12\x1b\n" +
+	"\tpage_size\x18\x05 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x06 \x01(\tR\tpageTokenB\t\n" +
+	"\asubject\"\xfb\x02\n" +
+	" AccountAdminServiceRecoveryEvent\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12=\n" +
+	"\frequested_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\vrequestedAt\x129\n" +
+	"\n" +
+	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12;\n" +
+	"\vconsumed_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"consumedAt\x12%\n" +
+	"\x0erefused_reason\x18\x05 \x01(\tR\rrefusedReason\x12#\n" +
+	"\rrequesting_ip\x18\x06 \x01(\tR\frequestingIp\x12#\n" +
+	"\rrequesting_ua\x18\a \x01(\tR\frequestingUa\x12\x1f\n" +
+	"\vconsumed_ip\x18\b \x01(\tR\n" +
+	"consumedIp\"\x9e\x01\n" +
+	"-AccountAdminServiceListRecoveryEventsResponse\x12E\n" +
+	"\x06events\x18\x01 \x03(\v2-.platform.v1.AccountAdminServiceRecoveryEventR\x06events\x12&\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken2\xae\x17\n" +
 	"\x13AccountAdminService\x12_\n" +
 	"\x10ProvisionAccount\x12$.platform.v1.ProvisionAccountRequest\x1a%.platform.v1.ProvisionAccountResponse\x12t\n" +
 	"\x17ProvisionServiceAccount\x12+.platform.v1.ProvisionServiceAccountRequest\x1a,.platform.v1.ProvisionServiceAccountResponse\x12M\n" +
@@ -4278,7 +4577,8 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"\x1bListPendingRecertifications\x12B.platform.v1.AccountAdminServiceListPendingRecertificationsRequest\x1aC.platform.v1.AccountAdminServiceListPendingRecertificationsResponse\x12\xac\x01\n" +
 	"\x1dSubmitRecertificationDecision\x12D.platform.v1.AccountAdminServiceSubmitRecertificationDecisionRequest\x1aE.platform.v1.AccountAdminServiceSubmitRecertificationDecisionResponse\x12\xa0\x01\n" +
 	"\x19GetRecertificationHistory\x12@.platform.v1.AccountAdminServiceGetRecertificationHistoryRequest\x1aA.platform.v1.AccountAdminServiceGetRecertificationHistoryResponse\x12\x97\x01\n" +
-	"\x16ClearAccountMFAFactors\x12=.platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest\x1a>.platform.v1.AccountAdminServiceClearAccountMFAFactorsResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x16ClearAccountMFAFactors\x12=.platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest\x1a>.platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse\x12\x8b\x01\n" +
+	"\x12ListRecoveryEvents\x129.platform.v1.AccountAdminServiceListRecoveryEventsRequest\x1a:.platform.v1.AccountAdminServiceListRecoveryEventsResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_identity_admin_proto_rawDescOnce sync.Once
@@ -4292,7 +4592,7 @@ func file_platform_v1_identity_admin_proto_rawDescGZIP() []byte {
 	return file_platform_v1_identity_admin_proto_rawDescData
 }
 
-var file_platform_v1_identity_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 62)
+var file_platform_v1_identity_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
 var file_platform_v1_identity_admin_proto_goTypes = []any{
 	(*ClearanceInfo)(nil),                                            // 0: platform.v1.ClearanceInfo
 	(*AccountData)(nil),                                              // 1: platform.v1.AccountData
@@ -4356,106 +4656,115 @@ var file_platform_v1_identity_admin_proto_goTypes = []any{
 	(*AccountAdminServiceGetRecertificationHistoryResponse)(nil),     // 59: platform.v1.AccountAdminServiceGetRecertificationHistoryResponse
 	(*AccountAdminServiceClearAccountMFAFactorsRequest)(nil),         // 60: platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest
 	(*AccountAdminServiceClearAccountMFAFactorsResponse)(nil),        // 61: platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse
-	(*timestamppb.Timestamp)(nil),                                    // 62: google.protobuf.Timestamp
+	(*AccountAdminServiceListRecoveryEventsRequest)(nil),             // 62: platform.v1.AccountAdminServiceListRecoveryEventsRequest
+	(*AccountAdminServiceRecoveryEvent)(nil),                         // 63: platform.v1.AccountAdminServiceRecoveryEvent
+	(*AccountAdminServiceListRecoveryEventsResponse)(nil),            // 64: platform.v1.AccountAdminServiceListRecoveryEventsResponse
+	(*timestamppb.Timestamp)(nil),                                    // 65: google.protobuf.Timestamp
 }
 var file_platform_v1_identity_admin_proto_depIdxs = []int32{
-	62, // 0: platform.v1.ClearanceInfo.formal_access_date:type_name -> google.protobuf.Timestamp
-	62, // 1: platform.v1.ClearanceInfo.expiry_date:type_name -> google.protobuf.Timestamp
-	62, // 2: platform.v1.ClearanceInfo.verified_at:type_name -> google.protobuf.Timestamp
+	65, // 0: platform.v1.ClearanceInfo.formal_access_date:type_name -> google.protobuf.Timestamp
+	65, // 1: platform.v1.ClearanceInfo.expiry_date:type_name -> google.protobuf.Timestamp
+	65, // 2: platform.v1.ClearanceInfo.verified_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: platform.v1.AccountData.clearance:type_name -> platform.v1.ClearanceInfo
-	62, // 4: platform.v1.AccountData.expires_at:type_name -> google.protobuf.Timestamp
-	62, // 5: platform.v1.AccountData.created_at:type_name -> google.protobuf.Timestamp
-	62, // 6: platform.v1.AccountData.updated_at:type_name -> google.protobuf.Timestamp
+	65, // 4: platform.v1.AccountData.expires_at:type_name -> google.protobuf.Timestamp
+	65, // 5: platform.v1.AccountData.created_at:type_name -> google.protobuf.Timestamp
+	65, // 6: platform.v1.AccountData.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 7: platform.v1.ProvisionAccountRequest.clearance:type_name -> platform.v1.ClearanceInfo
 	1,  // 8: platform.v1.ProvisionAccountResponse.account:type_name -> platform.v1.AccountData
-	62, // 9: platform.v1.ProvisionServiceAccountRequest.expires_at:type_name -> google.protobuf.Timestamp
+	65, // 9: platform.v1.ProvisionServiceAccountRequest.expires_at:type_name -> google.protobuf.Timestamp
 	1,  // 10: platform.v1.ProvisionServiceAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 11: platform.v1.GetAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 12: platform.v1.ListAccountsResponse.accounts:type_name -> platform.v1.AccountData
 	0,  // 13: platform.v1.UpdateAccountRequest.clearance:type_name -> platform.v1.ClearanceInfo
-	62, // 14: platform.v1.UpdateAccountRequest.expires_at:type_name -> google.protobuf.Timestamp
+	65, // 14: platform.v1.UpdateAccountRequest.expires_at:type_name -> google.protobuf.Timestamp
 	1,  // 15: platform.v1.UpdateAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 16: platform.v1.SuspendAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 17: platform.v1.RecoverAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 18: platform.v1.DeprovisionAccountResponse.account:type_name -> platform.v1.AccountData
-	62, // 19: platform.v1.Group.created_at:type_name -> google.protobuf.Timestamp
+	65, // 19: platform.v1.Group.created_at:type_name -> google.protobuf.Timestamp
 	20, // 20: platform.v1.DefineGroupResponse.group:type_name -> platform.v1.Group
 	20, // 21: platform.v1.ListGroupsResponse.groups:type_name -> platform.v1.Group
-	62, // 22: platform.v1.Role.created_at:type_name -> google.protobuf.Timestamp
+	65, // 22: platform.v1.Role.created_at:type_name -> google.protobuf.Timestamp
 	29, // 23: platform.v1.DefineRoleResponse.role:type_name -> platform.v1.Role
 	29, // 24: platform.v1.AccountAdminServiceListRolesResponse.roles:type_name -> platform.v1.Role
-	62, // 25: platform.v1.Entitlement.set_at:type_name -> google.protobuf.Timestamp
+	65, // 25: platform.v1.Entitlement.set_at:type_name -> google.protobuf.Timestamp
 	38, // 26: platform.v1.SetEntitlementResponse.entitlement:type_name -> platform.v1.Entitlement
 	38, // 27: platform.v1.ListEntitlementsResponse.entitlements:type_name -> platform.v1.Entitlement
-	62, // 28: platform.v1.Tenant.created_at:type_name -> google.protobuf.Timestamp
-	62, // 29: platform.v1.Tenant.updated_at:type_name -> google.protobuf.Timestamp
+	65, // 28: platform.v1.Tenant.created_at:type_name -> google.protobuf.Timestamp
+	65, // 29: platform.v1.Tenant.updated_at:type_name -> google.protobuf.Timestamp
 	45, // 30: platform.v1.CreateTenantResponse.tenant:type_name -> platform.v1.Tenant
 	45, // 31: platform.v1.GetTenantResponse.tenant:type_name -> platform.v1.Tenant
 	45, // 32: platform.v1.ListTenantsResponse.tenants:type_name -> platform.v1.Tenant
-	62, // 33: platform.v1.PendingRecertificationRow.due_at:type_name -> google.protobuf.Timestamp
-	62, // 34: platform.v1.RecertificationHistoryRow.due_at:type_name -> google.protobuf.Timestamp
-	62, // 35: platform.v1.RecertificationHistoryRow.reviewed_at:type_name -> google.protobuf.Timestamp
+	65, // 33: platform.v1.PendingRecertificationRow.due_at:type_name -> google.protobuf.Timestamp
+	65, // 34: platform.v1.RecertificationHistoryRow.due_at:type_name -> google.protobuf.Timestamp
+	65, // 35: platform.v1.RecertificationHistoryRow.reviewed_at:type_name -> google.protobuf.Timestamp
 	52, // 36: platform.v1.AccountAdminServiceListPendingRecertificationsResponse.rows:type_name -> platform.v1.PendingRecertificationRow
 	53, // 37: platform.v1.AccountAdminServiceGetRecertificationHistoryResponse.rows:type_name -> platform.v1.RecertificationHistoryRow
-	2,  // 38: platform.v1.AccountAdminService.ProvisionAccount:input_type -> platform.v1.ProvisionAccountRequest
-	4,  // 39: platform.v1.AccountAdminService.ProvisionServiceAccount:input_type -> platform.v1.ProvisionServiceAccountRequest
-	6,  // 40: platform.v1.AccountAdminService.GetAccount:input_type -> platform.v1.GetAccountRequest
-	8,  // 41: platform.v1.AccountAdminService.ListAccounts:input_type -> platform.v1.ListAccountsRequest
-	10, // 42: platform.v1.AccountAdminService.UpdateAccount:input_type -> platform.v1.UpdateAccountRequest
-	12, // 43: platform.v1.AccountAdminService.AssistedAccountRecovery:input_type -> platform.v1.AssistedAccountRecoveryRequest
-	14, // 44: platform.v1.AccountAdminService.SuspendAccount:input_type -> platform.v1.SuspendAccountRequest
-	16, // 45: platform.v1.AccountAdminService.RecoverAccount:input_type -> platform.v1.RecoverAccountRequest
-	18, // 46: platform.v1.AccountAdminService.DeprovisionAccount:input_type -> platform.v1.DeprovisionAccountRequest
-	21, // 47: platform.v1.AccountAdminService.DefineGroup:input_type -> platform.v1.DefineGroupRequest
-	23, // 48: platform.v1.AccountAdminService.ListGroups:input_type -> platform.v1.ListGroupsRequest
-	25, // 49: platform.v1.AccountAdminService.AddAccountToGroup:input_type -> platform.v1.AddAccountToGroupRequest
-	27, // 50: platform.v1.AccountAdminService.RemoveAccountFromGroup:input_type -> platform.v1.RemoveAccountFromGroupRequest
-	30, // 51: platform.v1.AccountAdminService.DefineRole:input_type -> platform.v1.DefineRoleRequest
-	32, // 52: platform.v1.AccountAdminService.ListRoles:input_type -> platform.v1.AccountAdminServiceListRolesRequest
-	34, // 53: platform.v1.AccountAdminService.AssignRole:input_type -> platform.v1.AccountAdminServiceAssignRoleRequest
-	36, // 54: platform.v1.AccountAdminService.RevokeRole:input_type -> platform.v1.RevokeRoleRequest
-	39, // 55: platform.v1.AccountAdminService.SetEntitlement:input_type -> platform.v1.SetEntitlementRequest
-	41, // 56: platform.v1.AccountAdminService.DeleteEntitlement:input_type -> platform.v1.DeleteEntitlementRequest
-	43, // 57: platform.v1.AccountAdminService.ListEntitlements:input_type -> platform.v1.ListEntitlementsRequest
-	46, // 58: platform.v1.AccountAdminService.CreateTenant:input_type -> platform.v1.CreateTenantRequest
-	48, // 59: platform.v1.AccountAdminService.GetTenant:input_type -> platform.v1.GetTenantRequest
-	50, // 60: platform.v1.AccountAdminService.ListTenants:input_type -> platform.v1.ListTenantsRequest
-	54, // 61: platform.v1.AccountAdminService.ListPendingRecertifications:input_type -> platform.v1.AccountAdminServiceListPendingRecertificationsRequest
-	56, // 62: platform.v1.AccountAdminService.SubmitRecertificationDecision:input_type -> platform.v1.AccountAdminServiceSubmitRecertificationDecisionRequest
-	58, // 63: platform.v1.AccountAdminService.GetRecertificationHistory:input_type -> platform.v1.AccountAdminServiceGetRecertificationHistoryRequest
-	60, // 64: platform.v1.AccountAdminService.ClearAccountMFAFactors:input_type -> platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest
-	3,  // 65: platform.v1.AccountAdminService.ProvisionAccount:output_type -> platform.v1.ProvisionAccountResponse
-	5,  // 66: platform.v1.AccountAdminService.ProvisionServiceAccount:output_type -> platform.v1.ProvisionServiceAccountResponse
-	7,  // 67: platform.v1.AccountAdminService.GetAccount:output_type -> platform.v1.GetAccountResponse
-	9,  // 68: platform.v1.AccountAdminService.ListAccounts:output_type -> platform.v1.ListAccountsResponse
-	11, // 69: platform.v1.AccountAdminService.UpdateAccount:output_type -> platform.v1.UpdateAccountResponse
-	13, // 70: platform.v1.AccountAdminService.AssistedAccountRecovery:output_type -> platform.v1.AssistedAccountRecoveryResponse
-	15, // 71: platform.v1.AccountAdminService.SuspendAccount:output_type -> platform.v1.SuspendAccountResponse
-	17, // 72: platform.v1.AccountAdminService.RecoverAccount:output_type -> platform.v1.RecoverAccountResponse
-	19, // 73: platform.v1.AccountAdminService.DeprovisionAccount:output_type -> platform.v1.DeprovisionAccountResponse
-	22, // 74: platform.v1.AccountAdminService.DefineGroup:output_type -> platform.v1.DefineGroupResponse
-	24, // 75: platform.v1.AccountAdminService.ListGroups:output_type -> platform.v1.ListGroupsResponse
-	26, // 76: platform.v1.AccountAdminService.AddAccountToGroup:output_type -> platform.v1.AddAccountToGroupResponse
-	28, // 77: platform.v1.AccountAdminService.RemoveAccountFromGroup:output_type -> platform.v1.RemoveAccountFromGroupResponse
-	31, // 78: platform.v1.AccountAdminService.DefineRole:output_type -> platform.v1.DefineRoleResponse
-	33, // 79: platform.v1.AccountAdminService.ListRoles:output_type -> platform.v1.AccountAdminServiceListRolesResponse
-	35, // 80: platform.v1.AccountAdminService.AssignRole:output_type -> platform.v1.AccountAdminServiceAssignRoleResponse
-	37, // 81: platform.v1.AccountAdminService.RevokeRole:output_type -> platform.v1.RevokeRoleResponse
-	40, // 82: platform.v1.AccountAdminService.SetEntitlement:output_type -> platform.v1.SetEntitlementResponse
-	42, // 83: platform.v1.AccountAdminService.DeleteEntitlement:output_type -> platform.v1.DeleteEntitlementResponse
-	44, // 84: platform.v1.AccountAdminService.ListEntitlements:output_type -> platform.v1.ListEntitlementsResponse
-	47, // 85: platform.v1.AccountAdminService.CreateTenant:output_type -> platform.v1.CreateTenantResponse
-	49, // 86: platform.v1.AccountAdminService.GetTenant:output_type -> platform.v1.GetTenantResponse
-	51, // 87: platform.v1.AccountAdminService.ListTenants:output_type -> platform.v1.ListTenantsResponse
-	55, // 88: platform.v1.AccountAdminService.ListPendingRecertifications:output_type -> platform.v1.AccountAdminServiceListPendingRecertificationsResponse
-	57, // 89: platform.v1.AccountAdminService.SubmitRecertificationDecision:output_type -> platform.v1.AccountAdminServiceSubmitRecertificationDecisionResponse
-	59, // 90: platform.v1.AccountAdminService.GetRecertificationHistory:output_type -> platform.v1.AccountAdminServiceGetRecertificationHistoryResponse
-	61, // 91: platform.v1.AccountAdminService.ClearAccountMFAFactors:output_type -> platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse
-	65, // [65:92] is the sub-list for method output_type
-	38, // [38:65] is the sub-list for method input_type
-	38, // [38:38] is the sub-list for extension type_name
-	38, // [38:38] is the sub-list for extension extendee
-	0,  // [0:38] is the sub-list for field type_name
+	65, // 38: platform.v1.AccountAdminServiceRecoveryEvent.requested_at:type_name -> google.protobuf.Timestamp
+	65, // 39: platform.v1.AccountAdminServiceRecoveryEvent.expires_at:type_name -> google.protobuf.Timestamp
+	65, // 40: platform.v1.AccountAdminServiceRecoveryEvent.consumed_at:type_name -> google.protobuf.Timestamp
+	63, // 41: platform.v1.AccountAdminServiceListRecoveryEventsResponse.events:type_name -> platform.v1.AccountAdminServiceRecoveryEvent
+	2,  // 42: platform.v1.AccountAdminService.ProvisionAccount:input_type -> platform.v1.ProvisionAccountRequest
+	4,  // 43: platform.v1.AccountAdminService.ProvisionServiceAccount:input_type -> platform.v1.ProvisionServiceAccountRequest
+	6,  // 44: platform.v1.AccountAdminService.GetAccount:input_type -> platform.v1.GetAccountRequest
+	8,  // 45: platform.v1.AccountAdminService.ListAccounts:input_type -> platform.v1.ListAccountsRequest
+	10, // 46: platform.v1.AccountAdminService.UpdateAccount:input_type -> platform.v1.UpdateAccountRequest
+	12, // 47: platform.v1.AccountAdminService.AssistedAccountRecovery:input_type -> platform.v1.AssistedAccountRecoveryRequest
+	14, // 48: platform.v1.AccountAdminService.SuspendAccount:input_type -> platform.v1.SuspendAccountRequest
+	16, // 49: platform.v1.AccountAdminService.RecoverAccount:input_type -> platform.v1.RecoverAccountRequest
+	18, // 50: platform.v1.AccountAdminService.DeprovisionAccount:input_type -> platform.v1.DeprovisionAccountRequest
+	21, // 51: platform.v1.AccountAdminService.DefineGroup:input_type -> platform.v1.DefineGroupRequest
+	23, // 52: platform.v1.AccountAdminService.ListGroups:input_type -> platform.v1.ListGroupsRequest
+	25, // 53: platform.v1.AccountAdminService.AddAccountToGroup:input_type -> platform.v1.AddAccountToGroupRequest
+	27, // 54: platform.v1.AccountAdminService.RemoveAccountFromGroup:input_type -> platform.v1.RemoveAccountFromGroupRequest
+	30, // 55: platform.v1.AccountAdminService.DefineRole:input_type -> platform.v1.DefineRoleRequest
+	32, // 56: platform.v1.AccountAdminService.ListRoles:input_type -> platform.v1.AccountAdminServiceListRolesRequest
+	34, // 57: platform.v1.AccountAdminService.AssignRole:input_type -> platform.v1.AccountAdminServiceAssignRoleRequest
+	36, // 58: platform.v1.AccountAdminService.RevokeRole:input_type -> platform.v1.RevokeRoleRequest
+	39, // 59: platform.v1.AccountAdminService.SetEntitlement:input_type -> platform.v1.SetEntitlementRequest
+	41, // 60: platform.v1.AccountAdminService.DeleteEntitlement:input_type -> platform.v1.DeleteEntitlementRequest
+	43, // 61: platform.v1.AccountAdminService.ListEntitlements:input_type -> platform.v1.ListEntitlementsRequest
+	46, // 62: platform.v1.AccountAdminService.CreateTenant:input_type -> platform.v1.CreateTenantRequest
+	48, // 63: platform.v1.AccountAdminService.GetTenant:input_type -> platform.v1.GetTenantRequest
+	50, // 64: platform.v1.AccountAdminService.ListTenants:input_type -> platform.v1.ListTenantsRequest
+	54, // 65: platform.v1.AccountAdminService.ListPendingRecertifications:input_type -> platform.v1.AccountAdminServiceListPendingRecertificationsRequest
+	56, // 66: platform.v1.AccountAdminService.SubmitRecertificationDecision:input_type -> platform.v1.AccountAdminServiceSubmitRecertificationDecisionRequest
+	58, // 67: platform.v1.AccountAdminService.GetRecertificationHistory:input_type -> platform.v1.AccountAdminServiceGetRecertificationHistoryRequest
+	60, // 68: platform.v1.AccountAdminService.ClearAccountMFAFactors:input_type -> platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest
+	62, // 69: platform.v1.AccountAdminService.ListRecoveryEvents:input_type -> platform.v1.AccountAdminServiceListRecoveryEventsRequest
+	3,  // 70: platform.v1.AccountAdminService.ProvisionAccount:output_type -> platform.v1.ProvisionAccountResponse
+	5,  // 71: platform.v1.AccountAdminService.ProvisionServiceAccount:output_type -> platform.v1.ProvisionServiceAccountResponse
+	7,  // 72: platform.v1.AccountAdminService.GetAccount:output_type -> platform.v1.GetAccountResponse
+	9,  // 73: platform.v1.AccountAdminService.ListAccounts:output_type -> platform.v1.ListAccountsResponse
+	11, // 74: platform.v1.AccountAdminService.UpdateAccount:output_type -> platform.v1.UpdateAccountResponse
+	13, // 75: platform.v1.AccountAdminService.AssistedAccountRecovery:output_type -> platform.v1.AssistedAccountRecoveryResponse
+	15, // 76: platform.v1.AccountAdminService.SuspendAccount:output_type -> platform.v1.SuspendAccountResponse
+	17, // 77: platform.v1.AccountAdminService.RecoverAccount:output_type -> platform.v1.RecoverAccountResponse
+	19, // 78: platform.v1.AccountAdminService.DeprovisionAccount:output_type -> platform.v1.DeprovisionAccountResponse
+	22, // 79: platform.v1.AccountAdminService.DefineGroup:output_type -> platform.v1.DefineGroupResponse
+	24, // 80: platform.v1.AccountAdminService.ListGroups:output_type -> platform.v1.ListGroupsResponse
+	26, // 81: platform.v1.AccountAdminService.AddAccountToGroup:output_type -> platform.v1.AddAccountToGroupResponse
+	28, // 82: platform.v1.AccountAdminService.RemoveAccountFromGroup:output_type -> platform.v1.RemoveAccountFromGroupResponse
+	31, // 83: platform.v1.AccountAdminService.DefineRole:output_type -> platform.v1.DefineRoleResponse
+	33, // 84: platform.v1.AccountAdminService.ListRoles:output_type -> platform.v1.AccountAdminServiceListRolesResponse
+	35, // 85: platform.v1.AccountAdminService.AssignRole:output_type -> platform.v1.AccountAdminServiceAssignRoleResponse
+	37, // 86: platform.v1.AccountAdminService.RevokeRole:output_type -> platform.v1.RevokeRoleResponse
+	40, // 87: platform.v1.AccountAdminService.SetEntitlement:output_type -> platform.v1.SetEntitlementResponse
+	42, // 88: platform.v1.AccountAdminService.DeleteEntitlement:output_type -> platform.v1.DeleteEntitlementResponse
+	44, // 89: platform.v1.AccountAdminService.ListEntitlements:output_type -> platform.v1.ListEntitlementsResponse
+	47, // 90: platform.v1.AccountAdminService.CreateTenant:output_type -> platform.v1.CreateTenantResponse
+	49, // 91: platform.v1.AccountAdminService.GetTenant:output_type -> platform.v1.GetTenantResponse
+	51, // 92: platform.v1.AccountAdminService.ListTenants:output_type -> platform.v1.ListTenantsResponse
+	55, // 93: platform.v1.AccountAdminService.ListPendingRecertifications:output_type -> platform.v1.AccountAdminServiceListPendingRecertificationsResponse
+	57, // 94: platform.v1.AccountAdminService.SubmitRecertificationDecision:output_type -> platform.v1.AccountAdminServiceSubmitRecertificationDecisionResponse
+	59, // 95: platform.v1.AccountAdminService.GetRecertificationHistory:output_type -> platform.v1.AccountAdminServiceGetRecertificationHistoryResponse
+	61, // 96: platform.v1.AccountAdminService.ClearAccountMFAFactors:output_type -> platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse
+	64, // 97: platform.v1.AccountAdminService.ListRecoveryEvents:output_type -> platform.v1.AccountAdminServiceListRecoveryEventsResponse
+	70, // [70:98] is the sub-list for method output_type
+	42, // [42:70] is the sub-list for method input_type
+	42, // [42:42] is the sub-list for extension type_name
+	42, // [42:42] is the sub-list for extension extendee
+	0,  // [0:42] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_identity_admin_proto_init() }
@@ -4464,13 +4773,17 @@ func file_platform_v1_identity_admin_proto_init() {
 		return
 	}
 	file_platform_v1_identity_admin_proto_msgTypes[54].OneofWrappers = []any{}
+	file_platform_v1_identity_admin_proto_msgTypes[62].OneofWrappers = []any{
+		(*AccountAdminServiceListRecoveryEventsRequest_AccountId)(nil),
+		(*AccountAdminServiceListRecoveryEventsRequest_Email)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_identity_admin_proto_rawDesc), len(file_platform_v1_identity_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   62,
+			NumMessages:   65,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

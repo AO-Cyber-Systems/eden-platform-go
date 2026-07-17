@@ -148,6 +148,18 @@ service AccountAdminService {
   // lost YubiKey path — LIFE-04 admin assist). reason is required + emitted
   // as auth.mfa.cleared_by_admin Details.
   rpc ClearAccountMFAFactors(AccountAdminServiceClearAccountMFAFactorsRequest) returns (AccountAdminServiceClearAccountMFAFactorsResponse);
+
+  // -------------------------- Recovery history (support desk) --------------
+
+  // ListRecoveryEvents returns the password-recovery token history for one
+  // account — the platform-admin "reset activity" view: when recovery was
+  // requested, whether it was consumed or refused, and the originating IP/UA.
+  // Read-only. The token hash is NEVER returned (offline-guess/replay risk).
+  // reason is required + emitted as account.recovery_events.viewed. Subject is
+  // (account_id | email); when email is supplied the handler resolves it to the
+  // account WITHIN tenant_id (email is unique per-tenant only). Authority comes
+  // from the session/cert + interceptors, never the request body.
+  rpc ListRecoveryEvents(AccountAdminServiceListRecoveryEventsRequest) returns (AccountAdminServiceListRecoveryEventsResponse);
 }
 
 // ============================================================================
@@ -710,3 +722,35 @@ message AccountAdminServiceClearAccountMFAFactorsRequest {
 // AccountAdminServiceClearAccountMFAFactorsResponse is intentionally empty.
 // Reserved for forward-compat additions (e.g. cleared_factor_count).
 message AccountAdminServiceClearAccountMFAFactorsResponse {}
+
+message AccountAdminServiceListRecoveryEventsRequest {
+  string tenant_id = 1; // required — tenant-scope anchor
+  // Subject of the lookup. Provide exactly one. When email is supplied the
+  // handler resolves it to the account within tenant_id (email is unique
+  // per-tenant only).
+  oneof subject {
+    string account_id = 2;
+    string email = 3;
+  }
+  string reason = 4; // required — recorded in the account.recovery_events.viewed audit event
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+// AccountAdminServiceRecoveryEvent is one recovery-token history row. The token
+// hash is deliberately NOT a field — it is never returned on the wire.
+message AccountAdminServiceRecoveryEvent {
+  string id = 1;
+  google.protobuf.Timestamp requested_at = 2;
+  google.protobuf.Timestamp expires_at = 3;
+  google.protobuf.Timestamp consumed_at = 4; // unset ⇒ never consumed
+  string refused_reason = 5;                  // "" ⇒ not refused
+  string requesting_ip = 6;
+  string requesting_ua = 7;
+  string consumed_ip = 8;
+}
+
+message AccountAdminServiceListRecoveryEventsResponse {
+  repeated AccountAdminServiceRecoveryEvent events = 1;
+  string next_page_token = 2;
+}
