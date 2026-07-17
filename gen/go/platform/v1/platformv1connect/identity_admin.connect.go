@@ -114,6 +114,9 @@ const (
 	// AccountAdminServiceClearAccountMFAFactorsProcedure is the fully-qualified name of the
 	// AccountAdminService's ClearAccountMFAFactors RPC.
 	AccountAdminServiceClearAccountMFAFactorsProcedure = "/platform.v1.AccountAdminService/ClearAccountMFAFactors"
+	// AccountAdminServiceListRecoveryEventsProcedure is the fully-qualified name of the
+	// AccountAdminService's ListRecoveryEvents RPC.
+	AccountAdminServiceListRecoveryEventsProcedure = "/platform.v1.AccountAdminService/ListRecoveryEvents"
 )
 
 // AccountAdminServiceClient is a client for the platform.v1.AccountAdminService service.
@@ -206,6 +209,15 @@ type AccountAdminServiceClient interface {
 	// lost YubiKey path — LIFE-04 admin assist). reason is required + emitted
 	// as auth.mfa.cleared_by_admin Details.
 	ClearAccountMFAFactors(context.Context, *connect.Request[v1.AccountAdminServiceClearAccountMFAFactorsRequest]) (*connect.Response[v1.AccountAdminServiceClearAccountMFAFactorsResponse], error)
+	// ListRecoveryEvents returns the password-recovery token history for one
+	// account — the platform-admin "reset activity" view: when recovery was
+	// requested, whether it was consumed or refused, and the originating IP/UA.
+	// Read-only. The token hash is NEVER returned (offline-guess/replay risk).
+	// reason is required + emitted as account.recovery_events.viewed. Subject is
+	// (account_id | email); when email is supplied the handler resolves it to the
+	// account WITHIN tenant_id (email is unique per-tenant only). Authority comes
+	// from the session/cert + interceptors, never the request body.
+	ListRecoveryEvents(context.Context, *connect.Request[v1.AccountAdminServiceListRecoveryEventsRequest]) (*connect.Response[v1.AccountAdminServiceListRecoveryEventsResponse], error)
 }
 
 // NewAccountAdminServiceClient constructs a client for the platform.v1.AccountAdminService service.
@@ -381,6 +393,12 @@ func NewAccountAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			connect.WithSchema(accountAdminServiceMethods.ByName("ClearAccountMFAFactors")),
 			connect.WithClientOptions(opts...),
 		),
+		listRecoveryEvents: connect.NewClient[v1.AccountAdminServiceListRecoveryEventsRequest, v1.AccountAdminServiceListRecoveryEventsResponse](
+			httpClient,
+			baseURL+AccountAdminServiceListRecoveryEventsProcedure,
+			connect.WithSchema(accountAdminServiceMethods.ByName("ListRecoveryEvents")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -413,6 +431,7 @@ type accountAdminServiceClient struct {
 	submitRecertificationDecision *connect.Client[v1.AccountAdminServiceSubmitRecertificationDecisionRequest, v1.AccountAdminServiceSubmitRecertificationDecisionResponse]
 	getRecertificationHistory     *connect.Client[v1.AccountAdminServiceGetRecertificationHistoryRequest, v1.AccountAdminServiceGetRecertificationHistoryResponse]
 	clearAccountMFAFactors        *connect.Client[v1.AccountAdminServiceClearAccountMFAFactorsRequest, v1.AccountAdminServiceClearAccountMFAFactorsResponse]
+	listRecoveryEvents            *connect.Client[v1.AccountAdminServiceListRecoveryEventsRequest, v1.AccountAdminServiceListRecoveryEventsResponse]
 }
 
 // ProvisionAccount calls platform.v1.AccountAdminService.ProvisionAccount.
@@ -551,6 +570,11 @@ func (c *accountAdminServiceClient) ClearAccountMFAFactors(ctx context.Context, 
 	return c.clearAccountMFAFactors.CallUnary(ctx, req)
 }
 
+// ListRecoveryEvents calls platform.v1.AccountAdminService.ListRecoveryEvents.
+func (c *accountAdminServiceClient) ListRecoveryEvents(ctx context.Context, req *connect.Request[v1.AccountAdminServiceListRecoveryEventsRequest]) (*connect.Response[v1.AccountAdminServiceListRecoveryEventsResponse], error) {
+	return c.listRecoveryEvents.CallUnary(ctx, req)
+}
+
 // AccountAdminServiceHandler is an implementation of the platform.v1.AccountAdminService service.
 type AccountAdminServiceHandler interface {
 	// ProvisionAccount creates a human user account.
@@ -641,6 +665,15 @@ type AccountAdminServiceHandler interface {
 	// lost YubiKey path — LIFE-04 admin assist). reason is required + emitted
 	// as auth.mfa.cleared_by_admin Details.
 	ClearAccountMFAFactors(context.Context, *connect.Request[v1.AccountAdminServiceClearAccountMFAFactorsRequest]) (*connect.Response[v1.AccountAdminServiceClearAccountMFAFactorsResponse], error)
+	// ListRecoveryEvents returns the password-recovery token history for one
+	// account — the platform-admin "reset activity" view: when recovery was
+	// requested, whether it was consumed or refused, and the originating IP/UA.
+	// Read-only. The token hash is NEVER returned (offline-guess/replay risk).
+	// reason is required + emitted as account.recovery_events.viewed. Subject is
+	// (account_id | email); when email is supplied the handler resolves it to the
+	// account WITHIN tenant_id (email is unique per-tenant only). Authority comes
+	// from the session/cert + interceptors, never the request body.
+	ListRecoveryEvents(context.Context, *connect.Request[v1.AccountAdminServiceListRecoveryEventsRequest]) (*connect.Response[v1.AccountAdminServiceListRecoveryEventsResponse], error)
 }
 
 // NewAccountAdminServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -812,6 +845,12 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 		connect.WithSchema(accountAdminServiceMethods.ByName("ClearAccountMFAFactors")),
 		connect.WithHandlerOptions(opts...),
 	)
+	accountAdminServiceListRecoveryEventsHandler := connect.NewUnaryHandler(
+		AccountAdminServiceListRecoveryEventsProcedure,
+		svc.ListRecoveryEvents,
+		connect.WithSchema(accountAdminServiceMethods.ByName("ListRecoveryEvents")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/platform.v1.AccountAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AccountAdminServiceProvisionAccountProcedure:
@@ -868,6 +907,8 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 			accountAdminServiceGetRecertificationHistoryHandler.ServeHTTP(w, r)
 		case AccountAdminServiceClearAccountMFAFactorsProcedure:
 			accountAdminServiceClearAccountMFAFactorsHandler.ServeHTTP(w, r)
+		case AccountAdminServiceListRecoveryEventsProcedure:
+			accountAdminServiceListRecoveryEventsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -983,4 +1024,8 @@ func (UnimplementedAccountAdminServiceHandler) GetRecertificationHistory(context
 
 func (UnimplementedAccountAdminServiceHandler) ClearAccountMFAFactors(context.Context, *connect.Request[v1.AccountAdminServiceClearAccountMFAFactorsRequest]) (*connect.Response[v1.AccountAdminServiceClearAccountMFAFactorsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.ClearAccountMFAFactors is not implemented"))
+}
+
+func (UnimplementedAccountAdminServiceHandler) ListRecoveryEvents(context.Context, *connect.Request[v1.AccountAdminServiceListRecoveryEventsRequest]) (*connect.Response[v1.AccountAdminServiceListRecoveryEventsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.ListRecoveryEvents is not implemented"))
 }

@@ -1,6 +1,2721 @@
 {
   "files": [
     {
+      "name": "experience/v1/experience.proto",
+      "description": "",
+      "package": "experience.v1",
+      "hasEnums": true,
+      "hasExtensions": false,
+      "hasMessages": true,
+      "hasServices": true,
+      "enums": [
+        {
+          "name": "AgentAudience",
+          "longName": "AgentAudience",
+          "fullName": "experience.v1.AgentAudience",
+          "description": "AgentAudience declares WHO an agent serves (161-01). UNSPECIFIED=0 is the\nback-compat value: a 160-era spec with no audience field means INTERNAL --\nexternal exposure is always an explicit authoring decision, never implicit.",
+          "values": [
+            {
+              "name": "AGENT_AUDIENCE_UNSPECIFIED",
+              "number": "0",
+              "description": "back-compat: treated as INTERNAL (external is NEVER implicit)"
+            },
+            {
+              "name": "AGENT_AUDIENCE_INTERNAL",
+              "number": "1",
+              "description": "staff assist (company-wide data scope)"
+            },
+            {
+              "name": "AGENT_AUDIENCE_EXTERNAL",
+              "number": "2",
+              "description": "customer-facing (customer-scoped tools only)"
+            },
+            {
+              "name": "AGENT_AUDIENCE_BOTH",
+              "number": "3",
+              "description": "one spec, both audiences via bindings"
+            }
+          ]
+        },
+        {
+          "name": "ConflictPolicy",
+          "longName": "ConflictPolicy",
+          "fullName": "experience.v1.ConflictPolicy",
+          "description": "ConflictPolicy is how a queued offline write reconciles against server state\nat sync time. UNSPECIFIED=0 fails SAFE (treated as MANUAL_RECONCILE -- never\nsilently drop a conflicting write). LAST_WRITE_WINS = the later timestamp\nwins. SERVER_WINS = the server copy wins, the queued write is discarded.\nMANUAL_RECONCILE = surface the conflict to the user.",
+          "values": [
+            {
+              "name": "CONFLICT_POLICY_UNSPECIFIED",
+              "number": "0",
+              "description": "fail-safe -\u003e treated as MANUAL_RECONCILE"
+            },
+            {
+              "name": "CONFLICT_POLICY_LAST_WRITE_WINS",
+              "number": "1",
+              "description": "later write wins"
+            },
+            {
+              "name": "CONFLICT_POLICY_SERVER_WINS",
+              "number": "2",
+              "description": "server copy wins, queued write discarded"
+            },
+            {
+              "name": "CONFLICT_POLICY_MANUAL_RECONCILE",
+              "number": "3",
+              "description": "surface the conflict to the user"
+            }
+          ]
+        },
+        {
+          "name": "OfflinePolicy",
+          "longName": "OfflinePolicy",
+          "fullName": "experience.v1.OfflinePolicy",
+          "description": "OfflinePolicy is the per-surface offline behavior. UNSPECIFIED=0 fails SAFE\n(treated as NONE -- no offline). NONE = online-only. READ_CACHE = serve cached\nreads offline, no writes. READ_WRITE_QUEUE = cache reads AND queue writes for\nlater sync (the field-service offline-first mode).",
+          "values": [
+            {
+              "name": "OFFLINE_POLICY_UNSPECIFIED",
+              "number": "0",
+              "description": "fail-safe -\u003e treated as NONE"
+            },
+            {
+              "name": "OFFLINE_POLICY_NONE",
+              "number": "1",
+              "description": "online-only, no offline behavior"
+            },
+            {
+              "name": "OFFLINE_POLICY_READ_CACHE",
+              "number": "2",
+              "description": "serve cached reads offline; no writes"
+            },
+            {
+              "name": "OFFLINE_POLICY_READ_WRITE_QUEUE",
+              "number": "3",
+              "description": "cache reads + queue writes for later sync"
+            }
+          ]
+        },
+        {
+          "name": "Operation",
+          "longName": "Operation",
+          "fullName": "experience.v1.Operation",
+          "description": "Operation is a single read or write the binding exposes. The binding is NOT\nread-only: CREATE/UPDATE/DELETE are first-class alongside GET/LIST.",
+          "values": [
+            {
+              "name": "OPERATION_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "OPERATION_GET",
+              "number": "1",
+              "description": "read one"
+            },
+            {
+              "name": "OPERATION_LIST",
+              "number": "2",
+              "description": "read many"
+            },
+            {
+              "name": "OPERATION_CREATE",
+              "number": "3",
+              "description": "write (create)"
+            },
+            {
+              "name": "OPERATION_UPDATE",
+              "number": "4",
+              "description": "write (update)"
+            },
+            {
+              "name": "OPERATION_DELETE",
+              "number": "5",
+              "description": "write (delete)"
+            }
+          ]
+        },
+        {
+          "name": "PaginationKind",
+          "longName": "PaginationKind",
+          "fullName": "experience.v1.PaginationKind",
+          "description": "PaginationKind is the pagination contract a LIST operation honors, independent\nof transport (a CONNECT and a REST_OPENAPI binding can each use any kind).",
+          "values": [
+            {
+              "name": "PAGINATION_KIND_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "PAGINATION_KIND_NONE",
+              "number": "1",
+              "description": "no pagination"
+            },
+            {
+              "name": "PAGINATION_KIND_CURSOR",
+              "number": "2",
+              "description": "opaque page_token cursor"
+            },
+            {
+              "name": "PAGINATION_KIND_OFFSET",
+              "number": "3",
+              "description": "numeric offset/limit"
+            }
+          ]
+        },
+        {
+          "name": "Placement",
+          "longName": "Placement",
+          "fullName": "experience.v1.Placement",
+          "description": "Placement is where a NavSlot's surface sits in the navigation chrome.\nUNSPECIFIED=0 is fail-safe (an unplaced slot is treated as not-shown rather\nthan silently promoted into primary nav).",
+          "values": [
+            {
+              "name": "PLACEMENT_UNSPECIFIED",
+              "number": "0",
+              "description": "unset -- not shown in primary/overflow nav"
+            },
+            {
+              "name": "PLACEMENT_PRIMARY",
+              "number": "1",
+              "description": "primary navigation (the \u003c=5-slot rail/tab bar)"
+            },
+            {
+              "name": "PLACEMENT_MORE",
+              "number": "2",
+              "description": "overflow / \"More\" menu"
+            },
+            {
+              "name": "PLACEMENT_DETAIL_ONLY",
+              "number": "3",
+              "description": "reachable only via an edge, never in the chrome"
+            }
+          ]
+        },
+        {
+          "name": "ScopeAuthority",
+          "longName": "ScopeAuthority",
+          "fullName": "experience.v1.ScopeAuthority",
+          "description": "ScopeAuthority is how a single AOID identity projects to a backend's tenant\nscope. COMPANY = eden-biz company scope; ORG = aocore org scope. UNSPECIFIED\nis fail-closed (not bindable). This enum is the proto-level mapping of the\none identity to each backend -- the projection logic is binding.ResolveScope.",
+          "values": [
+            {
+              "name": "SCOPE_AUTHORITY_UNSPECIFIED",
+              "number": "0",
+              "description": "reserved / fail-closed"
+            },
+            {
+              "name": "SCOPE_AUTHORITY_COMPANY",
+              "number": "1",
+              "description": "eden-biz company scope"
+            },
+            {
+              "name": "SCOPE_AUTHORITY_ORG",
+              "number": "2",
+              "description": "aocore org scope"
+            }
+          ]
+        },
+        {
+          "name": "SideEffect",
+          "longName": "SideEffect",
+          "fullName": "experience.v1.SideEffect",
+          "description": "SideEffect gates the tool dispatcher. UNSPECIFIED=0 is fail-closed (an\nunclassified tool is not dispatchable). READ = pure read. WRITE = mutates\ntenant data (idempotency_key load-bearing). EXTERNAL = outbound (webhooks etc.)\n-- representable but DEFERRED (out of scope; ValidateTooling warn-flags it).",
+          "values": [
+            {
+              "name": "SIDE_EFFECT_UNSPECIFIED",
+              "number": "0",
+              "description": "fail-closed -- not dispatchable"
+            },
+            {
+              "name": "SIDE_EFFECT_READ",
+              "number": "1",
+              "description": "pure read"
+            },
+            {
+              "name": "SIDE_EFFECT_WRITE",
+              "number": "2",
+              "description": "mutates tenant data (idempotency_key matters)"
+            },
+            {
+              "name": "SIDE_EFFECT_EXTERNAL",
+              "number": "3",
+              "description": "outbound (webhooks) -- DEFERRED, representable"
+            }
+          ]
+        },
+        {
+          "name": "ToolVisibility",
+          "longName": "ToolVisibility",
+          "fullName": "experience.v1.ToolVisibility",
+          "description": "ToolVisibility classifies a tool's audience exposure (161-01). UNSPECIFIED=0\nis fail-closed: an unclassified tool is INTERNAL_ONLY -- external exposure is\nalways an explicit authoring decision, never a default. EXTERNAL_SAFE means\nthe adapter is customer-scoped (filters by the requesting customer identity,\nnot just company) and may be bound on an external-audience agent.",
+          "values": [
+            {
+              "name": "TOOL_VISIBILITY_UNSPECIFIED",
+              "number": "0",
+              "description": "fail-closed -- internal_only"
+            },
+            {
+              "name": "TOOL_VISIBILITY_INTERNAL_ONLY",
+              "number": "1",
+              "description": "staff-facing only (company-scoped)"
+            },
+            {
+              "name": "TOOL_VISIBILITY_EXTERNAL_SAFE",
+              "number": "2",
+              "description": "customer-scoped; bindable on external audiences"
+            }
+          ]
+        },
+        {
+          "name": "TransportKind",
+          "longName": "TransportKind",
+          "fullName": "experience.v1.TransportKind",
+          "description": "TransportKind is the wire protocol a binding speaks. Room is reserved for\nfuture transports (e.g. GraphQL) by keeping UNSPECIFIED=0 fail-closed and\nnumbering known transports sparsely-safe.",
+          "values": [
+            {
+              "name": "TRANSPORT_KIND_UNSPECIFIED",
+              "number": "0",
+              "description": "reserved / not-yet-bindable (forward-compat)"
+            },
+            {
+              "name": "TRANSPORT_KIND_CONNECT",
+              "number": "1",
+              "description": "eden-biz Connect RPC"
+            },
+            {
+              "name": "TRANSPORT_KIND_REST_OPENAPI",
+              "number": "2",
+              "description": "aocore REST / OpenAPI"
+            }
+          ]
+        },
+        {
+          "name": "UnknownSurfacePolicy",
+          "longName": "UnknownSurfacePolicy",
+          "fullName": "experience.v1.UnknownSurfacePolicy",
+          "description": "UnknownSurfacePolicy: how a running binary handles a resolved spec that\nreferences a FeatureSurface it does NOT know (i.e. not in the binary's\ncompiled-in SurfaceRegistryManifest.known_surface_ids). IRREVERSIBLE: a v1\nspec carries this, and an old binary's behavior on a newer spec is frozen\nthe moment a device caches that spec. UNSPECIFIED fails SAFE (block) so an\nunset policy can never silently render a surface the binary cannot handle.",
+          "values": [
+            {
+              "name": "UNKNOWN_SURFACE_POLICY_UNSPECIFIED",
+              "number": "0",
+              "description": "fail-safe -\u003e treated as BLOCK_UPGRADE"
+            },
+            {
+              "name": "UNKNOWN_SURFACE_POLICY_IGNORE",
+              "number": "1",
+              "description": "drop the unknown surface, render the rest"
+            },
+            {
+              "name": "UNKNOWN_SURFACE_POLICY_BLOCK_UPGRADE",
+              "number": "2",
+              "description": "block + prompt the user to upgrade the binary"
+            },
+            {
+              "name": "UNKNOWN_SURFACE_POLICY_RENDER_DEGRADED",
+              "number": "3",
+              "description": "render the unknown surface with a degraded marker"
+            }
+          ]
+        }
+      ],
+      "extensions": [],
+      "messages": [
+        {
+          "name": "ActionGate",
+          "longName": "ActionGate",
+          "fullName": "experience.v1.ActionGate",
+          "description": "ActionGate gates a single action_id behind an entitlement_key. Reserved-cheap\nseam on ExperienceSpec.action_gates (field 80) -- typed up front so the frozen\nproto never has to migrate to add per-action entitlement gating.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "action_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "entitlement_key",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "AgentNode",
+          "longName": "AgentNode",
+          "fullName": "experience.v1.AgentNode",
+          "description": "AgentNode is an agent step binding a set of tool ids under a TYPED\nio_envelope_schema. The io-envelope is the SWAP-STABLE seam: the stub\ndispatcher AND the real LLM dispatcher (obj 144) both read/write THIS envelope,\nso the dispatcher swap is envelope-preserving with NO contract change.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "tool_ids",
+              "description": "tool ids this node may call",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "io_envelope_schema",
+              "description": "JSON-Schema io envelope (swap-stable seam)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "AgentSpec",
+          "longName": "AgentSpec",
+          "fullName": "experience.v1.AgentSpec",
+          "description": "AgentSpec is the reusable, versioned agent contract. A flow's agent node\nreferences an AgentSpec by id (wired in 160-03); the spec itself is authored\nonce and reused across every channel/flow.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "id",
+              "description": "stable spec id (authored in eden-biz)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "version",
+              "description": "versioned contract (semver-ish, e.g. \"1.0.0\")",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "company_id",
+              "description": "owning tenant scope -- OVERWRITTEN by principal at store (non-leaking)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "persona",
+              "description": "system prompt / grounding persona (TYPED, not a config blob)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "model_ref",
+              "description": "AOCore /v1/models catalog asset id (first-class model selection)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "node",
+              "description": "COMPOSES the frozen 140 AgentNode (tool_ids + io_envelope_schema)",
+              "label": "",
+              "type": "AgentNode",
+              "longType": "AgentNode",
+              "fullType": "experience.v1.AgentNode",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "tools",
+              "description": "resolved typed tool contracts (frozen 140 type)",
+              "label": "repeated",
+              "type": "ToolDefinition",
+              "longType": "ToolDefinition",
+              "fullType": "experience.v1.ToolDefinition",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "knowledge",
+              "description": "",
+              "label": "",
+              "type": "KnowledgePolicy",
+              "longType": "KnowledgePolicy",
+              "fullType": "experience.v1.KnowledgePolicy",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "hitl",
+              "description": "",
+              "label": "",
+              "type": "HitlPolicy",
+              "longType": "HitlPolicy",
+              "fullType": "experience.v1.HitlPolicy",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "budget",
+              "description": "",
+              "label": "",
+              "type": "BudgetPolicy",
+              "longType": "BudgetPolicy",
+              "fullType": "experience.v1.BudgetPolicy",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "lifecycle",
+              "description": "draft|active|retired",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "audience",
+              "description": "161-01 additive: the AUDIENCE dimension. One spec serves internal staff AND\nexternal customers (NOT two agents) -- per-audience tools/knowledge/persona/\nescalation ride the bindings. UNSPECIFIED audience is back-compat INTERNAL\n(external is NEVER implicit). Machine-checked in agentspec.go: an external\nbinding may only reference visibility=EXTERNAL_SAFE tools (deny-by-default).",
+              "label": "",
+              "type": "AgentAudience",
+              "longType": "AgentAudience",
+              "fullType": "experience.v1.AgentAudience",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "audience_bindings",
+              "description": "",
+              "label": "repeated",
+              "type": "AudienceBinding",
+              "longType": "AudienceBinding",
+              "fullType": "experience.v1.AudienceBinding",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "AppDefinition",
+          "longName": "AppDefinition",
+          "fullName": "experience.v1.AppDefinition",
+          "description": "AppDefinition: build-time definition feeding BOTH the runtime resolver AND\nthe per-company native build pipeline (layered output).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "meta",
+              "description": "",
+              "label": "",
+              "type": "AppMeta",
+              "longType": "AppMeta",
+              "fullType": "experience.v1.AppMeta",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "spec",
+              "description": "",
+              "label": "",
+              "type": "ExperienceSpec",
+              "longType": "ExperienceSpec",
+              "fullType": "experience.v1.ExperienceSpec",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "min_binary_version",
+              "description": "Min app binary version that can render specs from this definition (IRREVERSIBLE floor).",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "contract_version",
+              "description": "Version of the experience.v1 contract this definition conforms to.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "deep_link",
+              "description": "140-05 un-reserved field 10 from the 10-19 nav range for DeepLinkSpec;\n11..19 stay reserved. DeepLink lives HERE (not on the spec) because a store\nbinary commits to its url scheme + route templates at submit time and can't\nchange them post-submit -- it is a BUILD-time, not a resolved-spec, value.",
+              "label": "",
+              "type": "DeepLinkSpec",
+              "longType": "DeepLinkSpec",
+              "fullType": "experience.v1.DeepLinkSpec",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "signing",
+              "description": "140-07 un-reserved field 20 from the 20-29 signing range for SigningSpec;\n21..29 stay reserved. Signing lives HERE (BUILD-time, like DeepLinkSpec) --\na store binary commits to its signing identity at submit time. SigningSpec\nstores a per-platform CredentialRef (ref + custody), NEVER inline material.",
+              "label": "",
+              "type": "SigningSpec",
+              "longType": "SigningSpec",
+              "fullType": "experience.v1.SigningSpec",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "app_service_slots",
+              "description": "140-07 un-reserved field 30 from the 30-39 app-service-slot range for the\nbuild-time service-slot refs (search/notify/export/attach/print/audit);\n31..39 stay reserved.",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "AppMeta",
+          "longName": "AppMeta",
+          "fullName": "experience.v1.AppMeta",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "name",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "bundle_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "AudienceBinding",
+          "longName": "AudienceBinding",
+          "fullName": "experience.v1.AudienceBinding",
+          "description": "AudienceBinding is the per-audience override set an AgentSpec carries\n(161-01): which tools/knowledge the audience may use, the persona voice, and\nwhere the agent escalates. tool_ids reference the spec's tools by adapter_id\n(binding subset-of spec tools -- validated); an EXTERNAL binding may reference\nONLY visibility=EXTERNAL_SAFE tools (deny-by-default, agentspec.go).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "audience",
+              "description": "which audience this binding configures",
+              "label": "",
+              "type": "AgentAudience",
+              "longType": "AgentAudience",
+              "fullType": "experience.v1.AgentAudience",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "tool_ids",
+              "description": "subset of the spec's tools (by adapter_id)",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "knowledge_ids",
+              "description": "subset of knowledge source refs for this audience",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "persona",
+              "description": "audience-voice persona override (e.g. brand voice)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "escalation_target",
+              "description": "where this audience escalates (e.g. human-support)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "BudgetPolicy",
+          "longName": "BudgetPolicy",
+          "fullName": "experience.v1.BudgetPolicy",
+          "description": "BudgetPolicy caps an agent run: max reasoning/tool steps and max tokens.\nmax_steps is validated into (0, ceiling] by ValidateAgentSpec (fail-closed:\nan unset/zero budget is NOT dispatchable).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "max_steps",
+              "description": "max agent steps per run (validator: 0 \u003c n \u003c= ceiling)",
+              "label": "",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "max_tokens",
+              "description": "max tokens per run (0 = runtime default)",
+              "label": "",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "CredentialRef",
+          "longName": "CredentialRef",
+          "fullName": "experience.v1.CredentialRef",
+          "description": "CredentialRef is a REFERENCE to signing material held in a custody system\n(1Password / KMS), NEVER the material itself. ref is the pointer (e.g.\nop://AOCyber/ios-dist-cert); custody names the system holding it.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "ref",
+              "description": "pointer into the custody system (op://..., kms://...)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "custody",
+              "description": "custody system name (e.g. \"1password\", \"kms\")",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "DeepLinkSpec",
+          "longName": "DeepLinkSpec",
+          "fullName": "experience.v1.DeepLinkSpec",
+          "description": "DeepLinkSpec is the url scheme + route templates a store binary commits to at\nsubmit time. It lives on AppDefinition (BUILD-time), never on a resolved\nExperienceSpec, because a published store binary CANNOT change these\npost-submit -- they are frozen the moment the binary ships.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "url_scheme",
+              "description": "e.g. \"edenbiz\" (edenbiz://...)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "route_templates",
+              "description": "e.g. \"/customers/:id\", \"/invoices/:id/pay\"",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ExperienceSpec",
+          "longName": "ExperienceSpec",
+          "fullName": "experience.v1.ExperienceSpec",
+          "description": "ExperienceSpec: server-authoritative, content-hashed, client-cacheable spec\nresolved per {role,entitlements,form_factor,tenant,org}. The 3 version axes\nare ORTHOGONAL; bumping one must not change another's serialized value.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "spec_schema_version",
+              "description": "schema version of THIS message",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "surface_contract_version",
+              "description": "FeatureSurface contract version",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "content_hash",
+              "description": "hash of resolved spec (rollback id + cache key)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "contract_version",
+              "description": "experience.v1 contract version (140-12 compat signal)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "min_binary_version",
+              "description": "floor binary version that can render this spec",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "tenant_id",
+              "description": "Tenancy: RESERVED here, ENFORCED in 140-08/09 (company scope + aocore org scope).",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "org_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "referenced_surface_ids",
+              "description": "140-03 un-reserved 10..11 from the \"SurfaceRegistryManifest + granted\nsurfaces\" range; 12..19 stay reserved for granted-surface refs.\n\nsurface ids this spec references (negotiated vs the binary's manifest)",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "unknown_surface_policy",
+              "description": "how the binary handles a referenced surface it does not know",
+              "label": "",
+              "type": "UnknownSurfacePolicy",
+              "longType": "UnknownSurfacePolicy",
+              "fullType": "experience.v1.UnknownSurfacePolicy",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "nav_graph",
+              "description": "140-05 un-reserved field 20 from the 20-29 nav range for the NavGraph;\n21..29 stay reserved for later nav seams.",
+              "label": "",
+              "type": "NavGraph",
+              "longType": "NavGraph",
+              "fullType": "experience.v1.NavGraph",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "theme",
+              "description": "140-06 un-reserved 30/31/32 from the 30-39 presentation range for the\ntyped presentation surface (ThemeSpec + TermSet + LocaleSpec); 33..39 stay\nreserved. LocaleSpec.timezone is the net-new LOAD-BEARING field (absent\neverywhere today, required for scheduling/field). TermSet is PRESENTATION-\nONLY -- a Job-\u003eVisit relabel for display; logic keys off entity/surface ids,\nnever the displayed term.\n\nbrand preset + logo + color overrides + density",
+              "label": "",
+              "type": "ThemeSpec",
+              "longType": "ThemeSpec",
+              "fullType": "experience.v1.ThemeSpec",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "terms",
+              "description": "presentation-only term overrides (e.g. job-\u003evisit)",
+              "label": "",
+              "type": "TermSet",
+              "longType": "TermSet",
+              "fullType": "experience.v1.TermSet",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "locale",
+              "description": "locale + currency + IANA timezone (tz load-bearing)",
+              "label": "",
+              "type": "LocaleSpec",
+              "longType": "LocaleSpec",
+              "fullType": "experience.v1.LocaleSpec",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "surface_offline",
+              "description": "140-06 un-reserved field 40 from the 40-49 offline range for the PER-SURFACE\nOfflineSpec map (keyed by surface_id); 41..49 stay reserved. Offline is\nper-surface and STRUCTURED (policy/cache_ttl/conflict_policy/grace), NEVER a\nbare global offlineCapable bool -- gates G1/G5 reason over the structure.\n\nper-surface offline policy, keyed by surface_id",
+              "label": "repeated",
+              "type": "SurfaceOfflineEntry",
+              "longType": "ExperienceSpec.SurfaceOfflineEntry",
+              "fullType": "experience.v1.ExperienceSpec.SurfaceOfflineEntry",
+              "ismap": true,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "bindings",
+              "description": "140-04 un-reserved field 50 from the binding range; 51..59 stay reserved.\n\nservice\u003c-\u003etransport bindings (transport- AND scope-agnostic)",
+              "label": "repeated",
+              "type": "ServiceTransportBinding",
+              "longType": "ServiceTransportBinding",
+              "fullType": "experience.v1.ServiceTransportBinding",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "tools",
+              "description": "140-07 un-reserved 60/61 from the 60-69 tool/agent range; 62..69 stay\nreserved. ToolDefinition is TYPED (adapter allowlist FK + JSON-Schema\nenvelopes + side_effect + idempotency_key), NEVER a config_json blob.\nAgentNode carries a typed io_envelope_schema -- the swap-stable seam the\nreal LLM dispatcher (obj 144) plugs into without a contract change.\n\ncurated-allowlist-bound tools",
+              "label": "repeated",
+              "type": "ToolDefinition",
+              "longType": "ToolDefinition",
+              "fullType": "experience.v1.ToolDefinition",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "agent_nodes",
+              "description": "agent nodes (io-envelope-preserving)",
+              "label": "repeated",
+              "type": "AgentNode",
+              "longType": "AgentNode",
+              "fullType": "experience.v1.AgentNode",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "resolution_context",
+              "description": "140-07 un-reserved 70/71 from the 70-79 telemetry/resolution range; 72..79\nstay reserved. ResolutionContext is the provenance of THIS resolution\n(tenant/org + resolved_at + resolver_version); LockedSurface carries an\nupsell_reason for a surface gated behind an entitlement. The TelemetryEnvelope\nmessage itself is a top-level message (emitted on the runtime wire, not a\nresolved-spec field) -- only resolution_context + locked_surfaces live here.\n\nprovenance of this resolution",
+              "label": "",
+              "type": "ResolutionContext",
+              "longType": "ResolutionContext",
+              "fullType": "experience.v1.ResolutionContext",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "locked_surfaces",
+              "description": "surfaces gated behind an upsell",
+              "label": "repeated",
+              "type": "LockedSurface",
+              "longType": "LockedSurface",
+              "fullType": "experience.v1.LockedSurface",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "action_gates",
+              "description": "140-07 un-reserved 80..86 from the 80-89 reserved-cheap range; 87..89 stay\nreserved. These are reserved-NOW-cheap seams: typed-but-empty-friendly fields\na frozen-forever proto must reserve up front rather than migrate to add.\nserver_killable (86) is the REQUIRED fast-rollback kill flag for the\ngenerated fleet (a customer-own store account gives no kill switch otherwise).\n\nper-action entitlement gates",
+              "label": "repeated",
+              "type": "ActionGate",
+              "longType": "ActionGate",
+              "fullType": "experience.v1.ActionGate",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "flag_overrides",
+              "description": "feature-flag overrides",
+              "label": "repeated",
+              "type": "FlagOverridesEntry",
+              "longType": "ExperienceSpec.FlagOverridesEntry",
+              "fullType": "experience.v1.ExperienceSpec.FlagOverridesEntry",
+              "ismap": true,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "variant",
+              "description": "A/B or cohort variant",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "declared_states",
+              "description": "render states (populated/empty/error/...)",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "custom_fields",
+              "description": "vertical/builder custom fields",
+              "label": "repeated",
+              "type": "CustomFieldsEntry",
+              "longType": "ExperienceSpec.CustomFieldsEntry",
+              "fullType": "experience.v1.ExperienceSpec.CustomFieldsEntry",
+              "ismap": true,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "rule_policy",
+              "description": "rule-policy hints (e.g. refund -\u003e approval)",
+              "label": "repeated",
+              "type": "RulePolicyEntry",
+              "longType": "ExperienceSpec.RulePolicyEntry",
+              "fullType": "experience.v1.ExperienceSpec.RulePolicyEntry",
+              "ismap": true,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "server_killable",
+              "description": "REQUIRED fast-rollback kill flag",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "CustomFieldsEntry",
+          "longName": "ExperienceSpec.CustomFieldsEntry",
+          "fullName": "experience.v1.ExperienceSpec.CustomFieldsEntry",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "key",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "value",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "FlagOverridesEntry",
+          "longName": "ExperienceSpec.FlagOverridesEntry",
+          "fullName": "experience.v1.ExperienceSpec.FlagOverridesEntry",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "key",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "value",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "RulePolicyEntry",
+          "longName": "ExperienceSpec.RulePolicyEntry",
+          "fullName": "experience.v1.ExperienceSpec.RulePolicyEntry",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "key",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "value",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "SurfaceOfflineEntry",
+          "longName": "ExperienceSpec.SurfaceOfflineEntry",
+          "fullName": "experience.v1.ExperienceSpec.SurfaceOfflineEntry",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "key",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "value",
+              "description": "",
+              "label": "",
+              "type": "OfflineSpec",
+              "longType": "OfflineSpec",
+              "fullType": "experience.v1.OfflineSpec",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "HitlPolicy",
+          "longName": "HitlPolicy",
+          "fullName": "experience.v1.HitlPolicy",
+          "description": "HitlPolicy is the human-in-the-loop escalation contract: escalate on low\nconfidence (below confidence_floor) and on any WRITE tool call beyond the\nallowlisted set (escalate_on_write_beyond names the writes the agent MAY\nperform autonomously; every other write escalates to a human).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "escalate_on_low_confidence",
+              "description": "escalate when confidence \u003c floor",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "confidence_floor",
+              "description": "[0,1] confidence threshold",
+              "label": "",
+              "type": "double",
+              "longType": "double",
+              "fullType": "double",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "escalate_on_write_beyond",
+              "description": "writes allowed WITHOUT escalation",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "KnowledgePolicy",
+          "longName": "KnowledgePolicy",
+          "fullName": "experience.v1.KnowledgePolicy",
+          "description": "KnowledgePolicy grounds the agent: which knowledge sources it may retrieve\nfrom (source_refs) and whether it may ONLY answer from retrieved grounding\n(grounded_only = the helpdesk \"answer from KB or escalate\" posture).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "source_refs",
+              "description": "knowledge source refs (e.g. kb://helpdesk/articles)",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "grounded_only",
+              "description": "true = answer only from retrieved grounding",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "LocaleSpec",
+          "longName": "LocaleSpec",
+          "fullName": "experience.v1.LocaleSpec",
+          "description": "LocaleSpec is the per-resolution locale surface. timezone is the net-new\nLOAD-BEARING field: it is absent everywhere in the product today and is\nrequired to resolve local appointment times on scheduling/field surfaces.\nModeled as an IANA tz string (e.g. \"America/New_York\"). currency is a field\nhere -- it is NEVER hardcoded to USD at the contract level.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "locale",
+              "description": "BCP-47 locale (e.g. \"en-US\")",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "currency",
+              "description": "ISO-4217 currency (e.g. \"USD\") -- NOT hardcoded",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "timezone",
+              "description": "IANA timezone (e.g. \"America/New_York\") -- load-bearing for scheduling",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "LockedSurface",
+          "longName": "LockedSurface",
+          "fullName": "experience.v1.LockedSurface",
+          "description": "LockedSurface is a surface gated behind an entitlement upsell: the surface_id\nthe requesting scope is NOT entitled to + the upsell_reason shown to the user.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "surface_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "upsell_reason",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "NavEdge",
+          "longName": "NavEdge",
+          "fullName": "experience.v1.NavEdge",
+          "description": "NavEdge is a TYPED transition from one surface to another carrying the\nselection passed across the hop. param_bindings maps a target input name to a\nsource selection expression (e.g. {\"customerId\": \"$selection.id\"}); trigger\nnames the gesture/event that fires the edge (e.g. \"onSelect\"). This typed\nparam-passing is what makes the graph compose FLOWS, not a launcher.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "from_surface_id",
+              "description": "source surface",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "to_surface_id",
+              "description": "target surface",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "param_bindings",
+              "description": "target input \u003c- source selection expr",
+              "label": "repeated",
+              "type": "ParamBindingsEntry",
+              "longType": "NavEdge.ParamBindingsEntry",
+              "fullType": "experience.v1.NavEdge.ParamBindingsEntry",
+              "ismap": true,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "trigger",
+              "description": "gesture/event that fires the edge",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ParamBindingsEntry",
+          "longName": "NavEdge.ParamBindingsEntry",
+          "fullName": "experience.v1.NavEdge.ParamBindingsEntry",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "key",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "value",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "NavGraph",
+          "longName": "NavGraph",
+          "fullName": "experience.v1.NavGraph",
+          "description": "NavGraph is the typed navigation graph for a resolved ExperienceSpec.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "landing_surface_id",
+              "description": "the surface shown first (must be a slot)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "slots",
+              "description": "placed surfaces (the nav chrome)",
+              "label": "repeated",
+              "type": "NavSlot",
+              "longType": "NavSlot",
+              "fullType": "experience.v1.NavSlot",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "edges",
+              "description": "typed inter-surface transitions",
+              "label": "repeated",
+              "type": "NavEdge",
+              "longType": "NavEdge",
+              "fullType": "experience.v1.NavEdge",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "NavSlot",
+          "longName": "NavSlot",
+          "fullName": "experience.v1.NavSlot",
+          "description": "NavSlot places one surface in the navigation at a Placement + order.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "surface_id",
+              "description": "the FeatureSurface this slot shows",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "placement",
+              "description": "primary / more / detail-only",
+              "label": "",
+              "type": "Placement",
+              "longType": "Placement",
+              "fullType": "experience.v1.Placement",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "order",
+              "description": "sort order within the placement",
+              "label": "",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "OfflineSpec",
+          "longName": "OfflineSpec",
+          "fullName": "experience.v1.OfflineSpec",
+          "description": "OfflineSpec is the STRUCTURED per-surface offline policy -- NOT a bare bool. A\nbare offlineCapable bool cannot express a conflict strategy or a grace window;\ngates G1/G5 reason over these four typed fields. Attached PER-SURFACE via\nExperienceSpec.surface_offline (keyed by surface_id), never one global flag.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "policy",
+              "description": "offline behavior for this surface",
+              "label": "",
+              "type": "OfflinePolicy",
+              "longType": "OfflinePolicy",
+              "fullType": "experience.v1.OfflinePolicy",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "cache_ttl_seconds",
+              "description": "how long cached reads stay valid offline",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "conflict_policy",
+              "description": "how a queued write reconciles at sync",
+              "label": "",
+              "type": "ConflictPolicy",
+              "longType": "ConflictPolicy",
+              "fullType": "experience.v1.ConflictPolicy",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "read_only_grace_seconds",
+              "description": "grace window the surface stays read-only after going offline",
+              "label": "",
+              "type": "uint32",
+              "longType": "uint32",
+              "fullType": "uint32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ResolutionContext",
+          "longName": "ResolutionContext",
+          "fullName": "experience.v1.ResolutionContext",
+          "description": "ResolutionContext is the provenance of a resolved ExperienceSpec: which\ntenant/org it was resolved for, when, and by which resolver version. Lives on\nExperienceSpec.resolution_context (field 70).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "tenant_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "org_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "resolved_at",
+              "description": "RFC3339 resolution timestamp",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "resolver_version",
+              "description": "resolver build/version that produced the spec",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ResolveSpecRequest",
+          "longName": "ResolveSpecRequest",
+          "fullName": "experience.v1.ResolveSpecRequest",
+          "description": "ResolveSpecRequest asks the server to resolve a stored spec for the\nprincipal's scope, role, and form_factor. The tuple's tenant/org come from the\nauthenticated principal -- NOT from this message. role + form_factor are the\nnon-authority resolution axes the caller legitimately supplies.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "app_def_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "role",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "form_factor",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ResolveSpecResponse",
+          "longName": "ResolveSpecResponse",
+          "fullName": "experience.v1.ResolveSpecResponse",
+          "description": "ResolveSpecResponse carries the filtered + content-hashed ResolvedSpec (only\nthe surfaces the principal's entitlement set GRANTS; ungranted surfaces become\nlocked_surfaces on the spec).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "resolved_spec",
+              "description": "",
+              "label": "",
+              "type": "ExperienceSpec",
+              "longType": "ExperienceSpec",
+              "fullType": "experience.v1.ExperienceSpec",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ServiceTransportBinding",
+          "longName": "ServiceTransportBinding",
+          "fullName": "experience.v1.ServiceTransportBinding",
+          "description": "ServiceTransportBinding binds one entity's service to a transport + scope.\nIt is the anchor every later message references for identity + scope. It is\ntransport- AND scope-agnostic so the SAME ExperienceSpec can drive eden-biz\n(CONNECT/COMPANY) and aocore (REST_OPENAPI/ORG) through one Repository\nabstraction (the runtime two-transport proof lands in 140-11).\n\nNO authority field (company_id/org_id) lives here that a REST handler could\nbind from the request BODY -- scope_authority selects WHICH scope the\nverified AOID identity projects to; the scope VALUE is resolved at runtime\nfrom the identity context, never the body (binding.ResolveScope).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "entity",
+              "description": "logical entity (e.g. \"Invoice\", \"Tenant\")",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "service_package",
+              "description": "backend service package / namespace",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "service_name",
+              "description": "backend service name",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "operations",
+              "description": "reads AND writes this binding exposes",
+              "label": "repeated",
+              "type": "Operation",
+              "longType": "Operation",
+              "fullType": "experience.v1.Operation",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "transport_kind",
+              "description": "CONNECT (biz) | REST_OPENAPI (aocore)",
+              "label": "",
+              "type": "TransportKind",
+              "longType": "TransportKind",
+              "fullType": "experience.v1.TransportKind",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "scope_authority",
+              "description": "COMPANY (biz) | ORG (aocore) projection target",
+              "label": "",
+              "type": "ScopeAuthority",
+              "longType": "ScopeAuthority",
+              "fullType": "experience.v1.ScopeAuthority",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "pagination",
+              "description": "LIST pagination contract",
+              "label": "",
+              "type": "PaginationKind",
+              "longType": "PaginationKind",
+              "fullType": "experience.v1.PaginationKind",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "repo_interface_id",
+              "description": "Repository abstraction id (140-11 two-transport proof)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "SigningSpec",
+          "longName": "SigningSpec",
+          "fullName": "experience.v1.SigningSpec",
+          "description": "SigningSpec is the per-platform signing identity, keyed by platform\n(ios|android). It carries CredentialRefs (ref + custody) for BOTH platforms,\nNEVER inline cert/key bytes. Lives on AppDefinition (BUILD-time) -- a store\nbinary commits to its signing identity at submit time.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "by_platform",
+              "description": "platform -\u003e credential reference",
+              "label": "repeated",
+              "type": "ByPlatformEntry",
+              "longType": "SigningSpec.ByPlatformEntry",
+              "fullType": "experience.v1.SigningSpec.ByPlatformEntry",
+              "ismap": true,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ByPlatformEntry",
+          "longName": "SigningSpec.ByPlatformEntry",
+          "fullName": "experience.v1.SigningSpec.ByPlatformEntry",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "key",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "value",
+              "description": "",
+              "label": "",
+              "type": "CredentialRef",
+              "longType": "CredentialRef",
+              "fullType": "experience.v1.CredentialRef",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "StoreSpecRequest",
+          "longName": "StoreSpecRequest",
+          "fullName": "experience.v1.StoreSpecRequest",
+          "description": "StoreSpecRequest stores an AppDefinition (carrying its ExperienceSpec) under\nthe AUTHENTICATED principal's scope. The app_definition's tenant_id/org_id (on\nits nested spec) are OVERWRITTEN by the principal scope server-side -- a body\nvalue cannot plant a spec under another tenant.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "app_definition",
+              "description": "",
+              "label": "",
+              "type": "AppDefinition",
+              "longType": "AppDefinition",
+              "fullType": "experience.v1.AppDefinition",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "StoreSpecResponse",
+          "longName": "StoreSpecResponse",
+          "fullName": "experience.v1.StoreSpecResponse",
+          "description": "StoreSpecResponse returns the stored spec's identity + content hash/version so\nthe caller can address it later (ResolveSpec / ValidateSpec by app_def_id).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "app_def_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "content_hash",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "spec_schema_version",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "SurfaceRegistryManifest",
+          "longName": "SurfaceRegistryManifest",
+          "fullName": "experience.v1.SurfaceRegistryManifest",
+          "description": "SurfaceRegistryManifest: the artifact a BINARY compiles in and negotiates a\nresolved ExperienceSpec against. It is NOT served on the spec — it is the\nbinary's own statement of which surfaces it can render + which\nsurface_contract_version it speaks. version_negotiation reads\nknown_surface_ids to decide ignore/block/degrade for unknown surfaces.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "contract_version",
+              "description": "surface contract version the binary speaks",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "known_surface_ids",
+              "description": "surfaces this binary can render",
+              "label": "repeated",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "TelemetryEnvelope",
+          "longName": "TelemetryEnvelope",
+          "fullName": "experience.v1.TelemetryEnvelope",
+          "description": "TelemetryEnvelope carries every observability ID in-schema (NOT a free blob).\nEmitted on the runtime telemetry wire. tenant_id is the REQUESTING tenant only\n-- it is never an other-tenant id (no cross-tenant telemetry bleed).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "spec_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "spec_version",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "surface_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "binding_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "entitlement_set_hash",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "brand",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "theme_profile",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "form_factor",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "build_sha",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "compliance_profile",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "tenant_id",
+              "description": "REQUESTING tenant only -- never another tenant's id",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "TermSet",
+          "longName": "TermSet",
+          "fullName": "experience.v1.TermSet",
+          "description": "TermSet is the PRESENTATION-ONLY term-override map (e.g. {\"job\": \"visit\"}).\nIMPORTANT: it is a DISPLAY relabel only -- it MUST NEVER be load-bearing for\nlogic. The runtime keys off the logical entity/surface id (the map KEY), and\nthe value is purely the label shown to the user. The TermResolver (build-spec\nsection 9) routes every displayed string through this map; no branch ever\nkeys off the resolved label.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "overrides",
+              "description": "logical term -\u003e displayed label (presentation-only)",
+              "label": "repeated",
+              "type": "OverridesEntry",
+              "longType": "TermSet.OverridesEntry",
+              "fullType": "experience.v1.TermSet.OverridesEntry",
+              "ismap": true,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "OverridesEntry",
+          "longName": "TermSet.OverridesEntry",
+          "fullName": "experience.v1.TermSet.OverridesEntry",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "key",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "value",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ThemeSpec",
+          "longName": "ThemeSpec",
+          "fullName": "experience.v1.ThemeSpec",
+          "description": "ThemeSpec is the per-company brand surface: a named brand_preset, a logo_ref,\nan arbitrary color-override map (token -\u003e hex, no fixed schema so a builder can\noverride any subset of brand tokens), and a density token.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "brand_preset",
+              "description": "named brand preset the build starts from",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "logo_ref",
+              "description": "asset ref for the company logo",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "color_overrides",
+              "description": "brand token -\u003e value (e.g. \"primary\" -\u003e \"#0A84FF\")",
+              "label": "repeated",
+              "type": "ColorOverridesEntry",
+              "longType": "ThemeSpec.ColorOverridesEntry",
+              "fullType": "experience.v1.ThemeSpec.ColorOverridesEntry",
+              "ismap": true,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "density",
+              "description": "density token (e.g. \"comfortable\" | \"compact\")",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ColorOverridesEntry",
+          "longName": "ThemeSpec.ColorOverridesEntry",
+          "fullName": "experience.v1.ThemeSpec.ColorOverridesEntry",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "key",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "value",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ToolDefinition",
+          "longName": "ToolDefinition",
+          "fullName": "experience.v1.ToolDefinition",
+          "description": "ToolDefinition is the TYPED tool contract. adapter_id is a curated-allowlist FK\n(NO arbitrary binding). input_schema/output_schema are JSON-Schema STRINGS (a\ntyped envelope), NOT a free config_json blob. side_effect gates the dispatcher.\nidempotency_key is load-bearing for WRITE/EXTERNAL replays.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "adapter_id",
+              "description": "curated-allowlist FK (no arbitrary RPC/SQL)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "input_schema",
+              "description": "JSON-Schema string (typed envelope, not a blob)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "output_schema",
+              "description": "JSON-Schema string (typed envelope, not a blob)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "side_effect",
+              "description": "dispatcher gate (read/write/external)",
+              "label": "",
+              "type": "SideEffect",
+              "longType": "SideEffect",
+              "fullType": "experience.v1.SideEffect",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "idempotency_key",
+              "description": "replay key (load-bearing for write/external)",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "visibility",
+              "description": "161-01 additive: audience exposure class. UNSPECIFIED is fail-closed --\ninterpreted internal_only; a tool is NEVER implicitly external-safe.",
+              "label": "",
+              "type": "ToolVisibility",
+              "longType": "ToolVisibility",
+              "fullType": "experience.v1.ToolVisibility",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ValidateSpecRequest",
+          "longName": "ValidateSpecRequest",
+          "fullName": "experience.v1.ValidateSpecRequest",
+          "description": "ValidateSpecRequest validates an AppDefinition's spec for coherence (140-05\nnav rules) + version conformance (140-03) under the principal's scope. The\nspec's scope is overwritten by the principal scope before validation.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "app_definition",
+              "description": "",
+              "label": "",
+              "type": "AppDefinition",
+              "longType": "AppDefinition",
+              "fullType": "experience.v1.AppDefinition",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ValidateSpecResponse",
+          "longName": "ValidateSpecResponse",
+          "fullName": "experience.v1.ValidateSpecResponse",
+          "description": "ValidateSpecResponse returns valid + the accumulated problems (empty when\ncoherent -- the validator never short-circuits, so the builder sees every\nproblem at once).",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "valid",
+              "description": "",
+              "label": "",
+              "type": "bool",
+              "longType": "bool",
+              "fullType": "bool",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "problems",
+              "description": "",
+              "label": "repeated",
+              "type": "ValidationProblem",
+              "longType": "ValidationProblem",
+              "fullType": "experience.v1.ValidationProblem",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ValidationProblem",
+          "longName": "ValidationProblem",
+          "fullName": "experience.v1.ValidationProblem",
+          "description": "ValidationProblem is one machine-checked coherence/version violation. code is\na stable token (e.g. nav.too_many_primary) so clients branch without string\nmatching; surface_id names the offending surface when surface-scoped.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "code",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "surface_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "message",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        }
+      ],
+      "services": [
+        {
+          "name": "ExperienceService",
+          "longName": "ExperienceService",
+          "fullName": "experience.v1.ExperienceService",
+          "description": "ExperienceService is the M0 server surface every consumer calls: store a spec,\nresolve it per principal scope, validate it. Tenancy is enforced at the\nservice chokepoint (principal-derived scope), never from a request body.",
+          "methods": [
+            {
+              "name": "StoreSpec",
+              "description": "",
+              "requestType": "StoreSpecRequest",
+              "requestLongType": "StoreSpecRequest",
+              "requestFullType": "experience.v1.StoreSpecRequest",
+              "requestStreaming": false,
+              "responseType": "StoreSpecResponse",
+              "responseLongType": "StoreSpecResponse",
+              "responseFullType": "experience.v1.StoreSpecResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "ResolveSpec",
+              "description": "",
+              "requestType": "ResolveSpecRequest",
+              "requestLongType": "ResolveSpecRequest",
+              "requestFullType": "experience.v1.ResolveSpecRequest",
+              "requestStreaming": false,
+              "responseType": "ResolveSpecResponse",
+              "responseLongType": "ResolveSpecResponse",
+              "responseFullType": "experience.v1.ResolveSpecResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "ValidateSpec",
+              "description": "",
+              "requestType": "ValidateSpecRequest",
+              "requestLongType": "ValidateSpecRequest",
+              "requestFullType": "experience.v1.ValidateSpecRequest",
+              "requestStreaming": false,
+              "responseType": "ValidateSpecResponse",
+              "responseLongType": "ValidateSpecResponse",
+              "responseFullType": "experience.v1.ValidateSpecResponse",
+              "responseStreaming": false
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "platform/v1/ac2_evidence.proto",
       "description": "",
       "package": "platform.v1",
@@ -6712,11 +9427,40 @@
       "name": "platform/v1/authn.proto",
       "description": "",
       "package": "platform.v1",
-      "hasEnums": false,
+      "hasEnums": true,
       "hasExtensions": false,
       "hasMessages": true,
       "hasServices": true,
-      "enums": [],
+      "enums": [
+        {
+          "name": "ResolveStatus",
+          "longName": "ResolveStatus",
+          "fullName": "platform.v1.ResolveStatus",
+          "description": "",
+          "values": [
+            {
+              "name": "RESOLVE_STATUS_UNSPECIFIED",
+              "number": "0",
+              "description": ""
+            },
+            {
+              "name": "RESOLVE_STATUS_ONE",
+              "number": "1",
+              "description": ""
+            },
+            {
+              "name": "RESOLVE_STATUS_MANY",
+              "number": "2",
+              "description": ""
+            },
+            {
+              "name": "RESOLVE_STATUS_NONE",
+              "number": "3",
+              "description": ""
+            }
+          ]
+        }
+      ],
       "extensions": [],
       "messages": [
         {
@@ -7770,6 +10514,102 @@
           ]
         },
         {
+          "name": "ResolveWorkspace",
+          "longName": "ResolveWorkspace",
+          "fullName": "platform.v1.ResolveWorkspace",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "tenant_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "display_name",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ResolveWorkspacesByEmailRequest",
+          "longName": "ResolveWorkspacesByEmailRequest",
+          "fullName": "platform.v1.ResolveWorkspacesByEmailRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "email",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "ResolveWorkspacesByEmailResponse",
+          "longName": "ResolveWorkspacesByEmailResponse",
+          "fullName": "platform.v1.ResolveWorkspacesByEmailResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "status",
+              "description": "",
+              "label": "",
+              "type": "ResolveStatus",
+              "longType": "ResolveStatus",
+              "fullType": "platform.v1.ResolveStatus",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "workspaces",
+              "description": "",
+              "label": "repeated",
+              "type": "ResolveWorkspace",
+              "longType": "ResolveWorkspace",
+              "fullType": "platform.v1.ResolveWorkspace",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "RevokeMyCredentialRequest",
           "longName": "RevokeMyCredentialRequest",
           "fullName": "platform.v1.RevokeMyCredentialRequest",
@@ -8074,6 +10914,18 @@
           "fullName": "platform.v1.AuthnService",
           "description": "AuthnService provides end-user authentication primitives — password,\nTOTP, WebAuthn (registration + login + passwordless discoverable login),\nPIV/CAC mTLS login, credential management, and step-up assurance flows.\n\nTenant scope: login-initiating RPCs (PasswordLoginStart, LoginWith*)\nrequire tenant_id in the request body because no session exists yet.\nOnce a session is established, tenant is read from the session cookie\nby the Connect interceptor and is NOT accepted as a body field.\n\nStep-up: when a downstream service decides the current AAL is\ninsufficient, it returns a CodePermissionDenied error with a \"stepup_token\"\nheader. The client calls BeginStepUp(stepup_token), completes the\nchallenge, calls FinishStepUp, then retries the original RPC.",
           "methods": [
+            {
+              "name": "ResolveWorkspacesByEmail",
+              "description": "=== Pre-login workspace resolution (Obj 16 / LOGIN-01) ===\nUNAUTHENTICATED, pre-login. Given an email, returns the workspaces\n(tenants) that email's identity may sign in to, so the client can run\nthe email-first two-step flow. Enumeration-safe: a non-existent email\nand a legacy/unlinked email are INDISTINGUISHABLE (both RESOLVE_NONE).",
+              "requestType": "ResolveWorkspacesByEmailRequest",
+              "requestLongType": "ResolveWorkspacesByEmailRequest",
+              "requestFullType": "platform.v1.ResolveWorkspacesByEmailRequest",
+              "requestStreaming": false,
+              "responseType": "ResolveWorkspacesByEmailResponse",
+              "responseLongType": "ResolveWorkspacesByEmailResponse",
+              "responseFullType": "platform.v1.ResolveWorkspacesByEmailResponse",
+              "responseStreaming": false
+            },
             {
               "name": "PasswordLoginStart",
               "description": "=== Password flow ===",
@@ -14710,6 +17562,126 @@
           ]
         },
         {
+          "name": "AccountAdminServiceListRecoveryEventsRequest",
+          "longName": "AccountAdminServiceListRecoveryEventsRequest",
+          "fullName": "platform.v1.AccountAdminServiceListRecoveryEventsRequest",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": true,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "tenant_id",
+              "description": "required — tenant-scope anchor",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "account_id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "subject",
+              "defaultValue": ""
+            },
+            {
+              "name": "email",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": true,
+              "oneofdecl": "subject",
+              "defaultValue": ""
+            },
+            {
+              "name": "reason",
+              "description": "required — recorded in the account.recovery_events.viewed audit event",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "page_size",
+              "description": "",
+              "label": "",
+              "type": "int32",
+              "longType": "int32",
+              "fullType": "int32",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "page_token",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "AccountAdminServiceListRecoveryEventsResponse",
+          "longName": "AccountAdminServiceListRecoveryEventsResponse",
+          "fullName": "platform.v1.AccountAdminServiceListRecoveryEventsResponse",
+          "description": "",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "events",
+              "description": "",
+              "label": "repeated",
+              "type": "AccountAdminServiceRecoveryEvent",
+              "longType": "AccountAdminServiceRecoveryEvent",
+              "fullType": "platform.v1.AccountAdminServiceRecoveryEvent",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "next_page_token",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
           "name": "AccountAdminServiceListRolesRequest",
           "longName": "AccountAdminServiceListRolesRequest",
           "fullName": "platform.v1.AccountAdminServiceListRolesRequest",
@@ -14793,6 +17765,114 @@
             },
             {
               "name": "next_page_token",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "AccountAdminServiceRecoveryEvent",
+          "longName": "AccountAdminServiceRecoveryEvent",
+          "fullName": "platform.v1.AccountAdminServiceRecoveryEvent",
+          "description": "AccountAdminServiceRecoveryEvent is one recovery-token history row. The token\nhash is deliberately NOT a field — it is never returned on the wire.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "id",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "requested_at",
+              "description": "",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "expires_at",
+              "description": "",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "consumed_at",
+              "description": "unset ⇒ never consumed",
+              "label": "",
+              "type": "Timestamp",
+              "longType": "google.protobuf.Timestamp",
+              "fullType": "google.protobuf.Timestamp",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "refused_reason",
+              "description": "\"\" ⇒ not refused",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "requesting_ip",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "requesting_ua",
+              "description": "",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "consumed_ip",
               "description": "",
               "label": "",
               "type": "string",
@@ -15109,6 +18189,77 @@
           "longName": "AddAccountToGroupResponse",
           "fullName": "platform.v1.AddAccountToGroupResponse",
           "description": "AddAccountToGroupResponse is empty (membership is acknowledged by absence\nof error).",
+          "hasExtensions": false,
+          "hasFields": false,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": []
+        },
+        {
+          "name": "AssistedAccountRecoveryRequest",
+          "longName": "AssistedAccountRecoveryRequest",
+          "fullName": "platform.v1.AssistedAccountRecoveryRequest",
+          "description": "AssistedAccountRecoveryRequest — see AssistedAccountRecovery. Carries no\nactor, assurance, or step-up field: the admin identity and AAL are derived\nfrom the authenticated session/cert context, never from the wire, matching\nevery other AccountAdminService mutation.",
+          "hasExtensions": false,
+          "hasFields": true,
+          "hasOneofs": false,
+          "extensions": [],
+          "fields": [
+            {
+              "name": "tenant_id",
+              "description": "tenant_id is the target tenant (canonical field 1 for tenant scope).",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "account_id",
+              "description": "account_id identifies the subject. Email is never an identifier here — it\nis unique per-tenant only, and it is the very field being changed.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "new_email",
+              "description": "new_email is the address the account is repointed to and where the\nrecovery link is delivered.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            },
+            {
+              "name": "reason",
+              "description": "reason is required and recorded in the audit event.",
+              "label": "",
+              "type": "string",
+              "longType": "string",
+              "fullType": "string",
+              "ismap": false,
+              "isoneof": false,
+              "oneofdecl": "",
+              "defaultValue": ""
+            }
+          ]
+        },
+        {
+          "name": "AssistedAccountRecoveryResponse",
+          "longName": "AssistedAccountRecoveryResponse",
+          "fullName": "platform.v1.AssistedAccountRecoveryResponse",
+          "description": "AssistedAccountRecoveryResponse is intentionally empty: success is the\nabsence of an error, and no token or recovery URL is ever returned on the\nwire. Reserved for forward-compat additions (matches\nAccountAdminServiceClearAccountMFAFactorsResponse).",
           "hasExtensions": false,
           "hasFields": false,
           "hasOneofs": false,
@@ -17437,6 +20588,18 @@
               "responseStreaming": false
             },
             {
+              "name": "AssistedAccountRecovery",
+              "description": "AssistedAccountRecovery repoints an account's sign-in email to a new\naddress and starts a password recovery to it, as ONE operation, for the\ncase where the holder can no longer reach their REGISTERED mailbox and so\ncannot use the anonymous self-service recovery flow.\n\nThis is NOT RecoverAccount: that RPC only flips a suspended account back to\n\"active\" (a status change, no credential effect). This one changes the\nsign-in email and begins a password recovery.\n\nDeliberately NOT UpdateAccount: UpdateAccount also mutates clearance and\nexpires_at, so authorizing a broad admin population for it would grant\nclearance mutation as a side effect. This RPC cannot touch clearance\nbecause its request does not carry the field.\n\nAuthorization and assurance are enforced by the AOID handler + interceptors,\nNOT by this contract: a session- or cert-derived admin, a per-procedure\nallowlist, an entitlement distinct from any auto-granted 'admin', and — for\nsession callers — an AAL2+ session. The assurance level is read from the\nauthenticated session context and is DELIBERATELY NOT a wire field: a\nbody-carried capability/step-up field would be a spoofable authority\nsurface, and authority on this service always comes from the session/cert,\nnever the request body.\n\nSide effects the handler owns: the recovery link goes to new_email; the\nPRIOR address (and contact_email, if set) is notified out-of-band so the\nlegitimate owner witnesses the change. The response is intentionally empty\n— no token or recovery URL is ever returned on the wire.",
+              "requestType": "AssistedAccountRecoveryRequest",
+              "requestLongType": "AssistedAccountRecoveryRequest",
+              "requestFullType": "platform.v1.AssistedAccountRecoveryRequest",
+              "requestStreaming": false,
+              "responseType": "AssistedAccountRecoveryResponse",
+              "responseLongType": "AssistedAccountRecoveryResponse",
+              "responseFullType": "platform.v1.AssistedAccountRecoveryResponse",
+              "responseStreaming": false
+            },
+            {
               "name": "SuspendAccount",
               "description": "SuspendAccount transitions the account to \"suspended\". Attributes retained.",
               "requestType": "SuspendAccountRequest",
@@ -17686,6 +20849,18 @@
               "responseType": "AccountAdminServiceClearAccountMFAFactorsResponse",
               "responseLongType": "AccountAdminServiceClearAccountMFAFactorsResponse",
               "responseFullType": "platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse",
+              "responseStreaming": false
+            },
+            {
+              "name": "ListRecoveryEvents",
+              "description": "ListRecoveryEvents returns the password-recovery token history for one\naccount — the platform-admin \"reset activity\" view: when recovery was\nrequested, whether it was consumed or refused, and the originating IP/UA.\nRead-only. The token hash is NEVER returned (offline-guess/replay risk).\nreason is required + emitted as account.recovery_events.viewed. Subject is\n(account_id | email); when email is supplied the handler resolves it to the\naccount WITHIN tenant_id (email is unique per-tenant only). Authority comes\nfrom the session/cert + interceptors, never the request body.",
+              "requestType": "AccountAdminServiceListRecoveryEventsRequest",
+              "requestLongType": "AccountAdminServiceListRecoveryEventsRequest",
+              "requestFullType": "platform.v1.AccountAdminServiceListRecoveryEventsRequest",
+              "requestStreaming": false,
+              "responseType": "AccountAdminServiceListRecoveryEventsResponse",
+              "responseLongType": "AccountAdminServiceListRecoveryEventsResponse",
+              "responseFullType": "platform.v1.AccountAdminServiceListRecoveryEventsResponse",
               "responseStreaming": false
             }
           ]

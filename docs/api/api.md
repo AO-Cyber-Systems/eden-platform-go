@@ -376,8 +376,11 @@
     - [AccountAdminServiceGetRecertificationHistoryResponse](#platform-v1-AccountAdminServiceGetRecertificationHistoryResponse)
     - [AccountAdminServiceListPendingRecertificationsRequest](#platform-v1-AccountAdminServiceListPendingRecertificationsRequest)
     - [AccountAdminServiceListPendingRecertificationsResponse](#platform-v1-AccountAdminServiceListPendingRecertificationsResponse)
+    - [AccountAdminServiceListRecoveryEventsRequest](#platform-v1-AccountAdminServiceListRecoveryEventsRequest)
+    - [AccountAdminServiceListRecoveryEventsResponse](#platform-v1-AccountAdminServiceListRecoveryEventsResponse)
     - [AccountAdminServiceListRolesRequest](#platform-v1-AccountAdminServiceListRolesRequest)
     - [AccountAdminServiceListRolesResponse](#platform-v1-AccountAdminServiceListRolesResponse)
+    - [AccountAdminServiceRecoveryEvent](#platform-v1-AccountAdminServiceRecoveryEvent)
     - [AccountAdminServiceSubmitRecertificationDecisionRequest](#platform-v1-AccountAdminServiceSubmitRecertificationDecisionRequest)
     - [AccountAdminServiceSubmitRecertificationDecisionResponse](#platform-v1-AccountAdminServiceSubmitRecertificationDecisionResponse)
     - [AccountData](#platform-v1-AccountData)
@@ -6610,6 +6613,42 @@ pending review rows.
 
 
 
+<a name="platform-v1-AccountAdminServiceListRecoveryEventsRequest"></a>
+
+### AccountAdminServiceListRecoveryEventsRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| tenant_id | [string](#string) |  | required — tenant-scope anchor |
+| account_id | [string](#string) |  |  |
+| email | [string](#string) |  |  |
+| reason | [string](#string) |  | required — recorded in the account.recovery_events.viewed audit event |
+| page_size | [int32](#int32) |  |  |
+| page_token | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="platform-v1-AccountAdminServiceListRecoveryEventsResponse"></a>
+
+### AccountAdminServiceListRecoveryEventsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| events | [AccountAdminServiceRecoveryEvent](#platform-v1-AccountAdminServiceRecoveryEvent) | repeated |  |
+| next_page_token | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="platform-v1-AccountAdminServiceListRolesRequest"></a>
 
 ### AccountAdminServiceListRolesRequest
@@ -6640,6 +6679,29 @@ AccountAdminServiceListRolesResponse returns a page of roles.
 | ----- | ---- | ----- | ----------- |
 | roles | [Role](#platform-v1-Role) | repeated |  |
 | next_page_token | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="platform-v1-AccountAdminServiceRecoveryEvent"></a>
+
+### AccountAdminServiceRecoveryEvent
+AccountAdminServiceRecoveryEvent is one recovery-token history row. The token
+hash is deliberately NOT a field — it is never returned on the wire.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| requested_at | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| expires_at | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| consumed_at | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | unset ⇒ never consumed |
+| refused_reason | [string](#string) |  | &#34;&#34; ⇒ not refused |
+| requesting_ip | [string](#string) |  |  |
+| requesting_ua | [string](#string) |  |  |
+| consumed_ip | [string](#string) |  |  |
 
 
 
@@ -7609,6 +7671,7 @@ Side effects the handler owns: the recovery link goes to new_email; the PRIOR ad
 | SubmitRecertificationDecision | [AccountAdminServiceSubmitRecertificationDecisionRequest](#platform-v1-AccountAdminServiceSubmitRecertificationDecisionRequest) | [AccountAdminServiceSubmitRecertificationDecisionResponse](#platform-v1-AccountAdminServiceSubmitRecertificationDecisionResponse) | SubmitRecertificationDecision records the calling admin&#39;s decision on a pending review (approved | revoked | deferred). Reviewer is read from the session context (no field). |
 | GetRecertificationHistory | [AccountAdminServiceGetRecertificationHistoryRequest](#platform-v1-AccountAdminServiceGetRecertificationHistoryRequest) | [AccountAdminServiceGetRecertificationHistoryResponse](#platform-v1-AccountAdminServiceGetRecertificationHistoryResponse) | GetRecertificationHistory returns the historical decision log for one account. |
 | ClearAccountMFAFactors | [AccountAdminServiceClearAccountMFAFactorsRequest](#platform-v1-AccountAdminServiceClearAccountMFAFactorsRequest) | [AccountAdminServiceClearAccountMFAFactorsResponse](#platform-v1-AccountAdminServiceClearAccountMFAFactorsResponse) | ClearAccountMFAFactors removes all MFA factors for an account (e.g. lost YubiKey path — LIFE-04 admin assist). reason is required &#43; emitted as auth.mfa.cleared_by_admin Details. |
+| ListRecoveryEvents | [AccountAdminServiceListRecoveryEventsRequest](#platform-v1-AccountAdminServiceListRecoveryEventsRequest) | [AccountAdminServiceListRecoveryEventsResponse](#platform-v1-AccountAdminServiceListRecoveryEventsResponse) | ListRecoveryEvents returns the password-recovery token history for one account — the platform-admin &#34;reset activity&#34; view: when recovery was requested, whether it was consumed or refused, and the originating IP/UA. Read-only. The token hash is NEVER returned (offline-guess/replay risk). reason is required &#43; emitted as account.recovery_events.viewed. Subject is (account_id | email); when email is supplied the handler resolves it to the account WITHIN tenant_id (email is unique per-tenant only). Authority comes from the session/cert &#43; interceptors, never the request body. |
 
  
 
