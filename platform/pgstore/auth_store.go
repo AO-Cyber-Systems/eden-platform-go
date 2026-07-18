@@ -218,12 +218,19 @@ func (s *AuthStore) GetSSOConfig(ctx context.Context, companyID uuid.UUID, provi
 		return auth.SSOConfig{}, fmt.Errorf("get sso config: %w", err)
 	}
 	return auth.SSOConfig{
-		CompanyID:    row.CompanyID,
-		Provider:     row.Provider,
-		IssuerURL:    row.IssuerUrl,
-		ClientID:     row.ClientID,
-		ClientSecret: row.ClientSecret,
-		MetadataURL:  row.MetadataUrl,
+		CompanyID:            row.CompanyID,
+		Provider:             row.Provider,
+		IssuerURL:            row.IssuerUrl,
+		ClientID:             row.ClientID,
+		ClientSecret:         row.ClientSecret,
+		MetadataURL:          row.MetadataUrl,
+		DisplayName:          row.DisplayName,
+		ExtraScopes:          row.ExtraScopes,
+		EnforceSSO:           row.EnforceSso,
+		IsActive:             row.IsActive,
+		EmailDomainAllowlist: row.EmailDomainAllowlist,
+		JITDefaultRole:       row.JitDefaultRole,
+		JITEnabled:           row.JitEnabled,
 	}, nil
 }
 
@@ -232,7 +239,8 @@ func (s *AuthStore) GetSSOConfig(ctx context.Context, companyID uuid.UUID, provi
 func (s *AuthStore) ListSSOConfigs(ctx context.Context, companyID uuid.UUID) ([]auth.SSOConfig, error) {
 	rows, err := s.dbtx.Query(ctx, `
 		SELECT company_id, provider, issuer_url, client_id, client_secret, metadata_url,
-		       COALESCE(display_name,''), COALESCE(extra_scopes,'{}'), COALESCE(enforce_sso,false), is_active
+		       COALESCE(display_name,''), COALESCE(extra_scopes,'{}'), COALESCE(enforce_sso,false), is_active,
+		       COALESCE(email_domain_allowlist,'{}'), COALESCE(jit_default_role,''), COALESCE(jit_enabled,false)
 		FROM sso_configs WHERE company_id = $1 ORDER BY provider`, companyID)
 	if err != nil {
 		return nil, fmt.Errorf("list sso configs: %w", err)
@@ -243,7 +251,8 @@ func (s *AuthStore) ListSSOConfigs(ctx context.Context, companyID uuid.UUID) ([]
 	for rows.Next() {
 		var c auth.SSOConfig
 		if err := rows.Scan(&c.CompanyID, &c.Provider, &c.IssuerURL, &c.ClientID, &c.ClientSecret,
-			&c.MetadataURL, &c.DisplayName, &c.ExtraScopes, &c.EnforceSSO, &c.IsActive); err != nil {
+			&c.MetadataURL, &c.DisplayName, &c.ExtraScopes, &c.EnforceSSO, &c.IsActive,
+			&c.EmailDomainAllowlist, &c.JITDefaultRole, &c.JITEnabled); err != nil {
 			return nil, err
 		}
 		configs = append(configs, c)
@@ -256,17 +265,26 @@ func (s *AuthStore) UpsertSSOConfig(ctx context.Context, cfg auth.SSOConfig) err
 	if extraScopes == nil {
 		extraScopes = []string{}
 	}
+	allowlist := cfg.EmailDomainAllowlist
+	if allowlist == nil {
+		allowlist = []string{}
+	}
 	_, err := s.dbtx.Exec(ctx, `
 		INSERT INTO sso_configs (company_id, provider, issuer_url, client_id, client_secret, metadata_url,
-		            display_name, extra_scopes, enforce_sso, is_active, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+		            display_name, extra_scopes, enforce_sso, is_active,
+		            email_domain_allowlist, jit_default_role, jit_enabled, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
 		ON CONFLICT (company_id, provider) DO UPDATE SET
 		    issuer_url = EXCLUDED.issuer_url, client_id = EXCLUDED.client_id,
 		    client_secret = EXCLUDED.client_secret, metadata_url = EXCLUDED.metadata_url,
 		    display_name = EXCLUDED.display_name, extra_scopes = EXCLUDED.extra_scopes,
-		    enforce_sso = EXCLUDED.enforce_sso, is_active = EXCLUDED.is_active, updated_at = now()`,
+		    enforce_sso = EXCLUDED.enforce_sso, is_active = EXCLUDED.is_active,
+		    email_domain_allowlist = EXCLUDED.email_domain_allowlist,
+		    jit_default_role = EXCLUDED.jit_default_role, jit_enabled = EXCLUDED.jit_enabled,
+		    updated_at = now()`,
 		cfg.CompanyID, cfg.Provider, cfg.IssuerURL, cfg.ClientID, cfg.ClientSecret,
-		cfg.MetadataURL, cfg.DisplayName, extraScopes, cfg.EnforceSSO, cfg.IsActive)
+		cfg.MetadataURL, cfg.DisplayName, extraScopes, cfg.EnforceSSO, cfg.IsActive,
+		allowlist, cfg.JITDefaultRole, cfg.JITEnabled)
 	return err
 }
 
@@ -281,6 +299,31 @@ func (s *AuthStore) HasEnforcedSSO(ctx context.Context, companyID uuid.UUID) (bo
 		SELECT EXISTS(SELECT 1 FROM sso_configs WHERE company_id = $1 AND enforce_sso = true AND is_active = true)`,
 		companyID).Scan(&enforced)
 	return enforced, err
+}
+
+// ResolveJITCompanyByIssuerDomain returns the single ACTIVE, jit_enabled
+// SSOConfig whose issuer_url = issuer AND emailDomain ∈ email_domain_allowlist,
+// yielding its company_id + jit_default_role (COMPANION-AV05-AOID-JIT TRD-06 —
+// the issuer+domain company derivation that replaces the biz AOID_JIT_* env
+// vars). It fetches ALL matches so it can distinguish zero (auth.ErrNoJITMatch)
+// from more-than-one (auth.ErrAmbiguousJITMatch) — the resolver NEVER
+// arbitrarily picks between ambiguous same-issuer configs (fail-secure).
+func (s *AuthStore) ResolveJITCompanyByIssuerDomain(ctx context.Context, issuer, emailDomain string) (uuid.UUID, string, error) {
+	rows, err := s.queries().ListJITCompaniesByIssuerDomain(ctx, db.ListJITCompaniesByIssuerDomainParams{
+		IssuerUrl:   issuer,
+		EmailDomain: emailDomain,
+	})
+	if err != nil {
+		return uuid.Nil, "", fmt.Errorf("resolve jit company by issuer+domain: %w", err)
+	}
+	switch len(rows) {
+	case 0:
+		return uuid.Nil, "", auth.ErrNoJITMatch
+	case 1:
+		return rows[0].CompanyID, rows[0].JitDefaultRole, nil
+	default:
+		return uuid.Nil, "", auth.ErrAmbiguousJITMatch
+	}
 }
 
 // -- OAuth Credentials --
