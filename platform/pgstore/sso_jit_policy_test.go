@@ -18,7 +18,7 @@ import (
 //
 // DATABASE_URL-gated (setupTestBackend skips when unset — CI sets it).
 
-const jitPolicyIssuer = "https://auth.aocyber.ai"
+const jitPolicyIssuer = "https://issuer.example.test"
 
 func seedJITCompany(t *testing.T, store *pgstore.AuthStore, slug string) uuid.UUID {
 	t.Helper()
@@ -41,7 +41,7 @@ func TestAuthStore_SSOJITPolicy_RoundTrip(t *testing.T) {
 		IssuerURL:            jitPolicyIssuer,
 		DisplayName:          "AO Cyber",
 		IsActive:             true,
-		EmailDomainAllowlist: []string{"aocyber.ai"},
+		EmailDomainAllowlist: []string{"example.test"},
 		JITDefaultRole:       "manager",
 		JITEnabled:           true,
 	}
@@ -53,8 +53,8 @@ func TestAuthStore_SSOJITPolicy_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get sso config: %v", err)
 	}
-	if len(got.EmailDomainAllowlist) != 1 || got.EmailDomainAllowlist[0] != "aocyber.ai" {
-		t.Errorf("EmailDomainAllowlist = %v, want [aocyber.ai]", got.EmailDomainAllowlist)
+	if len(got.EmailDomainAllowlist) != 1 || got.EmailDomainAllowlist[0] != "example.test" {
+		t.Errorf("EmailDomainAllowlist = %v, want [example.test]", got.EmailDomainAllowlist)
 	}
 	if got.JITDefaultRole != "manager" {
 		t.Errorf("JITDefaultRole = %q, want manager", got.JITDefaultRole)
@@ -81,12 +81,12 @@ func TestAuthStore_SSOJITPolicy_ResolveByIssuerDomain_Happy(t *testing.T) {
 	companyID := seedJITCompany(t, store, "sso-jit-ok-"+uuid.NewString()[:8])
 	if err := store.UpsertSSOConfig(ctx, auth.SSOConfig{
 		CompanyID: companyID, Provider: "oidc", IssuerURL: jitPolicyIssuer, IsActive: true,
-		EmailDomainAllowlist: []string{"aocyber.ai"}, JITDefaultRole: "manager", JITEnabled: true,
+		EmailDomainAllowlist: []string{"example.test"}, JITDefaultRole: "manager", JITEnabled: true,
 	}); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
 
-	gotCompany, gotRole, err := store.ResolveJITCompanyByIssuerDomain(ctx, jitPolicyIssuer, "aocyber.ai")
+	gotCompany, gotRole, err := store.ResolveJITCompanyByIssuerDomain(ctx, jitPolicyIssuer, "example.test")
 	if err != nil {
 		t.Fatalf("resolve: %v", err)
 	}
@@ -107,7 +107,7 @@ func TestAuthStore_SSOJITPolicy_ResolveByIssuerDomain_NoMatchAndDisabled(t *test
 	companyID := seedJITCompany(t, store, "sso-jit-nm-"+uuid.NewString()[:8])
 	if err := store.UpsertSSOConfig(ctx, auth.SSOConfig{
 		CompanyID: companyID, Provider: "oidc", IssuerURL: jitPolicyIssuer, IsActive: true,
-		EmailDomainAllowlist: []string{"aocyber.ai"}, JITDefaultRole: "manager", JITEnabled: true,
+		EmailDomainAllowlist: []string{"example.test"}, JITDefaultRole: "manager", JITEnabled: true,
 	}); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
