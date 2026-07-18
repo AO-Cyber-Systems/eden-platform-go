@@ -50,7 +50,7 @@ SELECT company_id, jit_default_role FROM sso_configs
 WHERE issuer_url = $1
   AND is_active = true
   AND jit_enabled = true
-  AND $2 = ANY(email_domain_allowlist);
+  AND sqlc.arg(email_domain)::text = ANY(email_domain_allowlist);
 
 -- name: DeleteSSOConfig :exec
 DELETE FROM sso_configs WHERE company_id = $1 AND provider = $2;

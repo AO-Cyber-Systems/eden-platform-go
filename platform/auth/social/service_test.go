@@ -204,6 +204,9 @@ func (f *fakeAuthStore) DeleteSSOConfig(context.Context, uuid.UUID, string) erro
 func (f *fakeAuthStore) HasEnforcedSSO(context.Context, uuid.UUID) (bool, error) {
 	return false, fmt.Errorf("not implemented")
 }
+func (f *fakeAuthStore) ResolveJITCompanyByIssuerDomain(context.Context, string, string) (uuid.UUID, string, error) {
+	return uuid.Nil, "", fmt.Errorf("not implemented")
+}
 func (f *fakeAuthStore) UpsertOAuthCredential(context.Context, auth.OAuthCredential) error {
 	return fmt.Errorf("not implemented")
 }

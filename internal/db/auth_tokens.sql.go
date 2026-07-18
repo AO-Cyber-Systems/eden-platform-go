@@ -188,12 +188,12 @@ SELECT company_id, jit_default_role FROM sso_configs
 WHERE issuer_url = $1
   AND is_active = true
   AND jit_enabled = true
-  AND $2 = ANY(email_domain_allowlist)
+  AND $2::text = ANY(email_domain_allowlist)
 `
 
 type ListJITCompaniesByIssuerDomainParams struct {
-	IssuerUrl            string   `json:"issuer_url"`
-	EmailDomainAllowlist []string `json:"email_domain_allowlist"`
+	IssuerUrl   string `json:"issuer_url"`
+	EmailDomain string `json:"email_domain"`
 }
 
 type ListJITCompaniesByIssuerDomainRow struct {
@@ -206,7 +206,7 @@ type ListJITCompaniesByIssuerDomainRow struct {
 // The pgstore wrapper enforces the single-match / ambiguity rule in Go so it
 // can distinguish zero (ErrNoJITMatch) from many (ErrAmbiguousJITMatch).
 func (q *Queries) ListJITCompaniesByIssuerDomain(ctx context.Context, arg ListJITCompaniesByIssuerDomainParams) ([]ListJITCompaniesByIssuerDomainRow, error) {
-	rows, err := q.db.Query(ctx, listJITCompaniesByIssuerDomain, arg.IssuerUrl, arg.EmailDomainAllowlist)
+	rows, err := q.db.Query(ctx, listJITCompaniesByIssuerDomain, arg.IssuerUrl, arg.EmailDomain)
 	if err != nil {
 		return nil, err
 	}

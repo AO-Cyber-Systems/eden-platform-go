@@ -310,8 +310,8 @@ func (s *AuthStore) HasEnforcedSSO(ctx context.Context, companyID uuid.UUID) (bo
 // arbitrarily picks between ambiguous same-issuer configs (fail-secure).
 func (s *AuthStore) ResolveJITCompanyByIssuerDomain(ctx context.Context, issuer, emailDomain string) (uuid.UUID, string, error) {
 	rows, err := s.queries().ListJITCompaniesByIssuerDomain(ctx, db.ListJITCompaniesByIssuerDomainParams{
-		IssuerUrl:            issuer,
-		EmailDomainAllowlist: []string{emailDomain},
+		IssuerUrl:   issuer,
+		EmailDomain: emailDomain,
 	})
 	if err != nil {
 		return uuid.Nil, "", fmt.Errorf("resolve jit company by issuer+domain: %w", err)
