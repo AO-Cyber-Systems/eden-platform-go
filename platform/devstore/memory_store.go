@@ -395,6 +395,35 @@ func (s *AuthStore) HasEnforcedSSO(ctx context.Context, companyID uuid.UUID) (bo
 	return false, nil
 }
 
+// ResolveJITCompanyByIssuerDomain scans the in-memory SSOConfigs for the single
+// active, jit_enabled config whose issuer + email-domain allowlist match
+// (COMPANION-AV05-AOID-JIT TRD-06). Zero ⇒ ErrNoJITMatch; >1 ⇒ ErrAmbiguousJITMatch.
+func (s *AuthStore) ResolveJITCompanyByIssuerDomain(ctx context.Context, issuer, emailDomain string) (uuid.UUID, string, error) {
+	s.backend.mu.RLock()
+	defer s.backend.mu.RUnlock()
+	state := s.stateRef()
+	var matches []auth.SSOConfig
+	for _, cfg := range state.ssoConfigs {
+		if cfg.IssuerURL != issuer || !cfg.IsActive || !cfg.JITEnabled {
+			continue
+		}
+		for _, d := range cfg.EmailDomainAllowlist {
+			if d == emailDomain {
+				matches = append(matches, cfg)
+				break
+			}
+		}
+	}
+	switch len(matches) {
+	case 0:
+		return uuid.Nil, "", auth.ErrNoJITMatch
+	case 1:
+		return matches[0].CompanyID, matches[0].JITDefaultRole, nil
+	default:
+		return uuid.Nil, "", auth.ErrAmbiguousJITMatch
+	}
+}
+
 func (s *AuthStore) UpsertOAuthCredential(ctx context.Context, cred auth.OAuthCredential) error {
 	return nil // noop for dev store
 }

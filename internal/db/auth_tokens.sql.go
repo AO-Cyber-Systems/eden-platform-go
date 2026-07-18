@@ -32,7 +32,7 @@ func (q *Queries) CreateRefreshToken(ctx context.Context, arg CreateRefreshToken
 const createSSOConfig = `-- name: CreateSSOConfig :one
 INSERT INTO sso_configs (company_id, provider, issuer_url, client_id, client_secret, metadata_url)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at, display_name, extra_scopes, enforce_sso, updated_at
+RETURNING id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at, display_name, extra_scopes, enforce_sso, updated_at, email_domain_allowlist, jit_default_role, jit_enabled
 `
 
 type CreateSSOConfigParams struct {
@@ -68,6 +68,9 @@ func (q *Queries) CreateSSOConfig(ctx context.Context, arg CreateSSOConfigParams
 		&i.ExtraScopes,
 		&i.EnforceSso,
 		&i.UpdatedAt,
+		&i.EmailDomainAllowlist,
+		&i.JitDefaultRole,
+		&i.JitEnabled,
 	)
 	return i, err
 }
@@ -133,7 +136,7 @@ func (q *Queries) GetRefreshToken(ctx context.Context, tokenHash string) (Refres
 }
 
 const getSSOConfig = `-- name: GetSSOConfig :one
-SELECT id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at, display_name, extra_scopes, enforce_sso, updated_at FROM sso_configs
+SELECT id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at, display_name, extra_scopes, enforce_sso, updated_at, email_domain_allowlist, jit_default_role, jit_enabled FROM sso_configs
 WHERE company_id = $1 AND provider = $2 AND is_active = true
 `
 
@@ -159,6 +162,9 @@ func (q *Queries) GetSSOConfig(ctx context.Context, arg GetSSOConfigParams) (Sso
 		&i.ExtraScopes,
 		&i.EnforceSso,
 		&i.UpdatedAt,
+		&i.EmailDomainAllowlist,
+		&i.JitDefaultRole,
+		&i.JitEnabled,
 	)
 	return i, err
 }
@@ -177,8 +183,50 @@ func (q *Queries) HasEnforcedSSO(ctx context.Context, companyID uuid.UUID) (bool
 	return enforced, err
 }
 
+const listJITCompaniesByIssuerDomain = `-- name: ListJITCompaniesByIssuerDomain :many
+SELECT company_id, jit_default_role FROM sso_configs
+WHERE issuer_url = $1
+  AND is_active = true
+  AND jit_enabled = true
+  AND $2 = ANY(email_domain_allowlist)
+`
+
+type ListJITCompaniesByIssuerDomainParams struct {
+	IssuerUrl            string   `json:"issuer_url"`
+	EmailDomainAllowlist []string `json:"email_domain_allowlist"`
+}
+
+type ListJITCompaniesByIssuerDomainRow struct {
+	CompanyID      uuid.UUID `json:"company_id"`
+	JitDefaultRole string    `json:"jit_default_role"`
+}
+
+// COMPANION-AV05-AOID-JIT TRD-06: every ACTIVE, jit_enabled SSOConfig whose
+// issuer matches AND whose email_domain_allowlist contains the given domain.
+// The pgstore wrapper enforces the single-match / ambiguity rule in Go so it
+// can distinguish zero (ErrNoJITMatch) from many (ErrAmbiguousJITMatch).
+func (q *Queries) ListJITCompaniesByIssuerDomain(ctx context.Context, arg ListJITCompaniesByIssuerDomainParams) ([]ListJITCompaniesByIssuerDomainRow, error) {
+	rows, err := q.db.Query(ctx, listJITCompaniesByIssuerDomain, arg.IssuerUrl, arg.EmailDomainAllowlist)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListJITCompaniesByIssuerDomainRow{}
+	for rows.Next() {
+		var i ListJITCompaniesByIssuerDomainRow
+		if err := rows.Scan(&i.CompanyID, &i.JitDefaultRole); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listSSOConfigs = `-- name: ListSSOConfigs :many
-SELECT id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at, display_name, extra_scopes, enforce_sso, updated_at FROM sso_configs WHERE company_id = $1 ORDER BY provider
+SELECT id, company_id, provider, issuer_url, client_id, client_secret, metadata_url, is_active, created_at, display_name, extra_scopes, enforce_sso, updated_at, email_domain_allowlist, jit_default_role, jit_enabled FROM sso_configs WHERE company_id = $1 ORDER BY provider
 `
 
 func (q *Queries) ListSSOConfigs(ctx context.Context, companyID uuid.UUID) ([]SsoConfig, error) {
@@ -204,6 +252,9 @@ func (q *Queries) ListSSOConfigs(ctx context.Context, companyID uuid.UUID) ([]Ss
 			&i.ExtraScopes,
 			&i.EnforceSso,
 			&i.UpdatedAt,
+			&i.EmailDomainAllowlist,
+			&i.JitDefaultRole,
+			&i.JitEnabled,
 		); err != nil {
 			return nil, err
 		}
@@ -268,8 +319,8 @@ func (q *Queries) UpsertOAuthCredential(ctx context.Context, arg UpsertOAuthCred
 }
 
 const upsertSSOConfig = `-- name: UpsertSSOConfig :exec
-INSERT INTO sso_configs (company_id, provider, issuer_url, client_id, client_secret, metadata_url, display_name, extra_scopes, enforce_sso, is_active, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+INSERT INTO sso_configs (company_id, provider, issuer_url, client_id, client_secret, metadata_url, display_name, extra_scopes, enforce_sso, is_active, email_domain_allowlist, jit_default_role, jit_enabled, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, now())
 ON CONFLICT (company_id, provider) DO UPDATE SET
     issuer_url = EXCLUDED.issuer_url,
     client_id = EXCLUDED.client_id,
@@ -279,20 +330,26 @@ ON CONFLICT (company_id, provider) DO UPDATE SET
     extra_scopes = EXCLUDED.extra_scopes,
     enforce_sso = EXCLUDED.enforce_sso,
     is_active = EXCLUDED.is_active,
+    email_domain_allowlist = EXCLUDED.email_domain_allowlist,
+    jit_default_role = EXCLUDED.jit_default_role,
+    jit_enabled = EXCLUDED.jit_enabled,
     updated_at = now()
 `
 
 type UpsertSSOConfigParams struct {
-	CompanyID    uuid.UUID `json:"company_id"`
-	Provider     string    `json:"provider"`
-	IssuerUrl    string    `json:"issuer_url"`
-	ClientID     string    `json:"client_id"`
-	ClientSecret string    `json:"client_secret"`
-	MetadataUrl  string    `json:"metadata_url"`
-	DisplayName  string    `json:"display_name"`
-	ExtraScopes  []string  `json:"extra_scopes"`
-	EnforceSso   bool      `json:"enforce_sso"`
-	IsActive     bool      `json:"is_active"`
+	CompanyID            uuid.UUID `json:"company_id"`
+	Provider             string    `json:"provider"`
+	IssuerUrl            string    `json:"issuer_url"`
+	ClientID             string    `json:"client_id"`
+	ClientSecret         string    `json:"client_secret"`
+	MetadataUrl          string    `json:"metadata_url"`
+	DisplayName          string    `json:"display_name"`
+	ExtraScopes          []string  `json:"extra_scopes"`
+	EnforceSso           bool      `json:"enforce_sso"`
+	IsActive             bool      `json:"is_active"`
+	EmailDomainAllowlist []string  `json:"email_domain_allowlist"`
+	JitDefaultRole       string    `json:"jit_default_role"`
+	JitEnabled           bool      `json:"jit_enabled"`
 }
 
 func (q *Queries) UpsertSSOConfig(ctx context.Context, arg UpsertSSOConfigParams) error {
@@ -307,6 +364,9 @@ func (q *Queries) UpsertSSOConfig(ctx context.Context, arg UpsertSSOConfigParams
 		arg.ExtraScopes,
 		arg.EnforceSso,
 		arg.IsActive,
+		arg.EmailDomainAllowlist,
+		arg.JitDefaultRole,
+		arg.JitEnabled,
 	)
 	return err
 }

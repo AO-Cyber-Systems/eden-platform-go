@@ -3,9 +3,19 @@ package auth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
+)
+
+// COMPANION-AV05-AOID-JIT TRD-06 — sentinels for the issuer+domain JIT company
+// resolver (ResolveJITCompanyByIssuerDomain). Zero matching active/jit_enabled
+// SSOConfigs ⇒ ErrNoJITMatch; more than one ⇒ ErrAmbiguousJITMatch (fail-secure —
+// the resolver never arbitrarily picks between ambiguous same-issuer configs).
+var (
+	ErrNoJITMatch        = errors.New("auth: no jit-enabled sso_config matches issuer+domain")
+	ErrAmbiguousJITMatch = errors.New("auth: ambiguous jit-enabled sso_config match for issuer+domain")
 )
 
 // User represents a platform user. Consuming apps may extend this.
@@ -47,6 +57,19 @@ type SSOConfig struct {
 	ExtraScopes  []string
 	EnforceSSO   bool
 	IsActive     bool
+
+	// COMPANION-AV05-AOID-JIT TRD-06 — per-company JIT provisioning policy,
+	// moved OFF biz env vars ONTO this row (biz-managed, admin-editable). The
+	// company binding is DERIVED from (IssuerURL + EmailDomainAllowlist) match.
+	//
+	//   - EmailDomainAllowlist: verified-email domains this SSOConfig admits for
+	//     JIT (fail-secure — empty allows nothing).
+	//   - JITDefaultRole: the is_system role name a JIT membership is granted
+	//     (empty/unknown ⇒ deny; never super_admin).
+	//   - JITEnabled: master switch for JIT on this SSOConfig (false ⇒ deny).
+	EmailDomainAllowlist []string
+	JITDefaultRole       string
+	JITEnabled           bool
 }
 
 // OAuthCredential stores a provider's access/refresh tokens for API use.
@@ -132,6 +155,12 @@ type AuthStore interface {
 	UpsertSSOConfig(ctx context.Context, cfg SSOConfig) error
 	DeleteSSOConfig(ctx context.Context, companyID uuid.UUID, provider string) error
 	HasEnforcedSSO(ctx context.Context, companyID uuid.UUID) (bool, error)
+	// ResolveJITCompanyByIssuerDomain returns the single ACTIVE, jit_enabled
+	// SSOConfig whose issuer_url = issuer AND emailDomain = ANY(email_domain_allowlist),
+	// yielding its company_id + jit_default_role. Zero matches ⇒ ErrNoJITMatch;
+	// more than one ⇒ ErrAmbiguousJITMatch (fail-secure, no arbitrary pick).
+	// COMPANION-AV05-AOID-JIT TRD-06 — the issuer+domain company derivation.
+	ResolveJITCompanyByIssuerDomain(ctx context.Context, issuer, emailDomain string) (companyID uuid.UUID, jitDefaultRole string, err error)
 
 	// OAuth credential operations (provider access/refresh tokens for API use)
 	UpsertOAuthCredential(ctx context.Context, cred OAuthCredential) error

@@ -161,19 +161,22 @@ type RolePermission struct {
 }
 
 type SsoConfig struct {
-	ID           uuid.UUID `json:"id"`
-	CompanyID    uuid.UUID `json:"company_id"`
-	Provider     string    `json:"provider"`
-	IssuerUrl    string    `json:"issuer_url"`
-	ClientID     string    `json:"client_id"`
-	ClientSecret string    `json:"client_secret"`
-	MetadataUrl  string    `json:"metadata_url"`
-	IsActive     bool      `json:"is_active"`
-	CreatedAt    time.Time `json:"created_at"`
-	DisplayName  string    `json:"display_name"`
-	ExtraScopes  []string  `json:"extra_scopes"`
-	EnforceSso   bool      `json:"enforce_sso"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                   uuid.UUID `json:"id"`
+	CompanyID            uuid.UUID `json:"company_id"`
+	Provider             string    `json:"provider"`
+	IssuerUrl            string    `json:"issuer_url"`
+	ClientID             string    `json:"client_id"`
+	ClientSecret         string    `json:"client_secret"`
+	MetadataUrl          string    `json:"metadata_url"`
+	IsActive             bool      `json:"is_active"`
+	CreatedAt            time.Time `json:"created_at"`
+	DisplayName          string    `json:"display_name"`
+	ExtraScopes          []string  `json:"extra_scopes"`
+	EnforceSso           bool      `json:"enforce_sso"`
+	UpdatedAt            time.Time `json:"updated_at"`
+	EmailDomainAllowlist []string  `json:"email_domain_allowlist"`
+	JitDefaultRole       string    `json:"jit_default_role"`
+	JitEnabled           bool      `json:"jit_enabled"`
 }
 
 type User struct {
