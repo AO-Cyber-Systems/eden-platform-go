@@ -103,6 +103,72 @@ func InjectEntitlements(client *EntitlementClient, companyIDFromCtx func(context
 	}
 }
 
+// RequireEntitlementByIdentity is the by-AOID-identity twin of RequireEntitlement.
+// It gates a feature by the request's AOID subject instead of company_id and is
+// FAIL-CLOSED: an empty subject is 401, and any error or disallowed feature is 403.
+//
+// subjectFromCtx / emailFromCtx extract the AOID subject and (optional) email from
+// the request context. The email is forwarded to the biz backend so it can self-heal
+// a missing subject->company link on the first call, exactly as CanUseFeatureByIdentity.
+func RequireEntitlementByIdentity(client *EntitlementClient, featureKey string, subjectFromCtx, emailFromCtx func(context.Context) string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			subject := subjectFromCtx(r.Context())
+			if subject == "" {
+				writeErr(w, http.StatusUnauthorized, "missing identity context")
+				return
+			}
+
+			email := emailFromCtx(r.Context())
+			allowed, err := client.CanUseFeatureByIdentity(r.Context(), subject, email, featureKey)
+			if err != nil {
+				slog.Warn("[Entitlements] identity check failed, denying by default",
+					"feature", featureKey,
+					"subject", subject,
+					"error", err,
+				)
+				writeErr(w, http.StatusForbidden, "feature not available")
+				return
+			}
+
+			if !allowed {
+				writeErr(w, http.StatusForbidden, "feature '"+featureKey+"' is not included in your plan")
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// InjectEntitlementsByIdentity is the by-AOID-identity twin of InjectEntitlements.
+// It pre-fetches the subject's bootstrap and stores it in the request context under
+// the SAME bootstrapContextKey, so downstream handlers read it with
+// EntitlementsFromContext unchanged. It is FAIL-OPEN: an empty subject or a fetch
+// error passes the request through without injecting.
+func InjectEntitlementsByIdentity(client *EntitlementClient, subjectFromCtx, emailFromCtx func(context.Context) string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			subject := subjectFromCtx(r.Context())
+			if subject == "" {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			email := emailFromCtx(r.Context())
+			bootstrap, err := client.BootstrapByIdentity(r.Context(), subject, email)
+			if err != nil {
+				slog.Warn("[Entitlements] bootstrap-by-identity prefetch failed", "subject", subject, "error", err)
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), bootstrapContextKey, bootstrap)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
 // EntitlementsFromContext retrieves the pre-fetched BootstrapResponse from the
 // request context. Returns nil if InjectEntitlements middleware was not used or
 // the prefetch failed.
