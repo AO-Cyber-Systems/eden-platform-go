@@ -42,6 +42,9 @@ type EntitlementClient struct {
 
 	bootstrapCache *Cache[string, *BootstrapResponse]
 	checkCache     *Cache[string, *EntitlementResult]
+	// bootstrapByIdentityCache is keyed by AOID subject and is DISTINCT from
+	// bootstrapCache (a subject string could collide with a companyID string).
+	bootstrapByIdentityCache *Cache[string, *BootstrapResponse]
 }
 
 // NewClient creates a new entitlement client pointing at the given Eden Biz base URL.
@@ -56,6 +59,7 @@ func NewClient(edenBizBaseURL string, opts ...ClientOption) *EntitlementClient {
 	}
 	c.bootstrapCache = NewCache[string, *BootstrapResponse](c.cacheTTL)
 	c.checkCache = NewCache[string, *EntitlementResult](c.cacheTTL)
+	c.bootstrapByIdentityCache = NewCache[string, *BootstrapResponse](c.cacheTTL)
 	return c
 }
 
@@ -77,6 +81,39 @@ func (c *EntitlementClient) Bootstrap(ctx context.Context, companyID string) (*B
 	}
 
 	c.bootstrapCache.Set(companyID, &result)
+	return &result, nil
+}
+
+// BootstrapByIdentity fetches the full entitlements state for an AOID subject
+// (a SaaS buyer's identity), instead of by company_id. The optional email is
+// sent as the X-AOID-Email header ONLY when non-empty, so the biz backend can
+// self-heal a missing subject->company link on the first call. Results are
+// cached by subject in a cache DISTINCT from the companyID bootstrapCache.
+func (c *EntitlementClient) BootstrapByIdentity(ctx context.Context, subject, email string) (*BootstrapResponse, error) {
+	if resp, ok := c.bootstrapByIdentityCache.Get(subject); ok {
+		return resp, nil
+	}
+
+	u := c.baseURL + "/api/v1/entitlements/bootstrap?aoid_subject=" + url.QueryEscape(subject)
+
+	headers := map[string]string{}
+	// Header must be entirely ABSENT when email == "" (biz distinguishes
+	// "no email provided" from an empty email), so only set it inside the guard.
+	if email != "" {
+		headers["X-AOID-Email"] = email
+	}
+
+	resp, err := c.doGetWithHeaders(ctx, u, headers)
+	if err != nil {
+		return nil, fmt.Errorf("entitlements bootstrap by identity: %w", err)
+	}
+
+	var result BootstrapResponse
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, fmt.Errorf("entitlements bootstrap by identity: parse: %w", err)
+	}
+
+	c.bootstrapByIdentityCache.Set(subject, &result)
 	return &result, nil
 }
 
@@ -107,6 +144,26 @@ func (c *EntitlementClient) CheckEntitlement(ctx context.Context, subscriptionID
 // then falls back to a direct entitlement check. Returns false on any error.
 func (c *EntitlementClient) CanUseFeature(ctx context.Context, companyID, featureKey string) (bool, error) {
 	bootstrap, err := c.Bootstrap(ctx, companyID)
+	if err != nil {
+		return false, err
+	}
+
+	for _, e := range bootstrap.Entitlements {
+		if e.FeatureKey == featureKey {
+			return e.Allowed, nil
+		}
+	}
+
+	// Feature not defined in plan → deny by default
+	return false, nil
+}
+
+// CanUseFeatureByIdentity is the by-AOID-identity twin of CanUseFeature: it
+// resolves the subject's bootstrap (sending email for first-call self-heal) and
+// returns the matching feature's Allowed value, denying by default for a feature
+// not present in the plan.
+func (c *EntitlementClient) CanUseFeatureByIdentity(ctx context.Context, subject, email, featureKey string) (bool, error) {
+	bootstrap, err := c.BootstrapByIdentity(ctx, subject, email)
 	if err != nil {
 		return false, err
 	}
@@ -165,12 +222,49 @@ func (c *EntitlementClient) InvalidateCompany(companyID string) {
 	c.checkCache.Clear()
 }
 
+// InvalidateIdentity clears the cached bootstrap for a single AOID subject.
+// Call this when the subject's subscription or plan changes.
+func (c *EntitlementClient) InvalidateIdentity(subject string) {
+	c.bootstrapByIdentityCache.Invalidate(subject)
+}
+
 func (c *EntitlementClient) doGet(ctx context.Context, rawURL string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	c.setAuth(req)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("read body: %w", err)
+	}
+
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return body, nil
+}
+
+// doGetWithHeaders is a sibling of doGet that sets additional request headers
+// (after setAuth) before issuing the GET. doGet is left byte-identical so the
+// existing companyID path is unaffected.
+func (c *EntitlementClient) doGetWithHeaders(ctx context.Context, rawURL string, headers map[string]string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", rawURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	c.setAuth(req)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
