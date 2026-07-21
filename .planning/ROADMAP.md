@@ -96,6 +96,12 @@ TRDs back here.
   signed audit forwarder; canonical JSON; GeoIP wrapper).
 - **KMS deepening** — prefix `13-0*` (currently softkey; AWS KMS / GCP KMS
   drivers expected to follow).
+- **Entitlements bootstrap-by-AOID-identity** — `platform/entitlements`
+  client + middleware `*ByIdentity` methods (subject-keyed bootstrap +
+  `X-AOID-Email` first-call self-heal). TRDs at
+  `.planning/objectives/entitlements-bootstrap-by-identity/` (C1-01..04);
+  branch `feat/entitlements-bootstrap-by-identity`. Client half of the biz
+  #412/#418/#420 arc; consumed by aodex (A1).
 
 ---
 
