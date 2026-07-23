@@ -48,7 +48,7 @@ func TestBuildAuthnRequestRedirectURL(t *testing.T) {
 	}
 }
 
-func TestParseResponse(t *testing.T) {
+func TestParseResponseUnverified(t *testing.T) {
 	responseXML := `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
 	<saml:Assertion>
 		<saml:Subject><saml:NameID>alice@acme.com</saml:NameID></saml:Subject>
@@ -61,7 +61,7 @@ func TestParseResponse(t *testing.T) {
 </samlp:Response>`
 	encoded := base64.StdEncoding.EncodeToString([]byte(responseXML))
 	cfg := Config{}
-	attrs, err := ParseResponse(encoded, cfg)
+	attrs, err := ParseResponseUnverified(encoded, cfg)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestParseResponse(t *testing.T) {
 	}
 }
 
-func TestParseResponse_NameIDFallback(t *testing.T) {
+func TestParseResponseUnverified_NameIDFallback(t *testing.T) {
 	responseXML := `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
 	<saml:Assertion>
 		<saml:Subject><saml:NameID>bob@acme.com</saml:NameID></saml:Subject>
@@ -86,7 +86,7 @@ func TestParseResponse_NameIDFallback(t *testing.T) {
 	</saml:Assertion>
 </samlp:Response>`
 	encoded := base64.StdEncoding.EncodeToString([]byte(responseXML))
-	attrs, err := ParseResponse(encoded, Config{})
+	attrs, err := ParseResponseUnverified(encoded, Config{})
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -95,16 +95,16 @@ func TestParseResponse_NameIDFallback(t *testing.T) {
 	}
 }
 
-func TestParseResponse_InvalidBase64(t *testing.T) {
-	_, err := ParseResponse("not-valid!!!", Config{})
+func TestParseResponseUnverified_InvalidBase64(t *testing.T) {
+	_, err := ParseResponseUnverified("not-valid!!!", Config{})
 	if err == nil {
 		t.Error("expected error for invalid base64")
 	}
 }
 
-func TestParseResponse_NonSAMLXML(t *testing.T) {
+func TestParseResponseUnverified_NonSAMLXML(t *testing.T) {
 	encoded := base64.StdEncoding.EncodeToString([]byte("<not>saml</not>"))
-	attrs, err := ParseResponse(encoded, Config{})
+	attrs, err := ParseResponseUnverified(encoded, Config{})
 	if err != nil {
 		t.Errorf("expected no error for non-SAML XML, got %v", err)
 	}
@@ -113,7 +113,7 @@ func TestParseResponse_NonSAMLXML(t *testing.T) {
 	}
 }
 
-func TestParseResponse_CustomMapping(t *testing.T) {
+func TestParseResponseUnverified_CustomMapping(t *testing.T) {
 	responseXML := `<samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol" xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
 	<saml:Assertion>
 		<saml:Subject><saml:NameID>carol@acme.com</saml:NameID></saml:Subject>
@@ -130,7 +130,7 @@ func TestParseResponse_CustomMapping(t *testing.T) {
 			"first_name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
 		},
 	}
-	attrs, err := ParseResponse(encoded, cfg)
+	attrs, err := ParseResponseUnverified(encoded, cfg)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}

@@ -2,10 +2,10 @@
 // AuthnRequest construction, SP metadata generation, response parsing with
 // attribute mapping, and IdP certificate handling.
 //
-// Promoted from aodex-go/internal/auth/saml.go. The platform's higher-level
-// auth.SSOService uses crewjam/saml directly for full SAML SP flows; this
-// package exposes lower-level primitives for callers (and is the foundation
-// for the IdP support added in objective 23 under the saml/idp/ subpackage).
+// The platform's higher-level auth.SSOService uses crewjam/saml directly for
+// full SAML SP flows; this package exposes lower-level primitives for callers
+// (and is the foundation for the IdP support added in objective 23 under the
+// saml/idp/ subpackage).
 package saml
 
 import (
@@ -75,8 +75,8 @@ func BuildAuthnRequestRedirectURL(cfg Config) (string, error) {
 
 // ResponseXML represents the top-level SAML Response element used for
 // attribute extraction. It intentionally tolerates schema variation — if the
-// XML doesn't match this struct, ParseResponse returns an empty attribute
-// map (matching the donor's graceful-degradation behavior).
+// XML doesn't match this struct, ParseResponseUnverified returns an empty
+// attribute map (matching the donor's graceful-degradation behavior).
 type ResponseXML struct {
 	XMLName    xml.Name       `xml:"Response"`
 	Assertions []AssertionXML `xml:"Assertion"`
@@ -114,15 +114,23 @@ type AttributeValueXML struct {
 	Value string `xml:",chardata"`
 }
 
-// ParseResponse decodes a Base64-encoded SAML response and extracts user
-// attributes using the configured attribute mapping (target -> source).
+// ParseResponseUnverified decodes a Base64-encoded SAML response and extracts
+// user attributes using the configured attribute mapping (target -> source).
 //
-// CRITICAL: This function does NOT verify XML signatures. For a fully
-// signed-response flow, use the platform's auth.SSOService (which wraps
-// crewjam/saml's SP.ParseResponse). This primitive is for cases where
-// signature verification has already been handled or is intentionally
-// deferred (e.g. internal IdPs).
-func ParseResponse(samlResponse string, cfg Config) (map[string]string, error) {
+// CRITICAL: This function performs NO signature verification whatsoever — it
+// does NOT validate the XML-DSig signature, the signing certificate, the
+// Conditions (NotBefore/NotOnOrAfter), or the audience. The attributes it
+// returns are therefore UNTRUSTED and MUST NOT be used to authenticate a user.
+// Any code path that needs authentication MUST use VerifyResponse (this
+// package), which pins the tenant's IdP certificate and rejects unsigned,
+// wrong-signer, tampered, or expired responses.
+//
+// Use ParseResponseUnverified ONLY for non-authentication purposes — e.g.
+// inspecting attributes of a response whose signature has ALREADY been verified
+// upstream, or for debugging/tooling — never as the sole gate on a login path.
+// It was renamed from ParseResponse to make its unverified nature impossible to
+// mistake for authentication.
+func ParseResponseUnverified(samlResponse string, cfg Config) (map[string]string, error) {
 	xmlBytes, err := base64.StdEncoding.DecodeString(samlResponse)
 	if err != nil {
 		return nil, fmt.Errorf("decoding SAML response: %w", err)

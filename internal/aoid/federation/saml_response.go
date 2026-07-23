@@ -31,8 +31,8 @@ func (e *ExternalIdP) ValidateSAMLResponse(ctx context.Context, samlResponseB64 
 	}
 
 	// Decode the response to extract NameID + AuthnContext +
-	// timestamps. (platform/auth/saml.ParseResponse strips these for
-	// attribute-only callers.)
+	// timestamps. (platform/auth/saml.ParseResponseUnverified strips these
+	// for attribute-only callers.)
 	xmlBytes, err := base64.StdEncoding.DecodeString(samlResponseB64)
 	if err != nil {
 		return nil, fmt.Errorf("federation: decode SAMLResponse base64: %w", err)
@@ -46,12 +46,16 @@ func (e *ExternalIdP) ValidateSAMLResponse(ctx context.Context, samlResponseB64 
 	}
 	first := parsed.Assertions[0]
 
-	// Reuse platform/auth/saml.ParseResponse for attribute mapping —
-	// it applies the standard defaults + caller mappings consistently.
+	// Reuse platform/auth/saml.ParseResponseUnverified for attribute
+	// mapping — it applies the standard defaults + caller mappings
+	// consistently. Signature verification for this federation path is the
+	// caller's responsibility (see the registry SigningCertificatePEM note
+	// in the doc comment above); this call performs attribute extraction
+	// only, not authentication.
 	cfg := platsaml.Config{
 		AttributeMapping: e.cfg.AttributeMapping,
 	}
-	flatAttrs, err := platsaml.ParseResponse(samlResponseB64, cfg)
+	flatAttrs, err := platsaml.ParseResponseUnverified(samlResponseB64, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("federation: extract attributes: %w", err)
 	}
@@ -139,11 +143,11 @@ type responseXML struct {
 }
 
 type assertionElem struct {
-	IssueInstant        string                    `xml:"IssueInstant,attr"`
-	Subject             subjectElem               `xml:"Subject"`
-	Conditions          conditionsElem            `xml:"Conditions"`
-	AttributeStatements []attributeStatementElem  `xml:"AttributeStatement"`
-	AuthnStatements     []authnStatementElem      `xml:"AuthnStatement"`
+	IssueInstant        string                   `xml:"IssueInstant,attr"`
+	Subject             subjectElem              `xml:"Subject"`
+	Conditions          conditionsElem           `xml:"Conditions"`
+	AttributeStatements []attributeStatementElem `xml:"AttributeStatement"`
+	AuthnStatements     []authnStatementElem     `xml:"AuthnStatement"`
 }
 
 type subjectElem struct {
@@ -174,8 +178,8 @@ type attributeValueElem struct {
 }
 
 type authnStatementElem struct {
-	AuthnInstant string             `xml:"AuthnInstant,attr"`
-	AuthnContext authnContextElem   `xml:"AuthnContext"`
+	AuthnInstant string           `xml:"AuthnInstant,attr"`
+	AuthnContext authnContextElem `xml:"AuthnContext"`
 }
 
 type authnContextElem struct {
