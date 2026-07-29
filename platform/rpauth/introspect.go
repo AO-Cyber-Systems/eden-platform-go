@@ -49,29 +49,52 @@ var (
 // existing API-key validator so the platform has one number, not two.
 const DefaultMaxTTL = 60 * time.Second
 
-// Identity is the authenticated principal a relying party sees. It is
-// deliberately small: claims an application needs beyond this should be read
-// from that application's own mirror row, not smuggled through the token.
+// Identity is the authenticated principal a relying party sees.
+//
+// IT CARRIES ONLY WHAT AOID ACTUALLY SENDS. An earlier version of this struct
+// also had AccountID, TenantID and Email, decoded from `account_id`,
+// `tenant_id` and `email`. AOID emits none of those — the fields were written
+// against an imagined contract, tested against a fake issuer, and would have
+// been empty on every real token. They are gone rather than backfilled, for
+// two reasons:
+//
+//   - SUBJECT IS THE RIGHT KEY, NOT ACCOUNT. `sub` is aoid.identities.id, the
+//     GLOBAL identity. An account is per-TENANT: one person in two workspaces
+//     has two accounts and one identity. A relying party keeps one local row
+//     per PERSON, so the identity is the durable join key and the account is
+//     the wrong axis to hang it on.
+//   - EVERYTHING ELSE IS ALREADY LOCAL. A service that has a mirror row keyed
+//     by subject already knows that user's email; re-deriving it from the
+//     authority would have meant adding a database lookup to AOID's hottest
+//     endpoint, whose response is cached and covered by a detached JWS at the
+//     AOEdge boundary. Not worth it for a value the caller already holds.
+//
+// So this stays deliberately small: anything an application needs beyond it
+// comes from that application's own mirror row, not smuggled through the token.
 type Identity struct {
-	Subject    string
-	AccountID  string
-	TenantID   string
+	// Subject is aoid.identities.id — the stable, global principal id and the
+	// key a relying party should store on its mirror row.
+	Subject string
+	// TenantSlug is the ACTIVE tenant's slug. AOID sends it as `tnt`; despite
+	// the name that field is the slug, not a UUID.
 	TenantSlug string
-	Email      string
 	Scopes     []string
 	ExpiresAt  time.Time
 }
 
-// introspectResponse is the RFC 7662 response plus AOID's extensions.
+// introspectResponse is the subset of AOID's RFC 7662 response this package
+// reads. Field names match what AOID actually emits (internal/oauth
+// IntrospectResp) — notably `tnt`, which carries the tenant SLUG.
 type introspectResponse struct {
-	Active     bool   `json:"active"`
-	Sub        string `json:"sub"`
-	AccountID  string `json:"account_id"`
-	TenantID   string `json:"tenant_id"`
-	TenantSlug string `json:"tenant_slug"`
-	Email      string `json:"email"`
-	Scope      string `json:"scope"`
-	Exp        int64  `json:"exp"`
+	Active bool   `json:"active"`
+	Sub    string `json:"sub"`
+	Tnt    string `json:"tnt"`
+	Scope  string `json:"scope"`
+	Exp    int64  `json:"exp"`
+	// TokenType distinguishes an access token from a refresh token. AOID sets
+	// "Bearer" on the access-token path and "refresh_token" on the other; see
+	// Validate for why that distinction is load-bearing here.
+	TokenType string `json:"token_type"`
 }
 
 // Doer is the HTTP client seam. In production this is an mTLS client — AOID is
@@ -184,12 +207,27 @@ func (i *Introspector) Validate(ctx context.Context, rawToken string) (*Identity
 		return nil, ErrInactive
 	}
 
+	// REJECT REFRESH TOKENS. This is not defensive tidiness — AOID's two
+	// introspection paths disagree about what `sub` means. On the access-token
+	// path it is aoid.identities.id (the global identity); on the refresh-token
+	// path it is aoid.accounts.id. Accepting a refresh token here would resolve
+	// a VALID-LOOKING Identity whose Subject is an account id, and a relying
+	// party would then join its mirror row on the wrong entity — silently, and
+	// only for the subset of requests that presented the wrong credential type.
+	//
+	// A refresh token is also simply not a bearer credential: it is redeemable
+	// at the token endpoint, not presentable as authorization. ErrInactive keeps
+	// the caller's 401 mapping correct while the wrapped text keeps the real
+	// reason legible in logs.
+	if strings.EqualFold(out.TokenType, "refresh_token") {
+		return nil, fmt.Errorf("%w: refresh token presented as a bearer credential", ErrInactive)
+	}
+
 	identity := Identity{
-		Subject:    out.Sub,
-		AccountID:  out.AccountID,
-		TenantID:   out.TenantID,
-		TenantSlug: out.TenantSlug,
-		Email:      out.Email,
+		Subject: out.Sub,
+		// AOID sends the tenant SLUG under `tnt`. Mapping it to TenantID would
+		// put a slug in a UUID-shaped field; the name here matches the value.
+		TenantSlug: out.Tnt,
 		Scopes:     splitScopes(out.Scope),
 	}
 	if out.Exp > 0 {

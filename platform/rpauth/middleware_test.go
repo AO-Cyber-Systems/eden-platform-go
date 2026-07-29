@@ -42,8 +42,10 @@ func introspectServer(t *testing.T, body string, status int) (*Introspector, *in
 	return i, &calls
 }
 
-const activeBody = `{"active":true,"sub":"sub-1","account_id":"acct-1",
-	"tenant_id":"t-1","tenant_slug":"saas","email":"u@example.com","scope":"openid"}`
+// AOID's real active-token response: `sub` is the global identities.id and
+// `tnt` is the tenant SLUG. Nothing else is emitted.
+const activeBody = `{"active":true,"sub":"identity-1","tnt":"saas",
+	"client_id":"aodex","scope":"openid","token_type":"Bearer","exp":4102444800}`
 
 func newAuth(t *testing.T, i *Introspector, load PrincipalLoader[testPrincipal], opts ...Option[testPrincipal]) *Authenticator[testPrincipal] {
 	t.Helper()
@@ -55,8 +57,10 @@ func newAuth(t *testing.T, i *Introspector, load PrincipalLoader[testPrincipal],
 	return a
 }
 
+// mirrorLoader keys the local principal on SUBJECT — the global identity id —
+// which is the join key a relying party actually stores.
 func mirrorLoader(_ context.Context, id *Identity) (testPrincipal, error) {
-	return testPrincipal{LocalID: "local-" + id.AccountID, IsAdmin: true}, nil
+	return testPrincipal{LocalID: "local-" + id.Subject, IsAdmin: true}, nil
 }
 
 // serve runs a request through mw and returns the recorder plus whatever the
@@ -94,7 +98,7 @@ func TestRequire_AuthenticatedPassesPrincipal(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("want 200, got %d", rec.Code)
 	}
-	if got.LocalID != "local-acct-1" || !got.IsAdmin {
+	if got.LocalID != "local-identity-1" || !got.IsAdmin {
 		t.Errorf("principal not loaded from the app's own mirror: %+v", got)
 	}
 	// The Identity must be readable WITHOUT naming the principal type — audit

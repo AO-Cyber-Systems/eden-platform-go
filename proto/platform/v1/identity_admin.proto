@@ -266,6 +266,27 @@ message AccountData {
 
   // last_modified_by is the actor that last mutated this account.
   string last_modified_by = 14;
+
+  // identity_id is the GLOBAL identity this account belongs to
+  // (aoid.identities.id) — the same value an access token carries as `sub`.
+  //
+  // WHY A CALLER NEEDS THIS. A relying party keeps one local user row per
+  // PERSON, but an account is per TENANT: someone in two workspaces has two
+  // accounts and one identity. So the durable key for a mirror row is the
+  // identity, not the account, and provisioning is the only moment the caller
+  // can learn it — AOID exposes no lookup-by-email RPC.
+  //
+  // Returning it here is what lets AODex store the identity at signup and
+  // later resolve an AOID access token straight to its local user, with NO
+  // account_id/email lookup added to /oauth/introspect. That is the whole
+  // reason this field exists rather than widening the introspection response,
+  // which is cached and covered by a detached JWS at the AOEdge boundary.
+  //
+  // EMPTY when the account has no identity yet. Legacy accounts provisioned
+  // before Objective 11 Phase 2 have identity_id NULL until something
+  // re-provisions them; callers MUST treat empty as "not yet linked" rather
+  // than as an error.
+  string identity_id = 15;
 }
 
 // Account-lifecycle requests/responses

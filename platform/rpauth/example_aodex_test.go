@@ -38,8 +38,13 @@ type CurrentUser struct {
 }
 
 // userStore stands in for AODex's users repository.
+// userStore is AODex's users repository, keyed on the AOID SUBJECT — the global
+// identities.id, stored locally as users.aoid_subject. Keying on the account
+// would be the wrong axis: an account is per-tenant, so someone in two
+// workspaces has two accounts but one identity, while AODex keeps one row per
+// person.
 type userStore interface {
-	ByAOIDAccountID(ctx context.Context, accountID string) (CurrentUser, error)
+	ByAOIDSubject(ctx context.Context, subject string) (CurrentUser, error)
 }
 
 // ExampleAuthenticator shows the whole Phase 3c wiring: introspection over
@@ -71,14 +76,17 @@ func ExampleAuthenticator() {
 
 	// 2. The mapping. AODex keeps a local users row keyed by the AOID account
 	//    id — forced by the data model, since conversations, tiers, credits and
-	//    quotas all FK to it — so the loader is a mirror-row read.
+	//    quotas all FK to it — so the loader is a mirror-row read, keyed by the
+	//    AOID subject that signup stored on the row.
 	loadUser := func(ctx context.Context, id *rpauth.Identity) (*CurrentUser, error) {
-		u, err := users.ByAOIDAccountID(ctx, id.AccountID)
+		u, err := users.ByAOIDSubject(ctx, id.Subject)
 		if err != nil {
 			return nil, err
 		}
-		u.Email = id.Email     // AOID is authoritative for the address
 		u.AOIDSubject = id.Subject
+		// Email comes from the mirror row, NOT the token. Deriving it from the
+		// authority would have meant adding a lookup to AOID's hottest endpoint
+		// for a value AODex already holds.
 		return &u, nil
 	}
 

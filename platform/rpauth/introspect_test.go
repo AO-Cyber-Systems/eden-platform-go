@@ -33,8 +33,12 @@ func TestValidate_ActiveToken(t *testing.T) {
 		_ = r.ParseForm()
 		gotForm = r.Form.Get("token")
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"active":true,"sub":"acct-1","account_id":"acct-1",
-			"tenant_id":"t-1","tenant_slug":"saas","email":"u@example.com","scope":"openid profile"}`))
+		// AOID's REAL response shape (internal/oauth IntrospectResp): sub is the
+		// global identities.id and `tnt` carries the tenant SLUG. The previous
+		// fixture asserted account_id/tenant_id/email — fields AOID has never
+		// sent — which is exactly how the mismatch survived review.
+		_, _ = w.Write([]byte(`{"active":true,"sub":"identity-1","tnt":"saas",
+			"client_id":"aodex","scope":"openid profile","token_type":"Bearer","exp":4102444800}`))
 	}, nil, nil)
 
 	id, err := i.Validate(context.Background(), "raw-token")
@@ -44,8 +48,11 @@ func TestValidate_ActiveToken(t *testing.T) {
 	if gotForm != "raw-token" {
 		t.Errorf("token not sent in form: %q", gotForm)
 	}
-	if id.AccountID != "acct-1" || id.TenantSlug != "saas" || id.Email != "u@example.com" {
-		t.Errorf("identity not mapped: %+v", id)
+	if id.Subject != "identity-1" {
+		t.Errorf("sub must map to Subject (the global identity id): %+v", id)
+	}
+	if id.TenantSlug != "saas" {
+		t.Errorf("`tnt` carries the tenant SLUG and must map to TenantSlug: %+v", id)
 	}
 	if len(id.Scopes) != 2 || id.Scopes[0] != "openid" {
 		t.Errorf("scopes not split: %v", id.Scopes)
@@ -237,5 +244,26 @@ func TestNewIntrospector_RequiresConfig(t *testing.T) {
 	}
 	if _, err := NewIntrospector(Config{Endpoint: "https://x/introspect"}); err == nil {
 		t.Error("expected an error for a missing Client")
+	}
+}
+
+// TestValidate_RejectsRefreshToken guards the hazard that AOID's two
+// introspection paths disagree about what `sub` means: on the access-token path
+// it is aoid.identities.id, on the refresh-token path it is aoid.accounts.id.
+// Accepting a refresh token would hand back a valid-LOOKING Identity whose
+// Subject is an account id, and the relying party would join its mirror row on
+// the wrong entity — silently, for only those requests.
+func TestValidate_RejectsRefreshToken(t *testing.T) {
+	i := newTestIntrospector(t, func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"active":true,"sub":"account-1","tnt":"t-1",
+			"token_type":"refresh_token","exp":4102444800}`))
+	}, nil, nil)
+
+	_, err := i.Validate(context.Background(), "a-refresh-token")
+	if !errors.Is(err, ErrInactive) {
+		t.Fatalf("a refresh token must be rejected as an invalid bearer credential, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "refresh token") {
+		t.Errorf("the reason must stay legible in logs, got %q", err.Error())
 	}
 }
