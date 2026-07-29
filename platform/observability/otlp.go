@@ -95,12 +95,19 @@ func SetupOTLP(ctx context.Context, cfg OTLPConfig, res *resource.Resource) (OTL
 			"endpoint", cfg.Endpoint, "error", err)
 		return noopOTLPShutdown, nil
 	}
+	// obj-31 TRD 31-13: warn if this provider never receives a span. Installing
+	// an exporter is NOT the same as producing telemetry, and the gap between
+	// the two is invisible — console-api ran its entire life in exactly this
+	// state. See silent_tracer_guard.go.
+	silenceWatch, _ := newSilenceWatch(defaultSilenceGrace, resourceServiceName(res))
+
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(traceExp,
-			sdktrace.WithMaxQueueSize(2048),       // BOUNDED — drop oldest on overflow
+			sdktrace.WithMaxQueueSize(2048), // BOUNDED — drop oldest on overflow
 			sdktrace.WithMaxExportBatchSize(512),
 		),
 		sdktrace.WithResource(res),
+		silenceWatch,
 	)
 	otel.SetTracerProvider(tp)
 

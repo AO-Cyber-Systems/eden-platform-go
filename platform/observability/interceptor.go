@@ -42,6 +42,18 @@ func TraceContextFromContext(ctx context.Context) TraceContext {
 // records request count, duration, and logs each request via slog. When the
 // request context carries a TraceContext (set by upstream OTel middleware via
 // WithTraceContext), trace_id and span_id are attached to the log line.
+//
+// THIS DOES NOT CREATE SPANS. Despite the name, it is a metrics + log
+// correlator: it READS trace context that something upstream produced and never
+// calls tracer.Start. Pairing it with SetupOTLP looks like a complete tracing
+// setup and is not — console-api did exactly that and exported ZERO spans for
+// its entire life (opsCluster obj-31 TRD 31-06).
+//
+// For actual spans, wrap the HTTP handler with otelhttp.NewHandler (outermost,
+// so rejected requests are covered) and register a W3C propagator — SetupOTLP
+// does NOT install one, and the OTel default propagator is a no-op, so inbound
+// traceparent would be dropped. silent_tracer_guard.go warns at runtime if a
+// provider is installed and no span is ever started.
 func NewObservabilityInterceptor(m *Metrics) connect.UnaryInterceptorFunc {
 	return connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
