@@ -105,9 +105,48 @@ message ResolveWorkspacesByEmailRequest {
   string email = 1;
 }
 
+// AuthMethod is a sign-in mechanism an account can use in a given workspace.
+// It drives identifier-first login: the client asks for an email, then renders
+// only what that address can actually use — a password field, a social button,
+// an SSO redirect.
+enum AuthMethod {
+  AUTH_METHOD_UNSPECIFIED = 0;
+  // Password credential set on the account.
+  AUTH_METHOD_PASSWORD = 1;
+  // External IdP via federation (Google, Microsoft, Apple, GitHub).
+  AUTH_METHOD_FEDERATED = 2;
+  // Tenant-configured SSO (SAML / enterprise OIDC).
+  AUTH_METHOD_SSO = 3;
+  // WebAuthn passkey.
+  AUTH_METHOD_PASSKEY = 4;
+}
+
 message ResolveWorkspace {
   string tenant_id = 1;
   string display_name = 2;
+  // auth_methods lists what this email can sign in with FOR THIS WORKSPACE.
+  //
+  // ENUMERATION SAFETY — the reason this field lives here and not on the
+  // response. ResolveWorkspacesByEmail is deliberately unauthenticated and
+  // must never become an email-existence oracle: an unknown address, a
+  // legacy/NULL identity, and a verified identity with zero memberships all
+  // return the IDENTICAL RESOLVE_STATUS_NONE with an empty workspace list.
+  //
+  // Hanging auth methods off each workspace preserves that by construction.
+  // An address with no workspaces has nowhere to carry methods, so its
+  // response stays byte-identical to today's. A top-level methods field would
+  // have broken this the moment it answered differently for a known address —
+  // which is exactly how a uniform response becomes an oracle.
+  //
+  // CLIENT CONTRACT: on RESOLVE_STATUS_NONE the client MUST still present a
+  // plausible sign-in form (default to password) and let the attempt fail
+  // generically. Rendering "no such account" would reintroduce at the UI layer
+  // the very leak this shape prevents.
+  //
+  // Empty on a populated workspace means "not determined", not "no methods
+  // available" — treat it as the password default rather than locking the user
+  // out of a workspace they belong to.
+  repeated AuthMethod auth_methods = 3;
 }
 
 enum ResolveStatus {

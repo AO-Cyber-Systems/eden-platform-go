@@ -22,6 +22,69 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// AuthMethod is a sign-in mechanism an account can use in a given workspace.
+// It drives identifier-first login: the client asks for an email, then renders
+// only what that address can actually use — a password field, a social button,
+// an SSO redirect.
+type AuthMethod int32
+
+const (
+	AuthMethod_AUTH_METHOD_UNSPECIFIED AuthMethod = 0
+	// Password credential set on the account.
+	AuthMethod_AUTH_METHOD_PASSWORD AuthMethod = 1
+	// External IdP via federation (Google, Microsoft, Apple, GitHub).
+	AuthMethod_AUTH_METHOD_FEDERATED AuthMethod = 2
+	// Tenant-configured SSO (SAML / enterprise OIDC).
+	AuthMethod_AUTH_METHOD_SSO AuthMethod = 3
+	// WebAuthn passkey.
+	AuthMethod_AUTH_METHOD_PASSKEY AuthMethod = 4
+)
+
+// Enum value maps for AuthMethod.
+var (
+	AuthMethod_name = map[int32]string{
+		0: "AUTH_METHOD_UNSPECIFIED",
+		1: "AUTH_METHOD_PASSWORD",
+		2: "AUTH_METHOD_FEDERATED",
+		3: "AUTH_METHOD_SSO",
+		4: "AUTH_METHOD_PASSKEY",
+	}
+	AuthMethod_value = map[string]int32{
+		"AUTH_METHOD_UNSPECIFIED": 0,
+		"AUTH_METHOD_PASSWORD":    1,
+		"AUTH_METHOD_FEDERATED":   2,
+		"AUTH_METHOD_SSO":         3,
+		"AUTH_METHOD_PASSKEY":     4,
+	}
+)
+
+func (x AuthMethod) Enum() *AuthMethod {
+	p := new(AuthMethod)
+	*p = x
+	return p
+}
+
+func (x AuthMethod) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AuthMethod) Descriptor() protoreflect.EnumDescriptor {
+	return file_platform_v1_authn_proto_enumTypes[0].Descriptor()
+}
+
+func (AuthMethod) Type() protoreflect.EnumType {
+	return &file_platform_v1_authn_proto_enumTypes[0]
+}
+
+func (x AuthMethod) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AuthMethod.Descriptor instead.
+func (AuthMethod) EnumDescriptor() ([]byte, []int) {
+	return file_platform_v1_authn_proto_rawDescGZIP(), []int{0}
+}
+
 type ResolveStatus int32
 
 const (
@@ -58,11 +121,11 @@ func (x ResolveStatus) String() string {
 }
 
 func (ResolveStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_platform_v1_authn_proto_enumTypes[0].Descriptor()
+	return file_platform_v1_authn_proto_enumTypes[1].Descriptor()
 }
 
 func (ResolveStatus) Type() protoreflect.EnumType {
-	return &file_platform_v1_authn_proto_enumTypes[0]
+	return &file_platform_v1_authn_proto_enumTypes[1]
 }
 
 func (x ResolveStatus) Number() protoreflect.EnumNumber {
@@ -71,7 +134,7 @@ func (x ResolveStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use ResolveStatus.Descriptor instead.
 func (ResolveStatus) EnumDescriptor() ([]byte, []int) {
-	return file_platform_v1_authn_proto_rawDescGZIP(), []int{0}
+	return file_platform_v1_authn_proto_rawDescGZIP(), []int{1}
 }
 
 // LoginNextStep tells the client what authentication step is required next.
@@ -372,9 +435,32 @@ func (x *ResolveWorkspacesByEmailRequest) GetEmail() string {
 }
 
 type ResolveWorkspace struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantId      string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
-	DisplayName   string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	TenantId    string                 `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	DisplayName string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	// auth_methods lists what this email can sign in with FOR THIS WORKSPACE.
+	//
+	// ENUMERATION SAFETY — the reason this field lives here and not on the
+	// response. ResolveWorkspacesByEmail is deliberately unauthenticated and
+	// must never become an email-existence oracle: an unknown address, a
+	// legacy/NULL identity, and a verified identity with zero memberships all
+	// return the IDENTICAL RESOLVE_STATUS_NONE with an empty workspace list.
+	//
+	// Hanging auth methods off each workspace preserves that by construction.
+	// An address with no workspaces has nowhere to carry methods, so its
+	// response stays byte-identical to today's. A top-level methods field would
+	// have broken this the moment it answered differently for a known address —
+	// which is exactly how a uniform response becomes an oracle.
+	//
+	// CLIENT CONTRACT: on RESOLVE_STATUS_NONE the client MUST still present a
+	// plausible sign-in form (default to password) and let the attempt fail
+	// generically. Rendering "no such account" would reintroduce at the UI layer
+	// the very leak this shape prevents.
+	//
+	// Empty on a populated workspace means "not determined", not "no methods
+	// available" — treat it as the password default rather than locking the user
+	// out of a workspace they belong to.
+	AuthMethods   []AuthMethod `protobuf:"varint,3,rep,packed,name=auth_methods,json=authMethods,proto3,enum=platform.v1.AuthMethod" json:"auth_methods,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -421,6 +507,13 @@ func (x *ResolveWorkspace) GetDisplayName() string {
 		return x.DisplayName
 	}
 	return ""
+}
+
+func (x *ResolveWorkspace) GetAuthMethods() []AuthMethod {
+	if x != nil {
+		return x.AuthMethods
+	}
+	return nil
 }
 
 type ResolveWorkspacesByEmailResponse struct {
@@ -2460,10 +2553,11 @@ const file_platform_v1_authn_proto_rawDesc = "" +
 	"\n" +
 	"is_current\x18\t \x01(\bR\tisCurrent\"7\n" +
 	"\x1fResolveWorkspacesByEmailRequest\x12\x14\n" +
-	"\x05email\x18\x01 \x01(\tR\x05email\"R\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\"\x8e\x01\n" +
 	"\x10ResolveWorkspace\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
-	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\"\x95\x01\n" +
+	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12:\n" +
+	"\fauth_methods\x18\x03 \x03(\x0e2\x17.platform.v1.AuthMethodR\vauthMethods\"\x95\x01\n" +
 	" ResolveWorkspacesByEmailResponse\x122\n" +
 	"\x06status\x18\x01 \x01(\x0e2\x1a.platform.v1.ResolveStatusR\x06status\x12=\n" +
 	"\n" +
@@ -2561,7 +2655,14 @@ const file_platform_v1_authn_proto_rawDesc = "" +
 	"\bsessions\x18\x01 \x03(\v2\x1b.platform.v1.SessionSummaryR\bsessions\";\n" +
 	"\x16RevokeMySessionRequest\x12!\n" +
 	"\ftoken_prefix\x18\x01 \x01(\tR\vtokenPrefix\"\x19\n" +
-	"\x17RevokeMySessionResponse*y\n" +
+	"\x17RevokeMySessionResponse*\x8c\x01\n" +
+	"\n" +
+	"AuthMethod\x12\x1b\n" +
+	"\x17AUTH_METHOD_UNSPECIFIED\x10\x00\x12\x18\n" +
+	"\x14AUTH_METHOD_PASSWORD\x10\x01\x12\x19\n" +
+	"\x15AUTH_METHOD_FEDERATED\x10\x02\x12\x13\n" +
+	"\x0fAUTH_METHOD_SSO\x10\x03\x12\x17\n" +
+	"\x13AUTH_METHOD_PASSKEY\x10\x04*y\n" +
 	"\rResolveStatus\x12\x1e\n" +
 	"\x1aRESOLVE_STATUS_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12RESOLVE_STATUS_ONE\x10\x01\x12\x17\n" +
@@ -2605,126 +2706,128 @@ func file_platform_v1_authn_proto_rawDescGZIP() []byte {
 	return file_platform_v1_authn_proto_rawDescData
 }
 
-var file_platform_v1_authn_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_platform_v1_authn_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_platform_v1_authn_proto_msgTypes = make([]protoimpl.MessageInfo, 48)
 var file_platform_v1_authn_proto_goTypes = []any{
-	(ResolveStatus)(0),                              // 0: platform.v1.ResolveStatus
-	(*LoginNextStep)(nil),                           // 1: platform.v1.LoginNextStep
-	(*CredentialSummary)(nil),                       // 2: platform.v1.CredentialSummary
-	(*SessionSummary)(nil),                          // 3: platform.v1.SessionSummary
-	(*ResolveWorkspacesByEmailRequest)(nil),         // 4: platform.v1.ResolveWorkspacesByEmailRequest
-	(*ResolveWorkspace)(nil),                        // 5: platform.v1.ResolveWorkspace
-	(*ResolveWorkspacesByEmailResponse)(nil),        // 6: platform.v1.ResolveWorkspacesByEmailResponse
-	(*PasswordLoginStartRequest)(nil),               // 7: platform.v1.PasswordLoginStartRequest
-	(*PasswordLoginStartResponse)(nil),              // 8: platform.v1.PasswordLoginStartResponse
-	(*PasswordLoginCompleteRequest)(nil),            // 9: platform.v1.PasswordLoginCompleteRequest
-	(*PasswordLoginCompleteResponse)(nil),           // 10: platform.v1.PasswordLoginCompleteResponse
-	(*ChangePasswordRequest)(nil),                   // 11: platform.v1.ChangePasswordRequest
-	(*ChangePasswordResponse)(nil),                  // 12: platform.v1.ChangePasswordResponse
-	(*EnrollTOTPRequest)(nil),                       // 13: platform.v1.EnrollTOTPRequest
-	(*EnrollTOTPResponse)(nil),                      // 14: platform.v1.EnrollTOTPResponse
-	(*CompleteTOTPEnrollRequest)(nil),               // 15: platform.v1.CompleteTOTPEnrollRequest
-	(*CompleteTOTPEnrollResponse)(nil),              // 16: platform.v1.CompleteTOTPEnrollResponse
-	(*LoginWithTOTPRequest)(nil),                    // 17: platform.v1.LoginWithTOTPRequest
-	(*LoginWithTOTPResponse)(nil),                   // 18: platform.v1.LoginWithTOTPResponse
-	(*BeginWebAuthnRegistrationRequest)(nil),        // 19: platform.v1.BeginWebAuthnRegistrationRequest
-	(*BeginWebAuthnRegistrationResponse)(nil),       // 20: platform.v1.BeginWebAuthnRegistrationResponse
-	(*FinishWebAuthnRegistrationRequest)(nil),       // 21: platform.v1.FinishWebAuthnRegistrationRequest
-	(*FinishWebAuthnRegistrationResponse)(nil),      // 22: platform.v1.FinishWebAuthnRegistrationResponse
-	(*BeginWebAuthnLoginRequest)(nil),               // 23: platform.v1.BeginWebAuthnLoginRequest
-	(*BeginWebAuthnLoginResponse)(nil),              // 24: platform.v1.BeginWebAuthnLoginResponse
-	(*FinishWebAuthnLoginRequest)(nil),              // 25: platform.v1.FinishWebAuthnLoginRequest
-	(*FinishWebAuthnLoginResponse)(nil),             // 26: platform.v1.FinishWebAuthnLoginResponse
-	(*BeginDiscoverableWebAuthnLoginRequest)(nil),   // 27: platform.v1.BeginDiscoverableWebAuthnLoginRequest
-	(*BeginDiscoverableWebAuthnLoginResponse)(nil),  // 28: platform.v1.BeginDiscoverableWebAuthnLoginResponse
-	(*FinishDiscoverableWebAuthnLoginRequest)(nil),  // 29: platform.v1.FinishDiscoverableWebAuthnLoginRequest
-	(*FinishDiscoverableWebAuthnLoginResponse)(nil), // 30: platform.v1.FinishDiscoverableWebAuthnLoginResponse
-	(*LoginWithPIVRequest)(nil),                     // 31: platform.v1.LoginWithPIVRequest
-	(*LoginWithPIVResponse)(nil),                    // 32: platform.v1.LoginWithPIVResponse
-	(*BeginStepUpRequest)(nil),                      // 33: platform.v1.BeginStepUpRequest
-	(*BeginStepUpResponse)(nil),                     // 34: platform.v1.BeginStepUpResponse
-	(*FinishStepUpRequest)(nil),                     // 35: platform.v1.FinishStepUpRequest
-	(*FinishStepUpResponse)(nil),                    // 36: platform.v1.FinishStepUpResponse
-	(*AuthnServiceLogoutRequest)(nil),               // 37: platform.v1.AuthnServiceLogoutRequest
-	(*AuthnServiceLogoutResponse)(nil),              // 38: platform.v1.AuthnServiceLogoutResponse
-	(*ListMyCredentialsRequest)(nil),                // 39: platform.v1.ListMyCredentialsRequest
-	(*ListMyCredentialsResponse)(nil),               // 40: platform.v1.ListMyCredentialsResponse
-	(*RevokeMyCredentialRequest)(nil),               // 41: platform.v1.RevokeMyCredentialRequest
-	(*RevokeMyCredentialResponse)(nil),              // 42: platform.v1.RevokeMyCredentialResponse
-	(*WhoAmIRequest)(nil),                           // 43: platform.v1.WhoAmIRequest
-	(*WhoAmIResponse)(nil),                          // 44: platform.v1.WhoAmIResponse
-	(*ListMySessionsRequest)(nil),                   // 45: platform.v1.ListMySessionsRequest
-	(*ListMySessionsResponse)(nil),                  // 46: platform.v1.ListMySessionsResponse
-	(*RevokeMySessionRequest)(nil),                  // 47: platform.v1.RevokeMySessionRequest
-	(*RevokeMySessionResponse)(nil),                 // 48: platform.v1.RevokeMySessionResponse
-	(*timestamppb.Timestamp)(nil),                   // 49: google.protobuf.Timestamp
+	(AuthMethod)(0),                                 // 0: platform.v1.AuthMethod
+	(ResolveStatus)(0),                              // 1: platform.v1.ResolveStatus
+	(*LoginNextStep)(nil),                           // 2: platform.v1.LoginNextStep
+	(*CredentialSummary)(nil),                       // 3: platform.v1.CredentialSummary
+	(*SessionSummary)(nil),                          // 4: platform.v1.SessionSummary
+	(*ResolveWorkspacesByEmailRequest)(nil),         // 5: platform.v1.ResolveWorkspacesByEmailRequest
+	(*ResolveWorkspace)(nil),                        // 6: platform.v1.ResolveWorkspace
+	(*ResolveWorkspacesByEmailResponse)(nil),        // 7: platform.v1.ResolveWorkspacesByEmailResponse
+	(*PasswordLoginStartRequest)(nil),               // 8: platform.v1.PasswordLoginStartRequest
+	(*PasswordLoginStartResponse)(nil),              // 9: platform.v1.PasswordLoginStartResponse
+	(*PasswordLoginCompleteRequest)(nil),            // 10: platform.v1.PasswordLoginCompleteRequest
+	(*PasswordLoginCompleteResponse)(nil),           // 11: platform.v1.PasswordLoginCompleteResponse
+	(*ChangePasswordRequest)(nil),                   // 12: platform.v1.ChangePasswordRequest
+	(*ChangePasswordResponse)(nil),                  // 13: platform.v1.ChangePasswordResponse
+	(*EnrollTOTPRequest)(nil),                       // 14: platform.v1.EnrollTOTPRequest
+	(*EnrollTOTPResponse)(nil),                      // 15: platform.v1.EnrollTOTPResponse
+	(*CompleteTOTPEnrollRequest)(nil),               // 16: platform.v1.CompleteTOTPEnrollRequest
+	(*CompleteTOTPEnrollResponse)(nil),              // 17: platform.v1.CompleteTOTPEnrollResponse
+	(*LoginWithTOTPRequest)(nil),                    // 18: platform.v1.LoginWithTOTPRequest
+	(*LoginWithTOTPResponse)(nil),                   // 19: platform.v1.LoginWithTOTPResponse
+	(*BeginWebAuthnRegistrationRequest)(nil),        // 20: platform.v1.BeginWebAuthnRegistrationRequest
+	(*BeginWebAuthnRegistrationResponse)(nil),       // 21: platform.v1.BeginWebAuthnRegistrationResponse
+	(*FinishWebAuthnRegistrationRequest)(nil),       // 22: platform.v1.FinishWebAuthnRegistrationRequest
+	(*FinishWebAuthnRegistrationResponse)(nil),      // 23: platform.v1.FinishWebAuthnRegistrationResponse
+	(*BeginWebAuthnLoginRequest)(nil),               // 24: platform.v1.BeginWebAuthnLoginRequest
+	(*BeginWebAuthnLoginResponse)(nil),              // 25: platform.v1.BeginWebAuthnLoginResponse
+	(*FinishWebAuthnLoginRequest)(nil),              // 26: platform.v1.FinishWebAuthnLoginRequest
+	(*FinishWebAuthnLoginResponse)(nil),             // 27: platform.v1.FinishWebAuthnLoginResponse
+	(*BeginDiscoverableWebAuthnLoginRequest)(nil),   // 28: platform.v1.BeginDiscoverableWebAuthnLoginRequest
+	(*BeginDiscoverableWebAuthnLoginResponse)(nil),  // 29: platform.v1.BeginDiscoverableWebAuthnLoginResponse
+	(*FinishDiscoverableWebAuthnLoginRequest)(nil),  // 30: platform.v1.FinishDiscoverableWebAuthnLoginRequest
+	(*FinishDiscoverableWebAuthnLoginResponse)(nil), // 31: platform.v1.FinishDiscoverableWebAuthnLoginResponse
+	(*LoginWithPIVRequest)(nil),                     // 32: platform.v1.LoginWithPIVRequest
+	(*LoginWithPIVResponse)(nil),                    // 33: platform.v1.LoginWithPIVResponse
+	(*BeginStepUpRequest)(nil),                      // 34: platform.v1.BeginStepUpRequest
+	(*BeginStepUpResponse)(nil),                     // 35: platform.v1.BeginStepUpResponse
+	(*FinishStepUpRequest)(nil),                     // 36: platform.v1.FinishStepUpRequest
+	(*FinishStepUpResponse)(nil),                    // 37: platform.v1.FinishStepUpResponse
+	(*AuthnServiceLogoutRequest)(nil),               // 38: platform.v1.AuthnServiceLogoutRequest
+	(*AuthnServiceLogoutResponse)(nil),              // 39: platform.v1.AuthnServiceLogoutResponse
+	(*ListMyCredentialsRequest)(nil),                // 40: platform.v1.ListMyCredentialsRequest
+	(*ListMyCredentialsResponse)(nil),               // 41: platform.v1.ListMyCredentialsResponse
+	(*RevokeMyCredentialRequest)(nil),               // 42: platform.v1.RevokeMyCredentialRequest
+	(*RevokeMyCredentialResponse)(nil),              // 43: platform.v1.RevokeMyCredentialResponse
+	(*WhoAmIRequest)(nil),                           // 44: platform.v1.WhoAmIRequest
+	(*WhoAmIResponse)(nil),                          // 45: platform.v1.WhoAmIResponse
+	(*ListMySessionsRequest)(nil),                   // 46: platform.v1.ListMySessionsRequest
+	(*ListMySessionsResponse)(nil),                  // 47: platform.v1.ListMySessionsResponse
+	(*RevokeMySessionRequest)(nil),                  // 48: platform.v1.RevokeMySessionRequest
+	(*RevokeMySessionResponse)(nil),                 // 49: platform.v1.RevokeMySessionResponse
+	(*timestamppb.Timestamp)(nil),                   // 50: google.protobuf.Timestamp
 }
 var file_platform_v1_authn_proto_depIdxs = []int32{
-	49, // 0: platform.v1.CredentialSummary.enrolled_at:type_name -> google.protobuf.Timestamp
-	49, // 1: platform.v1.CredentialSummary.last_used_at:type_name -> google.protobuf.Timestamp
-	49, // 2: platform.v1.SessionSummary.created_at:type_name -> google.protobuf.Timestamp
-	49, // 3: platform.v1.SessionSummary.last_active_at:type_name -> google.protobuf.Timestamp
-	49, // 4: platform.v1.SessionSummary.expires_at:type_name -> google.protobuf.Timestamp
-	0,  // 5: platform.v1.ResolveWorkspacesByEmailResponse.status:type_name -> platform.v1.ResolveStatus
-	5,  // 6: platform.v1.ResolveWorkspacesByEmailResponse.workspaces:type_name -> platform.v1.ResolveWorkspace
-	1,  // 7: platform.v1.PasswordLoginStartResponse.next_step:type_name -> platform.v1.LoginNextStep
-	1,  // 8: platform.v1.PasswordLoginCompleteResponse.next_step:type_name -> platform.v1.LoginNextStep
-	1,  // 9: platform.v1.LoginWithTOTPResponse.next_step:type_name -> platform.v1.LoginNextStep
-	1,  // 10: platform.v1.FinishWebAuthnLoginResponse.next_step:type_name -> platform.v1.LoginNextStep
-	1,  // 11: platform.v1.FinishDiscoverableWebAuthnLoginResponse.next_step:type_name -> platform.v1.LoginNextStep
-	1,  // 12: platform.v1.LoginWithPIVResponse.next_step:type_name -> platform.v1.LoginNextStep
-	2,  // 13: platform.v1.ListMyCredentialsResponse.credentials:type_name -> platform.v1.CredentialSummary
-	49, // 14: platform.v1.WhoAmIResponse.session_expires_at:type_name -> google.protobuf.Timestamp
-	3,  // 15: platform.v1.ListMySessionsResponse.sessions:type_name -> platform.v1.SessionSummary
-	4,  // 16: platform.v1.AuthnService.ResolveWorkspacesByEmail:input_type -> platform.v1.ResolveWorkspacesByEmailRequest
-	7,  // 17: platform.v1.AuthnService.PasswordLoginStart:input_type -> platform.v1.PasswordLoginStartRequest
-	9,  // 18: platform.v1.AuthnService.PasswordLoginComplete:input_type -> platform.v1.PasswordLoginCompleteRequest
-	11, // 19: platform.v1.AuthnService.ChangePassword:input_type -> platform.v1.ChangePasswordRequest
-	13, // 20: platform.v1.AuthnService.EnrollTOTP:input_type -> platform.v1.EnrollTOTPRequest
-	15, // 21: platform.v1.AuthnService.CompleteTOTPEnroll:input_type -> platform.v1.CompleteTOTPEnrollRequest
-	17, // 22: platform.v1.AuthnService.LoginWithTOTP:input_type -> platform.v1.LoginWithTOTPRequest
-	19, // 23: platform.v1.AuthnService.BeginWebAuthnRegistration:input_type -> platform.v1.BeginWebAuthnRegistrationRequest
-	21, // 24: platform.v1.AuthnService.FinishWebAuthnRegistration:input_type -> platform.v1.FinishWebAuthnRegistrationRequest
-	23, // 25: platform.v1.AuthnService.BeginWebAuthnLogin:input_type -> platform.v1.BeginWebAuthnLoginRequest
-	25, // 26: platform.v1.AuthnService.FinishWebAuthnLogin:input_type -> platform.v1.FinishWebAuthnLoginRequest
-	27, // 27: platform.v1.AuthnService.BeginDiscoverableWebAuthnLogin:input_type -> platform.v1.BeginDiscoverableWebAuthnLoginRequest
-	29, // 28: platform.v1.AuthnService.FinishDiscoverableWebAuthnLogin:input_type -> platform.v1.FinishDiscoverableWebAuthnLoginRequest
-	31, // 29: platform.v1.AuthnService.LoginWithPIV:input_type -> platform.v1.LoginWithPIVRequest
-	33, // 30: platform.v1.AuthnService.BeginStepUp:input_type -> platform.v1.BeginStepUpRequest
-	35, // 31: platform.v1.AuthnService.FinishStepUp:input_type -> platform.v1.FinishStepUpRequest
-	37, // 32: platform.v1.AuthnService.Logout:input_type -> platform.v1.AuthnServiceLogoutRequest
-	39, // 33: platform.v1.AuthnService.ListMyCredentials:input_type -> platform.v1.ListMyCredentialsRequest
-	41, // 34: platform.v1.AuthnService.RevokeMyCredential:input_type -> platform.v1.RevokeMyCredentialRequest
-	43, // 35: platform.v1.EndUserSessionService.WhoAmI:input_type -> platform.v1.WhoAmIRequest
-	45, // 36: platform.v1.EndUserSessionService.ListMySessions:input_type -> platform.v1.ListMySessionsRequest
-	47, // 37: platform.v1.EndUserSessionService.RevokeMySession:input_type -> platform.v1.RevokeMySessionRequest
-	6,  // 38: platform.v1.AuthnService.ResolveWorkspacesByEmail:output_type -> platform.v1.ResolveWorkspacesByEmailResponse
-	8,  // 39: platform.v1.AuthnService.PasswordLoginStart:output_type -> platform.v1.PasswordLoginStartResponse
-	10, // 40: platform.v1.AuthnService.PasswordLoginComplete:output_type -> platform.v1.PasswordLoginCompleteResponse
-	12, // 41: platform.v1.AuthnService.ChangePassword:output_type -> platform.v1.ChangePasswordResponse
-	14, // 42: platform.v1.AuthnService.EnrollTOTP:output_type -> platform.v1.EnrollTOTPResponse
-	16, // 43: platform.v1.AuthnService.CompleteTOTPEnroll:output_type -> platform.v1.CompleteTOTPEnrollResponse
-	18, // 44: platform.v1.AuthnService.LoginWithTOTP:output_type -> platform.v1.LoginWithTOTPResponse
-	20, // 45: platform.v1.AuthnService.BeginWebAuthnRegistration:output_type -> platform.v1.BeginWebAuthnRegistrationResponse
-	22, // 46: platform.v1.AuthnService.FinishWebAuthnRegistration:output_type -> platform.v1.FinishWebAuthnRegistrationResponse
-	24, // 47: platform.v1.AuthnService.BeginWebAuthnLogin:output_type -> platform.v1.BeginWebAuthnLoginResponse
-	26, // 48: platform.v1.AuthnService.FinishWebAuthnLogin:output_type -> platform.v1.FinishWebAuthnLoginResponse
-	28, // 49: platform.v1.AuthnService.BeginDiscoverableWebAuthnLogin:output_type -> platform.v1.BeginDiscoverableWebAuthnLoginResponse
-	30, // 50: platform.v1.AuthnService.FinishDiscoverableWebAuthnLogin:output_type -> platform.v1.FinishDiscoverableWebAuthnLoginResponse
-	32, // 51: platform.v1.AuthnService.LoginWithPIV:output_type -> platform.v1.LoginWithPIVResponse
-	34, // 52: platform.v1.AuthnService.BeginStepUp:output_type -> platform.v1.BeginStepUpResponse
-	36, // 53: platform.v1.AuthnService.FinishStepUp:output_type -> platform.v1.FinishStepUpResponse
-	38, // 54: platform.v1.AuthnService.Logout:output_type -> platform.v1.AuthnServiceLogoutResponse
-	40, // 55: platform.v1.AuthnService.ListMyCredentials:output_type -> platform.v1.ListMyCredentialsResponse
-	42, // 56: platform.v1.AuthnService.RevokeMyCredential:output_type -> platform.v1.RevokeMyCredentialResponse
-	44, // 57: platform.v1.EndUserSessionService.WhoAmI:output_type -> platform.v1.WhoAmIResponse
-	46, // 58: platform.v1.EndUserSessionService.ListMySessions:output_type -> platform.v1.ListMySessionsResponse
-	48, // 59: platform.v1.EndUserSessionService.RevokeMySession:output_type -> platform.v1.RevokeMySessionResponse
-	38, // [38:60] is the sub-list for method output_type
-	16, // [16:38] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	50, // 0: platform.v1.CredentialSummary.enrolled_at:type_name -> google.protobuf.Timestamp
+	50, // 1: platform.v1.CredentialSummary.last_used_at:type_name -> google.protobuf.Timestamp
+	50, // 2: platform.v1.SessionSummary.created_at:type_name -> google.protobuf.Timestamp
+	50, // 3: platform.v1.SessionSummary.last_active_at:type_name -> google.protobuf.Timestamp
+	50, // 4: platform.v1.SessionSummary.expires_at:type_name -> google.protobuf.Timestamp
+	0,  // 5: platform.v1.ResolveWorkspace.auth_methods:type_name -> platform.v1.AuthMethod
+	1,  // 6: platform.v1.ResolveWorkspacesByEmailResponse.status:type_name -> platform.v1.ResolveStatus
+	6,  // 7: platform.v1.ResolveWorkspacesByEmailResponse.workspaces:type_name -> platform.v1.ResolveWorkspace
+	2,  // 8: platform.v1.PasswordLoginStartResponse.next_step:type_name -> platform.v1.LoginNextStep
+	2,  // 9: platform.v1.PasswordLoginCompleteResponse.next_step:type_name -> platform.v1.LoginNextStep
+	2,  // 10: platform.v1.LoginWithTOTPResponse.next_step:type_name -> platform.v1.LoginNextStep
+	2,  // 11: platform.v1.FinishWebAuthnLoginResponse.next_step:type_name -> platform.v1.LoginNextStep
+	2,  // 12: platform.v1.FinishDiscoverableWebAuthnLoginResponse.next_step:type_name -> platform.v1.LoginNextStep
+	2,  // 13: platform.v1.LoginWithPIVResponse.next_step:type_name -> platform.v1.LoginNextStep
+	3,  // 14: platform.v1.ListMyCredentialsResponse.credentials:type_name -> platform.v1.CredentialSummary
+	50, // 15: platform.v1.WhoAmIResponse.session_expires_at:type_name -> google.protobuf.Timestamp
+	4,  // 16: platform.v1.ListMySessionsResponse.sessions:type_name -> platform.v1.SessionSummary
+	5,  // 17: platform.v1.AuthnService.ResolveWorkspacesByEmail:input_type -> platform.v1.ResolveWorkspacesByEmailRequest
+	8,  // 18: platform.v1.AuthnService.PasswordLoginStart:input_type -> platform.v1.PasswordLoginStartRequest
+	10, // 19: platform.v1.AuthnService.PasswordLoginComplete:input_type -> platform.v1.PasswordLoginCompleteRequest
+	12, // 20: platform.v1.AuthnService.ChangePassword:input_type -> platform.v1.ChangePasswordRequest
+	14, // 21: platform.v1.AuthnService.EnrollTOTP:input_type -> platform.v1.EnrollTOTPRequest
+	16, // 22: platform.v1.AuthnService.CompleteTOTPEnroll:input_type -> platform.v1.CompleteTOTPEnrollRequest
+	18, // 23: platform.v1.AuthnService.LoginWithTOTP:input_type -> platform.v1.LoginWithTOTPRequest
+	20, // 24: platform.v1.AuthnService.BeginWebAuthnRegistration:input_type -> platform.v1.BeginWebAuthnRegistrationRequest
+	22, // 25: platform.v1.AuthnService.FinishWebAuthnRegistration:input_type -> platform.v1.FinishWebAuthnRegistrationRequest
+	24, // 26: platform.v1.AuthnService.BeginWebAuthnLogin:input_type -> platform.v1.BeginWebAuthnLoginRequest
+	26, // 27: platform.v1.AuthnService.FinishWebAuthnLogin:input_type -> platform.v1.FinishWebAuthnLoginRequest
+	28, // 28: platform.v1.AuthnService.BeginDiscoverableWebAuthnLogin:input_type -> platform.v1.BeginDiscoverableWebAuthnLoginRequest
+	30, // 29: platform.v1.AuthnService.FinishDiscoverableWebAuthnLogin:input_type -> platform.v1.FinishDiscoverableWebAuthnLoginRequest
+	32, // 30: platform.v1.AuthnService.LoginWithPIV:input_type -> platform.v1.LoginWithPIVRequest
+	34, // 31: platform.v1.AuthnService.BeginStepUp:input_type -> platform.v1.BeginStepUpRequest
+	36, // 32: platform.v1.AuthnService.FinishStepUp:input_type -> platform.v1.FinishStepUpRequest
+	38, // 33: platform.v1.AuthnService.Logout:input_type -> platform.v1.AuthnServiceLogoutRequest
+	40, // 34: platform.v1.AuthnService.ListMyCredentials:input_type -> platform.v1.ListMyCredentialsRequest
+	42, // 35: platform.v1.AuthnService.RevokeMyCredential:input_type -> platform.v1.RevokeMyCredentialRequest
+	44, // 36: platform.v1.EndUserSessionService.WhoAmI:input_type -> platform.v1.WhoAmIRequest
+	46, // 37: platform.v1.EndUserSessionService.ListMySessions:input_type -> platform.v1.ListMySessionsRequest
+	48, // 38: platform.v1.EndUserSessionService.RevokeMySession:input_type -> platform.v1.RevokeMySessionRequest
+	7,  // 39: platform.v1.AuthnService.ResolveWorkspacesByEmail:output_type -> platform.v1.ResolveWorkspacesByEmailResponse
+	9,  // 40: platform.v1.AuthnService.PasswordLoginStart:output_type -> platform.v1.PasswordLoginStartResponse
+	11, // 41: platform.v1.AuthnService.PasswordLoginComplete:output_type -> platform.v1.PasswordLoginCompleteResponse
+	13, // 42: platform.v1.AuthnService.ChangePassword:output_type -> platform.v1.ChangePasswordResponse
+	15, // 43: platform.v1.AuthnService.EnrollTOTP:output_type -> platform.v1.EnrollTOTPResponse
+	17, // 44: platform.v1.AuthnService.CompleteTOTPEnroll:output_type -> platform.v1.CompleteTOTPEnrollResponse
+	19, // 45: platform.v1.AuthnService.LoginWithTOTP:output_type -> platform.v1.LoginWithTOTPResponse
+	21, // 46: platform.v1.AuthnService.BeginWebAuthnRegistration:output_type -> platform.v1.BeginWebAuthnRegistrationResponse
+	23, // 47: platform.v1.AuthnService.FinishWebAuthnRegistration:output_type -> platform.v1.FinishWebAuthnRegistrationResponse
+	25, // 48: platform.v1.AuthnService.BeginWebAuthnLogin:output_type -> platform.v1.BeginWebAuthnLoginResponse
+	27, // 49: platform.v1.AuthnService.FinishWebAuthnLogin:output_type -> platform.v1.FinishWebAuthnLoginResponse
+	29, // 50: platform.v1.AuthnService.BeginDiscoverableWebAuthnLogin:output_type -> platform.v1.BeginDiscoverableWebAuthnLoginResponse
+	31, // 51: platform.v1.AuthnService.FinishDiscoverableWebAuthnLogin:output_type -> platform.v1.FinishDiscoverableWebAuthnLoginResponse
+	33, // 52: platform.v1.AuthnService.LoginWithPIV:output_type -> platform.v1.LoginWithPIVResponse
+	35, // 53: platform.v1.AuthnService.BeginStepUp:output_type -> platform.v1.BeginStepUpResponse
+	37, // 54: platform.v1.AuthnService.FinishStepUp:output_type -> platform.v1.FinishStepUpResponse
+	39, // 55: platform.v1.AuthnService.Logout:output_type -> platform.v1.AuthnServiceLogoutResponse
+	41, // 56: platform.v1.AuthnService.ListMyCredentials:output_type -> platform.v1.ListMyCredentialsResponse
+	43, // 57: platform.v1.AuthnService.RevokeMyCredential:output_type -> platform.v1.RevokeMyCredentialResponse
+	45, // 58: platform.v1.EndUserSessionService.WhoAmI:output_type -> platform.v1.WhoAmIResponse
+	47, // 59: platform.v1.EndUserSessionService.ListMySessions:output_type -> platform.v1.ListMySessionsResponse
+	49, // 60: platform.v1.EndUserSessionService.RevokeMySession:output_type -> platform.v1.RevokeMySessionResponse
+	39, // [39:61] is the sub-list for method output_type
+	17, // [17:39] is the sub-list for method input_type
+	17, // [17:17] is the sub-list for extension type_name
+	17, // [17:17] is the sub-list for extension extendee
+	0,  // [0:17] is the sub-list for field type_name
 }
 
 func init() { file_platform_v1_authn_proto_init() }
@@ -2741,7 +2844,7 @@ func file_platform_v1_authn_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_authn_proto_rawDesc), len(file_platform_v1_authn_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   48,
 			NumExtensions: 0,
 			NumServices:   2,
