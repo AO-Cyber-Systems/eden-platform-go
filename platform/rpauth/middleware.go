@@ -57,6 +57,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // TokenExtractor pulls the AOID access token out of a request, returning "" when
@@ -203,6 +204,10 @@ type Authenticator[P any] struct {
 	extract      TokenExtractor
 	writeErr     ErrorWriter
 	logger       *slog.Logger
+	// delayFn is a test seam for RevalidateLoop's inter-check delay (see
+	// revalidate.go). Nil means the real jittered interval; there is no Option
+	// for it on purpose, because the interval is derived, not chosen.
+	delayFn func(time.Duration) time.Duration
 }
 
 // ErrorWriter renders a denial. It is configurable because adopting this

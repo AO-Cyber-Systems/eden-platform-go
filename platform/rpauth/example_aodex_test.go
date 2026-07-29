@@ -140,3 +140,54 @@ func ExampleAuthenticator() {
 
 	// Output:
 }
+
+// cableConn stands in for one connection in AODex's /cable hub.
+type cableConn struct {
+	token string       // the AOID token the upgrade authenticated with
+	user  *CurrentUser // refreshed on every successful revalidation
+}
+
+func (c *cableConn) close(string) {}
+
+// ExampleAuthenticator_Revalidate is the /cable half of the adoption: the
+// piece without which revoking a session in AOID would close every future HTTP
+// request and none of the WebSockets already streaming.
+//
+// It has no "Output:" comment on purpose — the wiring above is nil, so this
+// example is COMPILED but not run. Compiling is the gate that matters: it is
+// what proves the API is usable from the shape /cable actually has.
+func ExampleAuthenticator_Revalidate() {
+	var (
+		auth *rpauth.Authenticator[*CurrentUser] // built exactly as above
+		conn *cableConn
+		ctx  context.Context // scoped to the connection, cancelled on close
+	)
+
+	// The interval is NOT chosen here. It comes from the same Introspector the
+	// HTTP middleware uses, so /cable cannot widen the platform's revocation
+	// budget by picking its own number. With the default 60s cache TTL the
+	// worst-case lag for a live socket is 60s + one introspection round trip:
+	// the loop bypasses the cache and takes a fresh baseline on entry, so the
+	// TTL does not stack on top of the interval.
+	_ = auth.RevalidationInterval()
+
+	// The loop blocks, so the hub decides where it runs and cancels it with the
+	// connection. Nothing to Stop, nothing to leak.
+	go auth.RevalidateLoop(ctx, conn.token, func(res rpauth.RevalidationResult[*CurrentUser]) bool {
+		// ShouldDisconnect is TRUE ONLY for a definitive negative. An AOID
+		// outage lands here as RevalidationIndeterminate, and the socket stays
+		// up — bouncing every connection on the platform because the authority
+		// blipped would be a self-inflicted outage, and every client would
+		// reconnect into an authority that is still down.
+		if res.ShouldDisconnect() {
+			conn.close("session revoked")
+			return false
+		}
+		if res.Status == rpauth.RevalidationValid {
+			// The principal is reloaded on every check, so a tier change or a
+			// demotion takes effect without a reconnect.
+			conn.user = res.Principal
+		}
+		return true
+	})
+}

@@ -156,16 +156,46 @@ func NewIntrospector(cfg Config) (*Introspector, error) {
 	}, nil
 }
 
-// Validate resolves a raw bearer token to an Identity.
+// MaxTTL is the effective cache TTL this Introspector was built with — i.e. the
+// revocation lag budget it is actually enforcing, after any Config override.
+//
+// It is exported so that code which has to CHOOSE A PERIOD (the revalidation
+// hook for long-lived connections, chiefly) derives that period from this
+// number instead of picking one independently. A component that picks its own
+// interval silently widens the platform's revocation window; see
+// revalidate.go.
+func (i *Introspector) MaxTTL() time.Duration { return i.maxTTL }
+
+// Validate resolves a raw bearer token to an Identity, serving a cached result
+// when one is present and unexpired.
 //
 // Returns ErrInactive when the authority rejects the token and ErrUnavailable
 // when it cannot be consulted. Callers MUST distinguish the two.
 func (i *Introspector) Validate(ctx context.Context, rawToken string) (*Identity, error) {
+	return i.validate(ctx, rawToken, true)
+}
+
+// ValidateUncached is Validate with the cache READ skipped: it always asks the
+// authority, whatever is currently cached for rawToken.
+//
+// USE IT WHEN THE POINT OF THE CALL IS THE FRESHNESS, not the identity. A
+// re-check that can be answered out of the cache proves only that the token was
+// valid when the entry was written, which is exactly the question a revocation
+// check is asking. The cache is still WRITTEN — a fresh positive result is a
+// fresh positive result, and refreshing the entry cannot make any subsequent
+// cache hit older than MaxTTL — and a definitive rejection still drops the
+// entry, so a revocation seen here also ends that token's ordinary HTTP
+// requests immediately instead of after the remaining TTL.
+func (i *Introspector) ValidateUncached(ctx context.Context, rawToken string) (*Identity, error) {
+	return i.validate(ctx, rawToken, false)
+}
+
+func (i *Introspector) validate(ctx context.Context, rawToken string, useCache bool) (*Identity, error) {
 	if strings.TrimSpace(rawToken) == "" {
 		return nil, ErrInactive
 	}
 
-	if i.cache != nil {
+	if useCache && i.cache != nil {
 		if cached, ok := i.cache.Get(rawToken); ok {
 			return &cached, nil
 		}
@@ -204,6 +234,12 @@ func (i *Introspector) Validate(ctx context.Context, rawToken string) (*Identity
 
 	// RFC 7662: an inactive token is a 200 with active=false, not an error status.
 	if !out.Active {
+		// Drop any cached positive. On the cached path this is a no-op (a hit
+		// would have returned above), but on the UNCACHED path it is the
+		// mechanism by which a revocation noticed by a long-lived connection
+		// also ends that token's ordinary HTTP requests, instead of leaving
+		// them to ride out the rest of the TTL.
+		i.Invalidate(rawToken)
 		return nil, ErrInactive
 	}
 
@@ -220,6 +256,7 @@ func (i *Introspector) Validate(ctx context.Context, rawToken string) (*Identity
 	// the caller's 401 mapping correct while the wrapped text keeps the real
 	// reason legible in logs.
 	if strings.EqualFold(out.TokenType, "refresh_token") {
+		i.Invalidate(rawToken)
 		return nil, fmt.Errorf("%w: refresh token presented as a bearer credential", ErrInactive)
 	}
 
