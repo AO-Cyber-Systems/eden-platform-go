@@ -51,6 +51,9 @@ const (
 	// AccountAdminServiceAssistedAccountRecoveryProcedure is the fully-qualified name of the
 	// AccountAdminService's AssistedAccountRecovery RPC.
 	AccountAdminServiceAssistedAccountRecoveryProcedure = "/platform.v1.AccountAdminService/AssistedAccountRecovery"
+	// AccountAdminServiceForcePasswordResetProcedure is the fully-qualified name of the
+	// AccountAdminService's ForcePasswordReset RPC.
+	AccountAdminServiceForcePasswordResetProcedure = "/platform.v1.AccountAdminService/ForcePasswordReset"
 	// AccountAdminServiceSuspendAccountProcedure is the fully-qualified name of the
 	// AccountAdminService's SuspendAccount RPC.
 	AccountAdminServiceSuspendAccountProcedure = "/platform.v1.AccountAdminService/SuspendAccount"
@@ -162,6 +165,30 @@ type AccountAdminServiceClient interface {
 	// legitimate owner witnesses the change. The response is intentionally empty
 	// — no token or recovery URL is ever returned on the wire.
 	AssistedAccountRecovery(context.Context, *connect.Request[v1.AssistedAccountRecoveryRequest]) (*connect.Response[v1.AssistedAccountRecoveryResponse], error)
+	// ForcePasswordReset compels the account holder to choose a new password.
+	//
+	// The admin never sees, sets, or learns a password. That is not a policy
+	// statement layered on top of this RPC — this service has no set-password
+	// verb at all, and no field on this contract carries a credential in either
+	// direction. The only way any account acquires a password is the holder
+	// redeeming a recovery link themselves.
+	//
+	// DISTINCT FROM AssistedAccountRecovery: that RPC exists for the "holder lost
+	// access to their mailbox" case and therefore REPOINTS the address, which
+	// makes it an account-takeover primitive requiring a correspondingly narrow
+	// authorization. This one delivers to the address ALREADY ON FILE and cannot
+	// change it — there is deliberately no email field — so it is the safe verb
+	// for routine support ("reset this user") and does not need repoint-grade
+	// authority.
+	//
+	// Side effects the handler owns: a recovery link goes to the address on
+	// file, and ALL of the account's sessions are revoked so a reset actually
+	// ends access rather than merely inviting a change. reason is recorded in
+	// the audit event along with the acting admin.
+	//
+	// The response is intentionally empty — no token or recovery URL is ever
+	// returned on the wire.
+	ForcePasswordReset(context.Context, *connect.Request[v1.ForcePasswordResetRequest]) (*connect.Response[v1.ForcePasswordResetResponse], error)
 	// SuspendAccount transitions the account to "suspended". Attributes retained.
 	SuspendAccount(context.Context, *connect.Request[v1.SuspendAccountRequest]) (*connect.Response[v1.SuspendAccountResponse], error)
 	// RecoverAccount transitions a suspended account back to "active".
@@ -265,6 +292,12 @@ func NewAccountAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+AccountAdminServiceAssistedAccountRecoveryProcedure,
 			connect.WithSchema(accountAdminServiceMethods.ByName("AssistedAccountRecovery")),
+			connect.WithClientOptions(opts...),
+		),
+		forcePasswordReset: connect.NewClient[v1.ForcePasswordResetRequest, v1.ForcePasswordResetResponse](
+			httpClient,
+			baseURL+AccountAdminServiceForcePasswordResetProcedure,
+			connect.WithSchema(accountAdminServiceMethods.ByName("ForcePasswordReset")),
 			connect.WithClientOptions(opts...),
 		),
 		suspendAccount: connect.NewClient[v1.SuspendAccountRequest, v1.SuspendAccountResponse](
@@ -410,6 +443,7 @@ type accountAdminServiceClient struct {
 	listAccounts                  *connect.Client[v1.ListAccountsRequest, v1.ListAccountsResponse]
 	updateAccount                 *connect.Client[v1.UpdateAccountRequest, v1.UpdateAccountResponse]
 	assistedAccountRecovery       *connect.Client[v1.AssistedAccountRecoveryRequest, v1.AssistedAccountRecoveryResponse]
+	forcePasswordReset            *connect.Client[v1.ForcePasswordResetRequest, v1.ForcePasswordResetResponse]
 	suspendAccount                *connect.Client[v1.SuspendAccountRequest, v1.SuspendAccountResponse]
 	recoverAccount                *connect.Client[v1.RecoverAccountRequest, v1.RecoverAccountResponse]
 	deprovisionAccount            *connect.Client[v1.DeprovisionAccountRequest, v1.DeprovisionAccountResponse]
@@ -462,6 +496,11 @@ func (c *accountAdminServiceClient) UpdateAccount(ctx context.Context, req *conn
 // AssistedAccountRecovery calls platform.v1.AccountAdminService.AssistedAccountRecovery.
 func (c *accountAdminServiceClient) AssistedAccountRecovery(ctx context.Context, req *connect.Request[v1.AssistedAccountRecoveryRequest]) (*connect.Response[v1.AssistedAccountRecoveryResponse], error) {
 	return c.assistedAccountRecovery.CallUnary(ctx, req)
+}
+
+// ForcePasswordReset calls platform.v1.AccountAdminService.ForcePasswordReset.
+func (c *accountAdminServiceClient) ForcePasswordReset(ctx context.Context, req *connect.Request[v1.ForcePasswordResetRequest]) (*connect.Response[v1.ForcePasswordResetResponse], error) {
+	return c.forcePasswordReset.CallUnary(ctx, req)
 }
 
 // SuspendAccount calls platform.v1.AccountAdminService.SuspendAccount.
@@ -618,6 +657,30 @@ type AccountAdminServiceHandler interface {
 	// legitimate owner witnesses the change. The response is intentionally empty
 	// — no token or recovery URL is ever returned on the wire.
 	AssistedAccountRecovery(context.Context, *connect.Request[v1.AssistedAccountRecoveryRequest]) (*connect.Response[v1.AssistedAccountRecoveryResponse], error)
+	// ForcePasswordReset compels the account holder to choose a new password.
+	//
+	// The admin never sees, sets, or learns a password. That is not a policy
+	// statement layered on top of this RPC — this service has no set-password
+	// verb at all, and no field on this contract carries a credential in either
+	// direction. The only way any account acquires a password is the holder
+	// redeeming a recovery link themselves.
+	//
+	// DISTINCT FROM AssistedAccountRecovery: that RPC exists for the "holder lost
+	// access to their mailbox" case and therefore REPOINTS the address, which
+	// makes it an account-takeover primitive requiring a correspondingly narrow
+	// authorization. This one delivers to the address ALREADY ON FILE and cannot
+	// change it — there is deliberately no email field — so it is the safe verb
+	// for routine support ("reset this user") and does not need repoint-grade
+	// authority.
+	//
+	// Side effects the handler owns: a recovery link goes to the address on
+	// file, and ALL of the account's sessions are revoked so a reset actually
+	// ends access rather than merely inviting a change. reason is recorded in
+	// the audit event along with the acting admin.
+	//
+	// The response is intentionally empty — no token or recovery URL is ever
+	// returned on the wire.
+	ForcePasswordReset(context.Context, *connect.Request[v1.ForcePasswordResetRequest]) (*connect.Response[v1.ForcePasswordResetResponse], error)
 	// SuspendAccount transitions the account to "suspended". Attributes retained.
 	SuspendAccount(context.Context, *connect.Request[v1.SuspendAccountRequest]) (*connect.Response[v1.SuspendAccountResponse], error)
 	// RecoverAccount transitions a suspended account back to "active".
@@ -717,6 +780,12 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 		AccountAdminServiceAssistedAccountRecoveryProcedure,
 		svc.AssistedAccountRecovery,
 		connect.WithSchema(accountAdminServiceMethods.ByName("AssistedAccountRecovery")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountAdminServiceForcePasswordResetHandler := connect.NewUnaryHandler(
+		AccountAdminServiceForcePasswordResetProcedure,
+		svc.ForcePasswordReset,
+		connect.WithSchema(accountAdminServiceMethods.ByName("ForcePasswordReset")),
 		connect.WithHandlerOptions(opts...),
 	)
 	accountAdminServiceSuspendAccountHandler := connect.NewUnaryHandler(
@@ -865,6 +934,8 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 			accountAdminServiceUpdateAccountHandler.ServeHTTP(w, r)
 		case AccountAdminServiceAssistedAccountRecoveryProcedure:
 			accountAdminServiceAssistedAccountRecoveryHandler.ServeHTTP(w, r)
+		case AccountAdminServiceForcePasswordResetProcedure:
+			accountAdminServiceForcePasswordResetHandler.ServeHTTP(w, r)
 		case AccountAdminServiceSuspendAccountProcedure:
 			accountAdminServiceSuspendAccountHandler.ServeHTTP(w, r)
 		case AccountAdminServiceRecoverAccountProcedure:
@@ -940,6 +1011,10 @@ func (UnimplementedAccountAdminServiceHandler) UpdateAccount(context.Context, *c
 
 func (UnimplementedAccountAdminServiceHandler) AssistedAccountRecovery(context.Context, *connect.Request[v1.AssistedAccountRecoveryRequest]) (*connect.Response[v1.AssistedAccountRecoveryResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.AssistedAccountRecovery is not implemented"))
+}
+
+func (UnimplementedAccountAdminServiceHandler) ForcePasswordReset(context.Context, *connect.Request[v1.ForcePasswordResetRequest]) (*connect.Response[v1.ForcePasswordResetResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.ForcePasswordReset is not implemented"))
 }
 
 func (UnimplementedAccountAdminServiceHandler) SuspendAccount(context.Context, *connect.Request[v1.SuspendAccountRequest]) (*connect.Response[v1.SuspendAccountResponse], error) {
