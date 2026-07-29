@@ -71,6 +71,31 @@ service AccountAdminService {
   // — no token or recovery URL is ever returned on the wire.
   rpc AssistedAccountRecovery(AssistedAccountRecoveryRequest) returns (AssistedAccountRecoveryResponse);
 
+  // ForcePasswordReset compels the account holder to choose a new password.
+  //
+  // The admin never sees, sets, or learns a password. That is not a policy
+  // statement layered on top of this RPC — this service has no set-password
+  // verb at all, and no field on this contract carries a credential in either
+  // direction. The only way any account acquires a password is the holder
+  // redeeming a recovery link themselves.
+  //
+  // DISTINCT FROM AssistedAccountRecovery: that RPC exists for the "holder lost
+  // access to their mailbox" case and therefore REPOINTS the address, which
+  // makes it an account-takeover primitive requiring a correspondingly narrow
+  // authorization. This one delivers to the address ALREADY ON FILE and cannot
+  // change it — there is deliberately no email field — so it is the safe verb
+  // for routine support ("reset this user") and does not need repoint-grade
+  // authority.
+  //
+  // Side effects the handler owns: a recovery link goes to the address on
+  // file, and ALL of the account's sessions are revoked so a reset actually
+  // ends access rather than merely inviting a change. reason is recorded in
+  // the audit event along with the acting admin.
+  //
+  // The response is intentionally empty — no token or recovery URL is ever
+  // returned on the wire.
+  rpc ForcePasswordReset(ForcePasswordResetRequest) returns (ForcePasswordResetResponse);
+
   // SuspendAccount transitions the account to "suspended". Attributes retained.
   rpc SuspendAccount(SuspendAccountRequest) returns (SuspendAccountResponse);
 
@@ -351,6 +376,25 @@ message AssistedAccountRecoveryRequest {
 // wire. Reserved for forward-compat additions (matches
 // AccountAdminServiceClearAccountMFAFactorsResponse).
 message AssistedAccountRecoveryResponse {}
+
+// ForcePasswordResetRequest compels the holder of account_id to set a new
+// password. It carries NO email field: the link goes to the address already on
+// file, and an admin who needs to change that address must use
+// AssistedAccountRecovery, which is audited as the takeover-capable operation
+// it is. It carries no password field either — see the RPC comment.
+message ForcePasswordResetRequest {
+  // tenant_id is the target tenant (canonical field 1 for tenant scope).
+  string tenant_id = 1;
+  // account_id identifies the subject.
+  string account_id = 2;
+  // reason is required and recorded in the audit event.
+  string reason = 3;
+}
+
+// ForcePasswordResetResponse is intentionally empty: success is the absence of
+// an error, and no token or recovery URL is ever returned on the wire.
+// Reserved for forward-compat additions.
+message ForcePasswordResetResponse {}
 
 // SuspendAccountRequest transitions an account to "suspended".
 message SuspendAccountRequest {
