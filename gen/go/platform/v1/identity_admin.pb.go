@@ -173,8 +173,28 @@ type AccountData struct {
 	CreatedBy string `protobuf:"bytes,13,opt,name=created_by,json=createdBy,proto3" json:"created_by,omitempty"`
 	// last_modified_by is the actor that last mutated this account.
 	LastModifiedBy string `protobuf:"bytes,14,opt,name=last_modified_by,json=lastModifiedBy,proto3" json:"last_modified_by,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// identity_id is the GLOBAL identity this account belongs to
+	// (aoid.identities.id) — the same value an access token carries as `sub`.
+	//
+	// WHY A CALLER NEEDS THIS. A relying party keeps one local user row per
+	// PERSON, but an account is per TENANT: someone in two workspaces has two
+	// accounts and one identity. So the durable key for a mirror row is the
+	// identity, not the account, and provisioning is the only moment the caller
+	// can learn it — AOID exposes no lookup-by-email RPC.
+	//
+	// Returning it here is what lets AODex store the identity at signup and
+	// later resolve an AOID access token straight to its local user, with NO
+	// account_id/email lookup added to /oauth/introspect. That is the whole
+	// reason this field exists rather than widening the introspection response,
+	// which is cached and covered by a detached JWS at the AOEdge boundary.
+	//
+	// EMPTY when the account has no identity yet. Legacy accounts provisioned
+	// before Objective 11 Phase 2 have identity_id NULL until something
+	// re-provisions them; callers MUST treat empty as "not yet linked" rather
+	// than as an error.
+	IdentityId    string `protobuf:"bytes,15,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *AccountData) Reset() {
@@ -301,6 +321,13 @@ func (x *AccountData) GetCreatedBy() string {
 func (x *AccountData) GetLastModifiedBy() string {
 	if x != nil {
 		return x.LastModifiedBy
+	}
+	return ""
+}
+
+func (x *AccountData) GetIdentityId() string {
+	if x != nil {
+		return x.IdentityId
 	}
 	return ""
 }
@@ -4340,7 +4367,7 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"\vverified_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"verifiedAt\x12\x1f\n" +
 	"\vverified_by\x18\t \x01(\tR\n" +
-	"verifiedBy\"\xad\x04\n" +
+	"verifiedBy\"\xce\x04\n" +
 	"\vAccountData\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\ttenant_id\x18\x02 \x01(\tR\btenantId\x12!\n" +
@@ -4360,7 +4387,9 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1d\n" +
 	"\n" +
 	"created_by\x18\r \x01(\tR\tcreatedBy\x12(\n" +
-	"\x10last_modified_by\x18\x0e \x01(\tR\x0elastModifiedBy\"\xef\x01\n" +
+	"\x10last_modified_by\x18\x0e \x01(\tR\x0elastModifiedBy\x12\x1f\n" +
+	"\videntity_id\x18\x0f \x01(\tR\n" +
+	"identityId\"\xef\x01\n" +
 	"\x17ProvisionAccountRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x14\n" +

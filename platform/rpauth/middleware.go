@@ -125,7 +125,7 @@ func Excluding(inner TokenExtractor, skip func(string) bool) TokenExtractor {
 
 // PrincipalLoader maps a validated AOID Identity onto the relying party's own
 // principal — typically by reading its local mirror row keyed by
-// Identity.AccountID.
+// Identity.Subject.
 //
 // Returning an error DENIES the request. That is the correct default: a
 // principal that cannot be loaded is a user the service cannot make an
@@ -310,8 +310,8 @@ func (a *Authenticator[P]) authenticate(r *http.Request) Result[P] {
 	principal, err := a.load(r.Context(), identity)
 	if err != nil {
 		a.logger.Warn("[rpauth] principal load failed for a valid token",
-			"account_id", identity.AccountID,
-			"tenant_id", identity.TenantID,
+			"subject", identity.Subject,
+			"tenant_slug", identity.TenantSlug,
 			"error", err)
 		return Result[P]{Outcome: OutcomePrincipalError, Identity: identity, Principal: zero, Err: err}
 	}
