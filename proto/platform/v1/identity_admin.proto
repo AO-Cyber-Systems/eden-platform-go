@@ -96,6 +96,47 @@ service AccountAdminService {
   // returned on the wire.
   rpc ForcePasswordReset(ForcePasswordResetRequest) returns (ForcePasswordResetResponse);
 
+  // SendAccountActivation mails the account holder the link that lets them set
+  // their FIRST password, for an account that has one provisioned but has never
+  // had a credential.
+  //
+  // WHY THIS IS NOT ForcePasswordReset. The mechanism is necessarily identical —
+  // this service has no set-password verb, so a first password is acquired
+  // exactly the way a forgotten one is replaced: the holder redeems an emailed
+  // token. Only the framing differs, and the framing is the entire point.
+  // ForcePasswordReset audits as auth.user.password_reset and sends copy that
+  // opens "your password was reset" and invites the reader to ignore the message
+  // if they did not request it. Sent to somebody who never asked for anything —
+  // a user whose account is being migrated onto this platform — that mail is
+  // indistinguishable from a phishing attempt, and it instructs exactly the
+  // wrong action. The audit record would be a permanent lie besides: nothing was
+  // reset, because there was never a password to reset.
+  //
+  // DELIBERATELY DOES NOT REVOKE SESSIONS. ForcePasswordReset revokes because a
+  // reset that leaves an attacker's session alive is not a reset. This RPC has
+  // no such premise: it targets accounts this issuer has never authenticated, so
+  // there is nothing here to revoke, and revoking would be an effect on some
+  // OTHER system's sessions that the caller never asked for.
+  //
+  // Like ForcePasswordReset it carries NO email field: the link goes to the
+  // address already on file, so this RPC structurally cannot repoint an account
+  // and is not an account-takeover primitive. An admin who must change the
+  // address first uses AssistedAccountRecovery, which is audited as the
+  // takeover-capable operation it is.
+  //
+  // RE-INVOCATION IS SAFE AND ADDITIVE. Each call mints an ADDITIONAL token and
+  // mails an ADDITIONAL link; it invalidates nothing. A link already in flight —
+  // one the holder may be partway through redeeming — keeps working until it
+  // expires or is consumed. This is what makes the RPC safe to drive from a
+  // migration that may be re-run.
+  //
+  // Authorization and assurance are enforced by the AOID handler + interceptors,
+  // NOT by this contract, exactly as for every other mutation on this service.
+  //
+  // The response is intentionally empty — no token or activation URL is ever
+  // returned on the wire.
+  rpc SendAccountActivation(SendAccountActivationRequest) returns (SendAccountActivationResponse);
+
   // SuspendAccount transitions the account to "suspended". Attributes retained.
   rpc SuspendAccount(SuspendAccountRequest) returns (SuspendAccountResponse);
 
@@ -416,6 +457,26 @@ message ForcePasswordResetRequest {
 // an error, and no token or recovery URL is ever returned on the wire.
 // Reserved for forward-compat additions.
 message ForcePasswordResetResponse {}
+
+// SendAccountActivationRequest mails the holder of account_id the link that
+// lets them set their first password. Like ForcePasswordResetRequest it carries
+// NO email field (the link goes to the address on file, so this cannot repoint
+// an account) and NO password field (this service has no set-password verb).
+message SendAccountActivationRequest {
+  // tenant_id is the target tenant (canonical field 1 for tenant scope).
+  string tenant_id = 1;
+  // account_id identifies the subject.
+  string account_id = 2;
+  // reason is required and recorded in the audit event. A migration should say
+  // so here — it is what separates a bulk activation wave from a support desk
+  // one when the audit trail is read back months later.
+  string reason = 3;
+}
+
+// SendAccountActivationResponse is intentionally empty: success is the absence
+// of an error, and no token or activation URL is ever returned on the wire.
+// Reserved for forward-compat additions.
+message SendAccountActivationResponse {}
 
 // SuspendAccountRequest transitions an account to "suspended".
 message SuspendAccountRequest {
