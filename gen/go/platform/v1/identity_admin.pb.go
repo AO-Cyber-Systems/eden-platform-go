@@ -1209,6 +1209,114 @@ func (*ForcePasswordResetResponse) Descriptor() ([]byte, []int) {
 	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{15}
 }
 
+// SendAccountActivationRequest mails the holder of account_id the link that
+// lets them set their first password. Like ForcePasswordResetRequest it carries
+// NO email field (the link goes to the address on file, so this cannot repoint
+// an account) and NO password field (this service has no set-password verb).
+type SendAccountActivationRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// tenant_id is the target tenant (canonical field 1 for tenant scope).
+	TenantId string `protobuf:"bytes,1,opt,name=tenant_id,json=tenantId,proto3" json:"tenant_id,omitempty"`
+	// account_id identifies the subject.
+	AccountId string `protobuf:"bytes,2,opt,name=account_id,json=accountId,proto3" json:"account_id,omitempty"`
+	// reason is required and recorded in the audit event. A migration should say
+	// so here — it is what separates a bulk activation wave from a support desk
+	// one when the audit trail is read back months later.
+	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendAccountActivationRequest) Reset() {
+	*x = SendAccountActivationRequest{}
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendAccountActivationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendAccountActivationRequest) ProtoMessage() {}
+
+func (x *SendAccountActivationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendAccountActivationRequest.ProtoReflect.Descriptor instead.
+func (*SendAccountActivationRequest) Descriptor() ([]byte, []int) {
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *SendAccountActivationRequest) GetTenantId() string {
+	if x != nil {
+		return x.TenantId
+	}
+	return ""
+}
+
+func (x *SendAccountActivationRequest) GetAccountId() string {
+	if x != nil {
+		return x.AccountId
+	}
+	return ""
+}
+
+func (x *SendAccountActivationRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+// SendAccountActivationResponse is intentionally empty: success is the absence
+// of an error, and no token or activation URL is ever returned on the wire.
+// Reserved for forward-compat additions.
+type SendAccountActivationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendAccountActivationResponse) Reset() {
+	*x = SendAccountActivationResponse{}
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendAccountActivationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendAccountActivationResponse) ProtoMessage() {}
+
+func (x *SendAccountActivationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendAccountActivationResponse.ProtoReflect.Descriptor instead.
+func (*SendAccountActivationResponse) Descriptor() ([]byte, []int) {
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{17}
+}
+
 // SuspendAccountRequest transitions an account to "suspended".
 type SuspendAccountRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -1221,7 +1329,7 @@ type SuspendAccountRequest struct {
 
 func (x *SuspendAccountRequest) Reset() {
 	*x = SuspendAccountRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[16]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1233,7 +1341,7 @@ func (x *SuspendAccountRequest) String() string {
 func (*SuspendAccountRequest) ProtoMessage() {}
 
 func (x *SuspendAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[16]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1246,7 +1354,7 @@ func (x *SuspendAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuspendAccountRequest.ProtoReflect.Descriptor instead.
 func (*SuspendAccountRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{16}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SuspendAccountRequest) GetTenantId() string {
@@ -1280,7 +1388,7 @@ type SuspendAccountResponse struct {
 
 func (x *SuspendAccountResponse) Reset() {
 	*x = SuspendAccountResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[17]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1292,7 +1400,7 @@ func (x *SuspendAccountResponse) String() string {
 func (*SuspendAccountResponse) ProtoMessage() {}
 
 func (x *SuspendAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[17]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1305,7 +1413,7 @@ func (x *SuspendAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SuspendAccountResponse.ProtoReflect.Descriptor instead.
 func (*SuspendAccountResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{17}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SuspendAccountResponse) GetAccount() *AccountData {
@@ -1327,7 +1435,7 @@ type RecoverAccountRequest struct {
 
 func (x *RecoverAccountRequest) Reset() {
 	*x = RecoverAccountRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[18]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1339,7 +1447,7 @@ func (x *RecoverAccountRequest) String() string {
 func (*RecoverAccountRequest) ProtoMessage() {}
 
 func (x *RecoverAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[18]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1352,7 +1460,7 @@ func (x *RecoverAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecoverAccountRequest.ProtoReflect.Descriptor instead.
 func (*RecoverAccountRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{18}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *RecoverAccountRequest) GetTenantId() string {
@@ -1386,7 +1494,7 @@ type RecoverAccountResponse struct {
 
 func (x *RecoverAccountResponse) Reset() {
 	*x = RecoverAccountResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[19]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1398,7 +1506,7 @@ func (x *RecoverAccountResponse) String() string {
 func (*RecoverAccountResponse) ProtoMessage() {}
 
 func (x *RecoverAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[19]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1411,7 +1519,7 @@ func (x *RecoverAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecoverAccountResponse.ProtoReflect.Descriptor instead.
 func (*RecoverAccountResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{19}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RecoverAccountResponse) GetAccount() *AccountData {
@@ -1433,7 +1541,7 @@ type DeprovisionAccountRequest struct {
 
 func (x *DeprovisionAccountRequest) Reset() {
 	*x = DeprovisionAccountRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[20]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1445,7 +1553,7 @@ func (x *DeprovisionAccountRequest) String() string {
 func (*DeprovisionAccountRequest) ProtoMessage() {}
 
 func (x *DeprovisionAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[20]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1458,7 +1566,7 @@ func (x *DeprovisionAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeprovisionAccountRequest.ProtoReflect.Descriptor instead.
 func (*DeprovisionAccountRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{20}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *DeprovisionAccountRequest) GetTenantId() string {
@@ -1492,7 +1600,7 @@ type DeprovisionAccountResponse struct {
 
 func (x *DeprovisionAccountResponse) Reset() {
 	*x = DeprovisionAccountResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[21]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1504,7 +1612,7 @@ func (x *DeprovisionAccountResponse) String() string {
 func (*DeprovisionAccountResponse) ProtoMessage() {}
 
 func (x *DeprovisionAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[21]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1517,7 +1625,7 @@ func (x *DeprovisionAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeprovisionAccountResponse.ProtoReflect.Descriptor instead.
 func (*DeprovisionAccountResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{21}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *DeprovisionAccountResponse) GetAccount() *AccountData {
@@ -1541,7 +1649,7 @@ type Group struct {
 
 func (x *Group) Reset() {
 	*x = Group{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[22]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1553,7 +1661,7 @@ func (x *Group) String() string {
 func (*Group) ProtoMessage() {}
 
 func (x *Group) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[22]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1566,7 +1674,7 @@ func (x *Group) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Group.ProtoReflect.Descriptor instead.
 func (*Group) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{22}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *Group) GetId() string {
@@ -1616,7 +1724,7 @@ type DefineGroupRequest struct {
 
 func (x *DefineGroupRequest) Reset() {
 	*x = DefineGroupRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[23]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1628,7 +1736,7 @@ func (x *DefineGroupRequest) String() string {
 func (*DefineGroupRequest) ProtoMessage() {}
 
 func (x *DefineGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[23]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1641,7 +1749,7 @@ func (x *DefineGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DefineGroupRequest.ProtoReflect.Descriptor instead.
 func (*DefineGroupRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{23}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *DefineGroupRequest) GetTenantId() string {
@@ -1675,7 +1783,7 @@ type DefineGroupResponse struct {
 
 func (x *DefineGroupResponse) Reset() {
 	*x = DefineGroupResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[24]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1687,7 +1795,7 @@ func (x *DefineGroupResponse) String() string {
 func (*DefineGroupResponse) ProtoMessage() {}
 
 func (x *DefineGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[24]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1700,7 +1808,7 @@ func (x *DefineGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DefineGroupResponse.ProtoReflect.Descriptor instead.
 func (*DefineGroupResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{24}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *DefineGroupResponse) GetGroup() *Group {
@@ -1722,7 +1830,7 @@ type ListGroupsRequest struct {
 
 func (x *ListGroupsRequest) Reset() {
 	*x = ListGroupsRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[25]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1734,7 +1842,7 @@ func (x *ListGroupsRequest) String() string {
 func (*ListGroupsRequest) ProtoMessage() {}
 
 func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[25]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1747,7 +1855,7 @@ func (x *ListGroupsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsRequest.ProtoReflect.Descriptor instead.
 func (*ListGroupsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{25}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ListGroupsRequest) GetTenantId() string {
@@ -1782,7 +1890,7 @@ type ListGroupsResponse struct {
 
 func (x *ListGroupsResponse) Reset() {
 	*x = ListGroupsResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[26]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1794,7 +1902,7 @@ func (x *ListGroupsResponse) String() string {
 func (*ListGroupsResponse) ProtoMessage() {}
 
 func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[26]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1807,7 +1915,7 @@ func (x *ListGroupsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListGroupsResponse.ProtoReflect.Descriptor instead.
 func (*ListGroupsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{26}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListGroupsResponse) GetGroups() []*Group {
@@ -1836,7 +1944,7 @@ type AddAccountToGroupRequest struct {
 
 func (x *AddAccountToGroupRequest) Reset() {
 	*x = AddAccountToGroupRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[27]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1848,7 +1956,7 @@ func (x *AddAccountToGroupRequest) String() string {
 func (*AddAccountToGroupRequest) ProtoMessage() {}
 
 func (x *AddAccountToGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[27]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1861,7 +1969,7 @@ func (x *AddAccountToGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddAccountToGroupRequest.ProtoReflect.Descriptor instead.
 func (*AddAccountToGroupRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{27}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *AddAccountToGroupRequest) GetTenantId() string {
@@ -1895,7 +2003,7 @@ type AddAccountToGroupResponse struct {
 
 func (x *AddAccountToGroupResponse) Reset() {
 	*x = AddAccountToGroupResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[28]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1907,7 +2015,7 @@ func (x *AddAccountToGroupResponse) String() string {
 func (*AddAccountToGroupResponse) ProtoMessage() {}
 
 func (x *AddAccountToGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[28]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1920,7 +2028,7 @@ func (x *AddAccountToGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddAccountToGroupResponse.ProtoReflect.Descriptor instead.
 func (*AddAccountToGroupResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{28}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{30}
 }
 
 // RemoveAccountFromGroupRequest unbinds an account from a group.
@@ -1935,7 +2043,7 @@ type RemoveAccountFromGroupRequest struct {
 
 func (x *RemoveAccountFromGroupRequest) Reset() {
 	*x = RemoveAccountFromGroupRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[29]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1947,7 +2055,7 @@ func (x *RemoveAccountFromGroupRequest) String() string {
 func (*RemoveAccountFromGroupRequest) ProtoMessage() {}
 
 func (x *RemoveAccountFromGroupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[29]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1960,7 +2068,7 @@ func (x *RemoveAccountFromGroupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveAccountFromGroupRequest.ProtoReflect.Descriptor instead.
 func (*RemoveAccountFromGroupRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{29}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *RemoveAccountFromGroupRequest) GetTenantId() string {
@@ -1993,7 +2101,7 @@ type RemoveAccountFromGroupResponse struct {
 
 func (x *RemoveAccountFromGroupResponse) Reset() {
 	*x = RemoveAccountFromGroupResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[30]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2005,7 +2113,7 @@ func (x *RemoveAccountFromGroupResponse) String() string {
 func (*RemoveAccountFromGroupResponse) ProtoMessage() {}
 
 func (x *RemoveAccountFromGroupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[30]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2018,7 +2126,7 @@ func (x *RemoveAccountFromGroupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveAccountFromGroupResponse.ProtoReflect.Descriptor instead.
 func (*RemoveAccountFromGroupResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{30}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{32}
 }
 
 // Role is the canonical wire shape of a role.
@@ -2037,7 +2145,7 @@ type Role struct {
 
 func (x *Role) Reset() {
 	*x = Role{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[31]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2049,7 +2157,7 @@ func (x *Role) String() string {
 func (*Role) ProtoMessage() {}
 
 func (x *Role) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[31]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2062,7 +2170,7 @@ func (x *Role) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Role.ProtoReflect.Descriptor instead.
 func (*Role) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{31}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *Role) GetId() string {
@@ -2119,7 +2227,7 @@ type DefineRoleRequest struct {
 
 func (x *DefineRoleRequest) Reset() {
 	*x = DefineRoleRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[32]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2131,7 +2239,7 @@ func (x *DefineRoleRequest) String() string {
 func (*DefineRoleRequest) ProtoMessage() {}
 
 func (x *DefineRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[32]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2144,7 +2252,7 @@ func (x *DefineRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DefineRoleRequest.ProtoReflect.Descriptor instead.
 func (*DefineRoleRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{32}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *DefineRoleRequest) GetTenantId() string {
@@ -2178,7 +2286,7 @@ type DefineRoleResponse struct {
 
 func (x *DefineRoleResponse) Reset() {
 	*x = DefineRoleResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[33]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2190,7 +2298,7 @@ func (x *DefineRoleResponse) String() string {
 func (*DefineRoleResponse) ProtoMessage() {}
 
 func (x *DefineRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[33]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2203,7 +2311,7 @@ func (x *DefineRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DefineRoleResponse.ProtoReflect.Descriptor instead.
 func (*DefineRoleResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{33}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *DefineRoleResponse) GetRole() *Role {
@@ -2229,7 +2337,7 @@ type AccountAdminServiceListRolesRequest struct {
 
 func (x *AccountAdminServiceListRolesRequest) Reset() {
 	*x = AccountAdminServiceListRolesRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[34]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2241,7 +2349,7 @@ func (x *AccountAdminServiceListRolesRequest) String() string {
 func (*AccountAdminServiceListRolesRequest) ProtoMessage() {}
 
 func (x *AccountAdminServiceListRolesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[34]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2254,7 +2362,7 @@ func (x *AccountAdminServiceListRolesRequest) ProtoReflect() protoreflect.Messag
 
 // Deprecated: Use AccountAdminServiceListRolesRequest.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceListRolesRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{34}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *AccountAdminServiceListRolesRequest) GetTenantId() string {
@@ -2296,7 +2404,7 @@ type AccountAdminServiceListRolesResponse struct {
 
 func (x *AccountAdminServiceListRolesResponse) Reset() {
 	*x = AccountAdminServiceListRolesResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[35]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2308,7 +2416,7 @@ func (x *AccountAdminServiceListRolesResponse) String() string {
 func (*AccountAdminServiceListRolesResponse) ProtoMessage() {}
 
 func (x *AccountAdminServiceListRolesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[35]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2321,7 +2429,7 @@ func (x *AccountAdminServiceListRolesResponse) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AccountAdminServiceListRolesResponse.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceListRolesResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{35}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *AccountAdminServiceListRolesResponse) GetRoles() []*Role {
@@ -2351,7 +2459,7 @@ type AccountAdminServiceAssignRoleRequest struct {
 
 func (x *AccountAdminServiceAssignRoleRequest) Reset() {
 	*x = AccountAdminServiceAssignRoleRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[36]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2363,7 +2471,7 @@ func (x *AccountAdminServiceAssignRoleRequest) String() string {
 func (*AccountAdminServiceAssignRoleRequest) ProtoMessage() {}
 
 func (x *AccountAdminServiceAssignRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[36]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2376,7 +2484,7 @@ func (x *AccountAdminServiceAssignRoleRequest) ProtoReflect() protoreflect.Messa
 
 // Deprecated: Use AccountAdminServiceAssignRoleRequest.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceAssignRoleRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{36}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *AccountAdminServiceAssignRoleRequest) GetTenantId() string {
@@ -2409,7 +2517,7 @@ type AccountAdminServiceAssignRoleResponse struct {
 
 func (x *AccountAdminServiceAssignRoleResponse) Reset() {
 	*x = AccountAdminServiceAssignRoleResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[37]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2421,7 +2529,7 @@ func (x *AccountAdminServiceAssignRoleResponse) String() string {
 func (*AccountAdminServiceAssignRoleResponse) ProtoMessage() {}
 
 func (x *AccountAdminServiceAssignRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[37]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2434,7 +2542,7 @@ func (x *AccountAdminServiceAssignRoleResponse) ProtoReflect() protoreflect.Mess
 
 // Deprecated: Use AccountAdminServiceAssignRoleResponse.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceAssignRoleResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{37}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{39}
 }
 
 // RevokeRoleRequest unbinds a role from an account.
@@ -2449,7 +2557,7 @@ type RevokeRoleRequest struct {
 
 func (x *RevokeRoleRequest) Reset() {
 	*x = RevokeRoleRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[38]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2461,7 +2569,7 @@ func (x *RevokeRoleRequest) String() string {
 func (*RevokeRoleRequest) ProtoMessage() {}
 
 func (x *RevokeRoleRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[38]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2474,7 +2582,7 @@ func (x *RevokeRoleRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeRoleRequest.ProtoReflect.Descriptor instead.
 func (*RevokeRoleRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{38}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *RevokeRoleRequest) GetTenantId() string {
@@ -2507,7 +2615,7 @@ type RevokeRoleResponse struct {
 
 func (x *RevokeRoleResponse) Reset() {
 	*x = RevokeRoleResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[39]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2519,7 +2627,7 @@ func (x *RevokeRoleResponse) String() string {
 func (*RevokeRoleResponse) ProtoMessage() {}
 
 func (x *RevokeRoleResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[39]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2532,7 +2640,7 @@ func (x *RevokeRoleResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RevokeRoleResponse.ProtoReflect.Descriptor instead.
 func (*RevokeRoleResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{39}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{41}
 }
 
 // Entitlement is the canonical wire shape of an account entitlement.
@@ -2554,7 +2662,7 @@ type Entitlement struct {
 
 func (x *Entitlement) Reset() {
 	*x = Entitlement{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[40]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2566,7 +2674,7 @@ func (x *Entitlement) String() string {
 func (*Entitlement) ProtoMessage() {}
 
 func (x *Entitlement) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[40]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2579,7 +2687,7 @@ func (x *Entitlement) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Entitlement.ProtoReflect.Descriptor instead.
 func (*Entitlement) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{40}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *Entitlement) GetId() string {
@@ -2652,7 +2760,7 @@ type SetEntitlementRequest struct {
 
 func (x *SetEntitlementRequest) Reset() {
 	*x = SetEntitlementRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[41]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2664,7 +2772,7 @@ func (x *SetEntitlementRequest) String() string {
 func (*SetEntitlementRequest) ProtoMessage() {}
 
 func (x *SetEntitlementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[41]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2677,7 +2785,7 @@ func (x *SetEntitlementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetEntitlementRequest.ProtoReflect.Descriptor instead.
 func (*SetEntitlementRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{41}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *SetEntitlementRequest) GetTenantId() string {
@@ -2725,7 +2833,7 @@ type SetEntitlementResponse struct {
 
 func (x *SetEntitlementResponse) Reset() {
 	*x = SetEntitlementResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[42]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2737,7 +2845,7 @@ func (x *SetEntitlementResponse) String() string {
 func (*SetEntitlementResponse) ProtoMessage() {}
 
 func (x *SetEntitlementResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[42]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2750,7 +2858,7 @@ func (x *SetEntitlementResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetEntitlementResponse.ProtoReflect.Descriptor instead.
 func (*SetEntitlementResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{42}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *SetEntitlementResponse) GetEntitlement() *Entitlement {
@@ -2773,7 +2881,7 @@ type DeleteEntitlementRequest struct {
 
 func (x *DeleteEntitlementRequest) Reset() {
 	*x = DeleteEntitlementRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[43]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2785,7 +2893,7 @@ func (x *DeleteEntitlementRequest) String() string {
 func (*DeleteEntitlementRequest) ProtoMessage() {}
 
 func (x *DeleteEntitlementRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[43]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2798,7 +2906,7 @@ func (x *DeleteEntitlementRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEntitlementRequest.ProtoReflect.Descriptor instead.
 func (*DeleteEntitlementRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{43}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *DeleteEntitlementRequest) GetTenantId() string {
@@ -2838,7 +2946,7 @@ type DeleteEntitlementResponse struct {
 
 func (x *DeleteEntitlementResponse) Reset() {
 	*x = DeleteEntitlementResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[44]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2850,7 +2958,7 @@ func (x *DeleteEntitlementResponse) String() string {
 func (*DeleteEntitlementResponse) ProtoMessage() {}
 
 func (x *DeleteEntitlementResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[44]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2863,7 +2971,7 @@ func (x *DeleteEntitlementResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteEntitlementResponse.ProtoReflect.Descriptor instead.
 func (*DeleteEntitlementResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{44}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{46}
 }
 
 // ListEntitlementsRequest returns entitlements for an account, optionally
@@ -2880,7 +2988,7 @@ type ListEntitlementsRequest struct {
 
 func (x *ListEntitlementsRequest) Reset() {
 	*x = ListEntitlementsRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[45]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2892,7 +3000,7 @@ func (x *ListEntitlementsRequest) String() string {
 func (*ListEntitlementsRequest) ProtoMessage() {}
 
 func (x *ListEntitlementsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[45]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2905,7 +3013,7 @@ func (x *ListEntitlementsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEntitlementsRequest.ProtoReflect.Descriptor instead.
 func (*ListEntitlementsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{45}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ListEntitlementsRequest) GetTenantId() string {
@@ -2939,7 +3047,7 @@ type ListEntitlementsResponse struct {
 
 func (x *ListEntitlementsResponse) Reset() {
 	*x = ListEntitlementsResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[46]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2951,7 +3059,7 @@ func (x *ListEntitlementsResponse) String() string {
 func (*ListEntitlementsResponse) ProtoMessage() {}
 
 func (x *ListEntitlementsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[46]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2964,7 +3072,7 @@ func (x *ListEntitlementsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListEntitlementsResponse.ProtoReflect.Descriptor instead.
 func (*ListEntitlementsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{46}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *ListEntitlementsResponse) GetEntitlements() []*Entitlement {
@@ -2992,7 +3100,7 @@ type Tenant struct {
 
 func (x *Tenant) Reset() {
 	*x = Tenant{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[47]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3004,7 +3112,7 @@ func (x *Tenant) String() string {
 func (*Tenant) ProtoMessage() {}
 
 func (x *Tenant) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[47]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3017,7 +3125,7 @@ func (x *Tenant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Tenant.ProtoReflect.Descriptor instead.
 func (*Tenant) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{47}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *Tenant) GetId() string {
@@ -3102,7 +3210,7 @@ type CreateTenantRequest struct {
 
 func (x *CreateTenantRequest) Reset() {
 	*x = CreateTenantRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[48]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3114,7 +3222,7 @@ func (x *CreateTenantRequest) String() string {
 func (*CreateTenantRequest) ProtoMessage() {}
 
 func (x *CreateTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[48]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3127,7 +3235,7 @@ func (x *CreateTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTenantRequest.ProtoReflect.Descriptor instead.
 func (*CreateTenantRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{48}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *CreateTenantRequest) GetSlug() string {
@@ -3182,7 +3290,7 @@ type CreateTenantResponse struct {
 
 func (x *CreateTenantResponse) Reset() {
 	*x = CreateTenantResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[49]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3194,7 +3302,7 @@ func (x *CreateTenantResponse) String() string {
 func (*CreateTenantResponse) ProtoMessage() {}
 
 func (x *CreateTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[49]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3207,7 +3315,7 @@ func (x *CreateTenantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTenantResponse.ProtoReflect.Descriptor instead.
 func (*CreateTenantResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{49}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *CreateTenantResponse) GetTenant() *Tenant {
@@ -3227,7 +3335,7 @@ type GetTenantRequest struct {
 
 func (x *GetTenantRequest) Reset() {
 	*x = GetTenantRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[50]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3239,7 +3347,7 @@ func (x *GetTenantRequest) String() string {
 func (*GetTenantRequest) ProtoMessage() {}
 
 func (x *GetTenantRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[50]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3252,7 +3360,7 @@ func (x *GetTenantRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantRequest.ProtoReflect.Descriptor instead.
 func (*GetTenantRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{50}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *GetTenantRequest) GetTenantId() string {
@@ -3272,7 +3380,7 @@ type GetTenantResponse struct {
 
 func (x *GetTenantResponse) Reset() {
 	*x = GetTenantResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[51]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3284,7 +3392,7 @@ func (x *GetTenantResponse) String() string {
 func (*GetTenantResponse) ProtoMessage() {}
 
 func (x *GetTenantResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[51]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3297,7 +3405,7 @@ func (x *GetTenantResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTenantResponse.ProtoReflect.Descriptor instead.
 func (*GetTenantResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{51}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *GetTenantResponse) GetTenant() *Tenant {
@@ -3320,7 +3428,7 @@ type ListTenantsRequest struct {
 
 func (x *ListTenantsRequest) Reset() {
 	*x = ListTenantsRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[52]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3332,7 +3440,7 @@ func (x *ListTenantsRequest) String() string {
 func (*ListTenantsRequest) ProtoMessage() {}
 
 func (x *ListTenantsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[52]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3345,7 +3453,7 @@ func (x *ListTenantsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTenantsRequest.ProtoReflect.Descriptor instead.
 func (*ListTenantsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{52}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *ListTenantsRequest) GetPageSize() int32 {
@@ -3380,7 +3488,7 @@ type ListTenantsResponse struct {
 
 func (x *ListTenantsResponse) Reset() {
 	*x = ListTenantsResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[53]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3392,7 +3500,7 @@ func (x *ListTenantsResponse) String() string {
 func (*ListTenantsResponse) ProtoMessage() {}
 
 func (x *ListTenantsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[53]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3405,7 +3513,7 @@ func (x *ListTenantsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTenantsResponse.ProtoReflect.Descriptor instead.
 func (*ListTenantsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{53}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *ListTenantsResponse) GetTenants() []*Tenant {
@@ -3439,7 +3547,7 @@ type PendingRecertificationRow struct {
 
 func (x *PendingRecertificationRow) Reset() {
 	*x = PendingRecertificationRow{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[54]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3451,7 +3559,7 @@ func (x *PendingRecertificationRow) String() string {
 func (*PendingRecertificationRow) ProtoMessage() {}
 
 func (x *PendingRecertificationRow) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[54]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3464,7 +3572,7 @@ func (x *PendingRecertificationRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PendingRecertificationRow.ProtoReflect.Descriptor instead.
 func (*PendingRecertificationRow) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{54}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *PendingRecertificationRow) GetReviewId() string {
@@ -3534,7 +3642,7 @@ type RecertificationHistoryRow struct {
 
 func (x *RecertificationHistoryRow) Reset() {
 	*x = RecertificationHistoryRow{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[55]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3546,7 +3654,7 @@ func (x *RecertificationHistoryRow) String() string {
 func (*RecertificationHistoryRow) ProtoMessage() {}
 
 func (x *RecertificationHistoryRow) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[55]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3559,7 +3667,7 @@ func (x *RecertificationHistoryRow) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecertificationHistoryRow.ProtoReflect.Descriptor instead.
 func (*RecertificationHistoryRow) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{55}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *RecertificationHistoryRow) GetReviewId() string {
@@ -3632,7 +3740,7 @@ type AccountAdminServiceListPendingRecertificationsRequest struct {
 
 func (x *AccountAdminServiceListPendingRecertificationsRequest) Reset() {
 	*x = AccountAdminServiceListPendingRecertificationsRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[56]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3644,7 +3752,7 @@ func (x *AccountAdminServiceListPendingRecertificationsRequest) String() string 
 func (*AccountAdminServiceListPendingRecertificationsRequest) ProtoMessage() {}
 
 func (x *AccountAdminServiceListPendingRecertificationsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[56]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3657,7 +3765,7 @@ func (x *AccountAdminServiceListPendingRecertificationsRequest) ProtoReflect() p
 
 // Deprecated: Use AccountAdminServiceListPendingRecertificationsRequest.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceListPendingRecertificationsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{56}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *AccountAdminServiceListPendingRecertificationsRequest) GetTenantId() string {
@@ -3700,7 +3808,7 @@ type AccountAdminServiceListPendingRecertificationsResponse struct {
 
 func (x *AccountAdminServiceListPendingRecertificationsResponse) Reset() {
 	*x = AccountAdminServiceListPendingRecertificationsResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[57]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3712,7 +3820,7 @@ func (x *AccountAdminServiceListPendingRecertificationsResponse) String() string
 func (*AccountAdminServiceListPendingRecertificationsResponse) ProtoMessage() {}
 
 func (x *AccountAdminServiceListPendingRecertificationsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[57]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3725,7 +3833,7 @@ func (x *AccountAdminServiceListPendingRecertificationsResponse) ProtoReflect() 
 
 // Deprecated: Use AccountAdminServiceListPendingRecertificationsResponse.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceListPendingRecertificationsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{57}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *AccountAdminServiceListPendingRecertificationsResponse) GetRows() []*PendingRecertificationRow {
@@ -3757,7 +3865,7 @@ type AccountAdminServiceSubmitRecertificationDecisionRequest struct {
 
 func (x *AccountAdminServiceSubmitRecertificationDecisionRequest) Reset() {
 	*x = AccountAdminServiceSubmitRecertificationDecisionRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[58]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3769,7 +3877,7 @@ func (x *AccountAdminServiceSubmitRecertificationDecisionRequest) String() strin
 func (*AccountAdminServiceSubmitRecertificationDecisionRequest) ProtoMessage() {}
 
 func (x *AccountAdminServiceSubmitRecertificationDecisionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[58]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3782,7 +3890,7 @@ func (x *AccountAdminServiceSubmitRecertificationDecisionRequest) ProtoReflect()
 
 // Deprecated: Use AccountAdminServiceSubmitRecertificationDecisionRequest.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceSubmitRecertificationDecisionRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{58}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *AccountAdminServiceSubmitRecertificationDecisionRequest) GetTenantId() string {
@@ -3823,7 +3931,7 @@ type AccountAdminServiceSubmitRecertificationDecisionResponse struct {
 
 func (x *AccountAdminServiceSubmitRecertificationDecisionResponse) Reset() {
 	*x = AccountAdminServiceSubmitRecertificationDecisionResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[59]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3835,7 +3943,7 @@ func (x *AccountAdminServiceSubmitRecertificationDecisionResponse) String() stri
 func (*AccountAdminServiceSubmitRecertificationDecisionResponse) ProtoMessage() {}
 
 func (x *AccountAdminServiceSubmitRecertificationDecisionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[59]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3848,7 +3956,7 @@ func (x *AccountAdminServiceSubmitRecertificationDecisionResponse) ProtoReflect(
 
 // Deprecated: Use AccountAdminServiceSubmitRecertificationDecisionResponse.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceSubmitRecertificationDecisionResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{59}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{61}
 }
 
 // AccountAdminServiceGetRecertificationHistoryRequest paginates the history
@@ -3865,7 +3973,7 @@ type AccountAdminServiceGetRecertificationHistoryRequest struct {
 
 func (x *AccountAdminServiceGetRecertificationHistoryRequest) Reset() {
 	*x = AccountAdminServiceGetRecertificationHistoryRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[60]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3877,7 +3985,7 @@ func (x *AccountAdminServiceGetRecertificationHistoryRequest) String() string {
 func (*AccountAdminServiceGetRecertificationHistoryRequest) ProtoMessage() {}
 
 func (x *AccountAdminServiceGetRecertificationHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[60]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3890,7 +3998,7 @@ func (x *AccountAdminServiceGetRecertificationHistoryRequest) ProtoReflect() pro
 
 // Deprecated: Use AccountAdminServiceGetRecertificationHistoryRequest.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceGetRecertificationHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{60}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *AccountAdminServiceGetRecertificationHistoryRequest) GetTenantId() string {
@@ -3933,7 +4041,7 @@ type AccountAdminServiceGetRecertificationHistoryResponse struct {
 
 func (x *AccountAdminServiceGetRecertificationHistoryResponse) Reset() {
 	*x = AccountAdminServiceGetRecertificationHistoryResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[61]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3945,7 +4053,7 @@ func (x *AccountAdminServiceGetRecertificationHistoryResponse) String() string {
 func (*AccountAdminServiceGetRecertificationHistoryResponse) ProtoMessage() {}
 
 func (x *AccountAdminServiceGetRecertificationHistoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[61]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3958,7 +4066,7 @@ func (x *AccountAdminServiceGetRecertificationHistoryResponse) ProtoReflect() pr
 
 // Deprecated: Use AccountAdminServiceGetRecertificationHistoryResponse.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceGetRecertificationHistoryResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{61}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *AccountAdminServiceGetRecertificationHistoryResponse) GetRows() []*RecertificationHistoryRow {
@@ -3989,7 +4097,7 @@ type AccountAdminServiceClearAccountMFAFactorsRequest struct {
 
 func (x *AccountAdminServiceClearAccountMFAFactorsRequest) Reset() {
 	*x = AccountAdminServiceClearAccountMFAFactorsRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[62]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4001,7 +4109,7 @@ func (x *AccountAdminServiceClearAccountMFAFactorsRequest) String() string {
 func (*AccountAdminServiceClearAccountMFAFactorsRequest) ProtoMessage() {}
 
 func (x *AccountAdminServiceClearAccountMFAFactorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[62]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4014,7 +4122,7 @@ func (x *AccountAdminServiceClearAccountMFAFactorsRequest) ProtoReflect() protor
 
 // Deprecated: Use AccountAdminServiceClearAccountMFAFactorsRequest.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceClearAccountMFAFactorsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{62}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *AccountAdminServiceClearAccountMFAFactorsRequest) GetTenantId() string {
@@ -4048,7 +4156,7 @@ type AccountAdminServiceClearAccountMFAFactorsResponse struct {
 
 func (x *AccountAdminServiceClearAccountMFAFactorsResponse) Reset() {
 	*x = AccountAdminServiceClearAccountMFAFactorsResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[63]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4060,7 +4168,7 @@ func (x *AccountAdminServiceClearAccountMFAFactorsResponse) String() string {
 func (*AccountAdminServiceClearAccountMFAFactorsResponse) ProtoMessage() {}
 
 func (x *AccountAdminServiceClearAccountMFAFactorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[63]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4073,7 +4181,7 @@ func (x *AccountAdminServiceClearAccountMFAFactorsResponse) ProtoReflect() proto
 
 // Deprecated: Use AccountAdminServiceClearAccountMFAFactorsResponse.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceClearAccountMFAFactorsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{63}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{65}
 }
 
 type AccountAdminServiceListRecoveryEventsRequest struct {
@@ -4097,7 +4205,7 @@ type AccountAdminServiceListRecoveryEventsRequest struct {
 
 func (x *AccountAdminServiceListRecoveryEventsRequest) Reset() {
 	*x = AccountAdminServiceListRecoveryEventsRequest{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[64]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4109,7 +4217,7 @@ func (x *AccountAdminServiceListRecoveryEventsRequest) String() string {
 func (*AccountAdminServiceListRecoveryEventsRequest) ProtoMessage() {}
 
 func (x *AccountAdminServiceListRecoveryEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[64]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4122,7 +4230,7 @@ func (x *AccountAdminServiceListRecoveryEventsRequest) ProtoReflect() protorefle
 
 // Deprecated: Use AccountAdminServiceListRecoveryEventsRequest.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceListRecoveryEventsRequest) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{64}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *AccountAdminServiceListRecoveryEventsRequest) GetTenantId() string {
@@ -4214,7 +4322,7 @@ type AccountAdminServiceRecoveryEvent struct {
 
 func (x *AccountAdminServiceRecoveryEvent) Reset() {
 	*x = AccountAdminServiceRecoveryEvent{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[65]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4226,7 +4334,7 @@ func (x *AccountAdminServiceRecoveryEvent) String() string {
 func (*AccountAdminServiceRecoveryEvent) ProtoMessage() {}
 
 func (x *AccountAdminServiceRecoveryEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[65]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4239,7 +4347,7 @@ func (x *AccountAdminServiceRecoveryEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AccountAdminServiceRecoveryEvent.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceRecoveryEvent) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{65}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *AccountAdminServiceRecoveryEvent) GetId() string {
@@ -4308,7 +4416,7 @@ type AccountAdminServiceListRecoveryEventsResponse struct {
 
 func (x *AccountAdminServiceListRecoveryEventsResponse) Reset() {
 	*x = AccountAdminServiceListRecoveryEventsResponse{}
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[66]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4320,7 +4428,7 @@ func (x *AccountAdminServiceListRecoveryEventsResponse) String() string {
 func (*AccountAdminServiceListRecoveryEventsResponse) ProtoMessage() {}
 
 func (x *AccountAdminServiceListRecoveryEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_platform_v1_identity_admin_proto_msgTypes[66]
+	mi := &file_platform_v1_identity_admin_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4333,7 +4441,7 @@ func (x *AccountAdminServiceListRecoveryEventsResponse) ProtoReflect() protorefl
 
 // Deprecated: Use AccountAdminServiceListRecoveryEventsResponse.ProtoReflect.Descriptor instead.
 func (*AccountAdminServiceListRecoveryEventsResponse) Descriptor() ([]byte, []int) {
-	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{66}
+	return file_platform_v1_identity_admin_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *AccountAdminServiceListRecoveryEventsResponse) GetEvents() []*AccountAdminServiceRecoveryEvent {
@@ -4451,7 +4559,13 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"\n" +
 	"account_id\x18\x02 \x01(\tR\taccountId\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"\x1c\n" +
-	"\x1aForcePasswordResetResponse\"k\n" +
+	"\x1aForcePasswordResetResponse\"r\n" +
+	"\x1cSendAccountActivationRequest\x12\x1b\n" +
+	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
+	"\n" +
+	"account_id\x18\x02 \x01(\tR\taccountId\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"\x1f\n" +
+	"\x1dSendAccountActivationResponse\"k\n" +
 	"\x15SuspendAccountRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
 	"\n" +
@@ -4686,7 +4800,7 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"consumedIp\"\x9e\x01\n" +
 	"-AccountAdminServiceListRecoveryEventsResponse\x12E\n" +
 	"\x06events\x18\x01 \x03(\v2-.platform.v1.AccountAdminServiceRecoveryEventR\x06events\x12&\n" +
-	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken2\x95\x18\n" +
+	"\x0fnext_page_token\x18\x02 \x01(\tR\rnextPageToken2\x85\x19\n" +
 	"\x13AccountAdminService\x12_\n" +
 	"\x10ProvisionAccount\x12$.platform.v1.ProvisionAccountRequest\x1a%.platform.v1.ProvisionAccountResponse\x12t\n" +
 	"\x17ProvisionServiceAccount\x12+.platform.v1.ProvisionServiceAccountRequest\x1a,.platform.v1.ProvisionServiceAccountResponse\x12M\n" +
@@ -4695,7 +4809,8 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"\fListAccounts\x12 .platform.v1.ListAccountsRequest\x1a!.platform.v1.ListAccountsResponse\x12V\n" +
 	"\rUpdateAccount\x12!.platform.v1.UpdateAccountRequest\x1a\".platform.v1.UpdateAccountResponse\x12t\n" +
 	"\x17AssistedAccountRecovery\x12+.platform.v1.AssistedAccountRecoveryRequest\x1a,.platform.v1.AssistedAccountRecoveryResponse\x12e\n" +
-	"\x12ForcePasswordReset\x12&.platform.v1.ForcePasswordResetRequest\x1a'.platform.v1.ForcePasswordResetResponse\x12Y\n" +
+	"\x12ForcePasswordReset\x12&.platform.v1.ForcePasswordResetRequest\x1a'.platform.v1.ForcePasswordResetResponse\x12n\n" +
+	"\x15SendAccountActivation\x12).platform.v1.SendAccountActivationRequest\x1a*.platform.v1.SendAccountActivationResponse\x12Y\n" +
 	"\x0eSuspendAccount\x12\".platform.v1.SuspendAccountRequest\x1a#.platform.v1.SuspendAccountResponse\x12Y\n" +
 	"\x0eRecoverAccount\x12\".platform.v1.RecoverAccountRequest\x1a#.platform.v1.RecoverAccountResponse\x12e\n" +
 	"\x12DeprovisionAccount\x12&.platform.v1.DeprovisionAccountRequest\x1a'.platform.v1.DeprovisionAccountResponse\x12P\n" +
@@ -4735,7 +4850,7 @@ func file_platform_v1_identity_admin_proto_rawDescGZIP() []byte {
 	return file_platform_v1_identity_admin_proto_rawDescData
 }
 
-var file_platform_v1_identity_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 67)
+var file_platform_v1_identity_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 69)
 var file_platform_v1_identity_admin_proto_goTypes = []any{
 	(*ClearanceInfo)(nil),                                            // 0: platform.v1.ClearanceInfo
 	(*AccountData)(nil),                                              // 1: platform.v1.AccountData
@@ -4753,102 +4868,104 @@ var file_platform_v1_identity_admin_proto_goTypes = []any{
 	(*AssistedAccountRecoveryResponse)(nil),                          // 13: platform.v1.AssistedAccountRecoveryResponse
 	(*ForcePasswordResetRequest)(nil),                                // 14: platform.v1.ForcePasswordResetRequest
 	(*ForcePasswordResetResponse)(nil),                               // 15: platform.v1.ForcePasswordResetResponse
-	(*SuspendAccountRequest)(nil),                                    // 16: platform.v1.SuspendAccountRequest
-	(*SuspendAccountResponse)(nil),                                   // 17: platform.v1.SuspendAccountResponse
-	(*RecoverAccountRequest)(nil),                                    // 18: platform.v1.RecoverAccountRequest
-	(*RecoverAccountResponse)(nil),                                   // 19: platform.v1.RecoverAccountResponse
-	(*DeprovisionAccountRequest)(nil),                                // 20: platform.v1.DeprovisionAccountRequest
-	(*DeprovisionAccountResponse)(nil),                               // 21: platform.v1.DeprovisionAccountResponse
-	(*Group)(nil),                                                    // 22: platform.v1.Group
-	(*DefineGroupRequest)(nil),                                       // 23: platform.v1.DefineGroupRequest
-	(*DefineGroupResponse)(nil),                                      // 24: platform.v1.DefineGroupResponse
-	(*ListGroupsRequest)(nil),                                        // 25: platform.v1.ListGroupsRequest
-	(*ListGroupsResponse)(nil),                                       // 26: platform.v1.ListGroupsResponse
-	(*AddAccountToGroupRequest)(nil),                                 // 27: platform.v1.AddAccountToGroupRequest
-	(*AddAccountToGroupResponse)(nil),                                // 28: platform.v1.AddAccountToGroupResponse
-	(*RemoveAccountFromGroupRequest)(nil),                            // 29: platform.v1.RemoveAccountFromGroupRequest
-	(*RemoveAccountFromGroupResponse)(nil),                           // 30: platform.v1.RemoveAccountFromGroupResponse
-	(*Role)(nil),                                                     // 31: platform.v1.Role
-	(*DefineRoleRequest)(nil),                                        // 32: platform.v1.DefineRoleRequest
-	(*DefineRoleResponse)(nil),                                       // 33: platform.v1.DefineRoleResponse
-	(*AccountAdminServiceListRolesRequest)(nil),                      // 34: platform.v1.AccountAdminServiceListRolesRequest
-	(*AccountAdminServiceListRolesResponse)(nil),                     // 35: platform.v1.AccountAdminServiceListRolesResponse
-	(*AccountAdminServiceAssignRoleRequest)(nil),                     // 36: platform.v1.AccountAdminServiceAssignRoleRequest
-	(*AccountAdminServiceAssignRoleResponse)(nil),                    // 37: platform.v1.AccountAdminServiceAssignRoleResponse
-	(*RevokeRoleRequest)(nil),                                        // 38: platform.v1.RevokeRoleRequest
-	(*RevokeRoleResponse)(nil),                                       // 39: platform.v1.RevokeRoleResponse
-	(*Entitlement)(nil),                                              // 40: platform.v1.Entitlement
-	(*SetEntitlementRequest)(nil),                                    // 41: platform.v1.SetEntitlementRequest
-	(*SetEntitlementResponse)(nil),                                   // 42: platform.v1.SetEntitlementResponse
-	(*DeleteEntitlementRequest)(nil),                                 // 43: platform.v1.DeleteEntitlementRequest
-	(*DeleteEntitlementResponse)(nil),                                // 44: platform.v1.DeleteEntitlementResponse
-	(*ListEntitlementsRequest)(nil),                                  // 45: platform.v1.ListEntitlementsRequest
-	(*ListEntitlementsResponse)(nil),                                 // 46: platform.v1.ListEntitlementsResponse
-	(*Tenant)(nil),                                                   // 47: platform.v1.Tenant
-	(*CreateTenantRequest)(nil),                                      // 48: platform.v1.CreateTenantRequest
-	(*CreateTenantResponse)(nil),                                     // 49: platform.v1.CreateTenantResponse
-	(*GetTenantRequest)(nil),                                         // 50: platform.v1.GetTenantRequest
-	(*GetTenantResponse)(nil),                                        // 51: platform.v1.GetTenantResponse
-	(*ListTenantsRequest)(nil),                                       // 52: platform.v1.ListTenantsRequest
-	(*ListTenantsResponse)(nil),                                      // 53: platform.v1.ListTenantsResponse
-	(*PendingRecertificationRow)(nil),                                // 54: platform.v1.PendingRecertificationRow
-	(*RecertificationHistoryRow)(nil),                                // 55: platform.v1.RecertificationHistoryRow
-	(*AccountAdminServiceListPendingRecertificationsRequest)(nil),    // 56: platform.v1.AccountAdminServiceListPendingRecertificationsRequest
-	(*AccountAdminServiceListPendingRecertificationsResponse)(nil),   // 57: platform.v1.AccountAdminServiceListPendingRecertificationsResponse
-	(*AccountAdminServiceSubmitRecertificationDecisionRequest)(nil),  // 58: platform.v1.AccountAdminServiceSubmitRecertificationDecisionRequest
-	(*AccountAdminServiceSubmitRecertificationDecisionResponse)(nil), // 59: platform.v1.AccountAdminServiceSubmitRecertificationDecisionResponse
-	(*AccountAdminServiceGetRecertificationHistoryRequest)(nil),      // 60: platform.v1.AccountAdminServiceGetRecertificationHistoryRequest
-	(*AccountAdminServiceGetRecertificationHistoryResponse)(nil),     // 61: platform.v1.AccountAdminServiceGetRecertificationHistoryResponse
-	(*AccountAdminServiceClearAccountMFAFactorsRequest)(nil),         // 62: platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest
-	(*AccountAdminServiceClearAccountMFAFactorsResponse)(nil),        // 63: platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse
-	(*AccountAdminServiceListRecoveryEventsRequest)(nil),             // 64: platform.v1.AccountAdminServiceListRecoveryEventsRequest
-	(*AccountAdminServiceRecoveryEvent)(nil),                         // 65: platform.v1.AccountAdminServiceRecoveryEvent
-	(*AccountAdminServiceListRecoveryEventsResponse)(nil),            // 66: platform.v1.AccountAdminServiceListRecoveryEventsResponse
-	(*timestamppb.Timestamp)(nil),                                    // 67: google.protobuf.Timestamp
+	(*SendAccountActivationRequest)(nil),                             // 16: platform.v1.SendAccountActivationRequest
+	(*SendAccountActivationResponse)(nil),                            // 17: platform.v1.SendAccountActivationResponse
+	(*SuspendAccountRequest)(nil),                                    // 18: platform.v1.SuspendAccountRequest
+	(*SuspendAccountResponse)(nil),                                   // 19: platform.v1.SuspendAccountResponse
+	(*RecoverAccountRequest)(nil),                                    // 20: platform.v1.RecoverAccountRequest
+	(*RecoverAccountResponse)(nil),                                   // 21: platform.v1.RecoverAccountResponse
+	(*DeprovisionAccountRequest)(nil),                                // 22: platform.v1.DeprovisionAccountRequest
+	(*DeprovisionAccountResponse)(nil),                               // 23: platform.v1.DeprovisionAccountResponse
+	(*Group)(nil),                                                    // 24: platform.v1.Group
+	(*DefineGroupRequest)(nil),                                       // 25: platform.v1.DefineGroupRequest
+	(*DefineGroupResponse)(nil),                                      // 26: platform.v1.DefineGroupResponse
+	(*ListGroupsRequest)(nil),                                        // 27: platform.v1.ListGroupsRequest
+	(*ListGroupsResponse)(nil),                                       // 28: platform.v1.ListGroupsResponse
+	(*AddAccountToGroupRequest)(nil),                                 // 29: platform.v1.AddAccountToGroupRequest
+	(*AddAccountToGroupResponse)(nil),                                // 30: platform.v1.AddAccountToGroupResponse
+	(*RemoveAccountFromGroupRequest)(nil),                            // 31: platform.v1.RemoveAccountFromGroupRequest
+	(*RemoveAccountFromGroupResponse)(nil),                           // 32: platform.v1.RemoveAccountFromGroupResponse
+	(*Role)(nil),                                                     // 33: platform.v1.Role
+	(*DefineRoleRequest)(nil),                                        // 34: platform.v1.DefineRoleRequest
+	(*DefineRoleResponse)(nil),                                       // 35: platform.v1.DefineRoleResponse
+	(*AccountAdminServiceListRolesRequest)(nil),                      // 36: platform.v1.AccountAdminServiceListRolesRequest
+	(*AccountAdminServiceListRolesResponse)(nil),                     // 37: platform.v1.AccountAdminServiceListRolesResponse
+	(*AccountAdminServiceAssignRoleRequest)(nil),                     // 38: platform.v1.AccountAdminServiceAssignRoleRequest
+	(*AccountAdminServiceAssignRoleResponse)(nil),                    // 39: platform.v1.AccountAdminServiceAssignRoleResponse
+	(*RevokeRoleRequest)(nil),                                        // 40: platform.v1.RevokeRoleRequest
+	(*RevokeRoleResponse)(nil),                                       // 41: platform.v1.RevokeRoleResponse
+	(*Entitlement)(nil),                                              // 42: platform.v1.Entitlement
+	(*SetEntitlementRequest)(nil),                                    // 43: platform.v1.SetEntitlementRequest
+	(*SetEntitlementResponse)(nil),                                   // 44: platform.v1.SetEntitlementResponse
+	(*DeleteEntitlementRequest)(nil),                                 // 45: platform.v1.DeleteEntitlementRequest
+	(*DeleteEntitlementResponse)(nil),                                // 46: platform.v1.DeleteEntitlementResponse
+	(*ListEntitlementsRequest)(nil),                                  // 47: platform.v1.ListEntitlementsRequest
+	(*ListEntitlementsResponse)(nil),                                 // 48: platform.v1.ListEntitlementsResponse
+	(*Tenant)(nil),                                                   // 49: platform.v1.Tenant
+	(*CreateTenantRequest)(nil),                                      // 50: platform.v1.CreateTenantRequest
+	(*CreateTenantResponse)(nil),                                     // 51: platform.v1.CreateTenantResponse
+	(*GetTenantRequest)(nil),                                         // 52: platform.v1.GetTenantRequest
+	(*GetTenantResponse)(nil),                                        // 53: platform.v1.GetTenantResponse
+	(*ListTenantsRequest)(nil),                                       // 54: platform.v1.ListTenantsRequest
+	(*ListTenantsResponse)(nil),                                      // 55: platform.v1.ListTenantsResponse
+	(*PendingRecertificationRow)(nil),                                // 56: platform.v1.PendingRecertificationRow
+	(*RecertificationHistoryRow)(nil),                                // 57: platform.v1.RecertificationHistoryRow
+	(*AccountAdminServiceListPendingRecertificationsRequest)(nil),    // 58: platform.v1.AccountAdminServiceListPendingRecertificationsRequest
+	(*AccountAdminServiceListPendingRecertificationsResponse)(nil),   // 59: platform.v1.AccountAdminServiceListPendingRecertificationsResponse
+	(*AccountAdminServiceSubmitRecertificationDecisionRequest)(nil),  // 60: platform.v1.AccountAdminServiceSubmitRecertificationDecisionRequest
+	(*AccountAdminServiceSubmitRecertificationDecisionResponse)(nil), // 61: platform.v1.AccountAdminServiceSubmitRecertificationDecisionResponse
+	(*AccountAdminServiceGetRecertificationHistoryRequest)(nil),      // 62: platform.v1.AccountAdminServiceGetRecertificationHistoryRequest
+	(*AccountAdminServiceGetRecertificationHistoryResponse)(nil),     // 63: platform.v1.AccountAdminServiceGetRecertificationHistoryResponse
+	(*AccountAdminServiceClearAccountMFAFactorsRequest)(nil),         // 64: platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest
+	(*AccountAdminServiceClearAccountMFAFactorsResponse)(nil),        // 65: platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse
+	(*AccountAdminServiceListRecoveryEventsRequest)(nil),             // 66: platform.v1.AccountAdminServiceListRecoveryEventsRequest
+	(*AccountAdminServiceRecoveryEvent)(nil),                         // 67: platform.v1.AccountAdminServiceRecoveryEvent
+	(*AccountAdminServiceListRecoveryEventsResponse)(nil),            // 68: platform.v1.AccountAdminServiceListRecoveryEventsResponse
+	(*timestamppb.Timestamp)(nil),                                    // 69: google.protobuf.Timestamp
 }
 var file_platform_v1_identity_admin_proto_depIdxs = []int32{
-	67, // 0: platform.v1.ClearanceInfo.formal_access_date:type_name -> google.protobuf.Timestamp
-	67, // 1: platform.v1.ClearanceInfo.expiry_date:type_name -> google.protobuf.Timestamp
-	67, // 2: platform.v1.ClearanceInfo.verified_at:type_name -> google.protobuf.Timestamp
+	69, // 0: platform.v1.ClearanceInfo.formal_access_date:type_name -> google.protobuf.Timestamp
+	69, // 1: platform.v1.ClearanceInfo.expiry_date:type_name -> google.protobuf.Timestamp
+	69, // 2: platform.v1.ClearanceInfo.verified_at:type_name -> google.protobuf.Timestamp
 	0,  // 3: platform.v1.AccountData.clearance:type_name -> platform.v1.ClearanceInfo
-	67, // 4: platform.v1.AccountData.expires_at:type_name -> google.protobuf.Timestamp
-	67, // 5: platform.v1.AccountData.created_at:type_name -> google.protobuf.Timestamp
-	67, // 6: platform.v1.AccountData.updated_at:type_name -> google.protobuf.Timestamp
+	69, // 4: platform.v1.AccountData.expires_at:type_name -> google.protobuf.Timestamp
+	69, // 5: platform.v1.AccountData.created_at:type_name -> google.protobuf.Timestamp
+	69, // 6: platform.v1.AccountData.updated_at:type_name -> google.protobuf.Timestamp
 	0,  // 7: platform.v1.ProvisionAccountRequest.clearance:type_name -> platform.v1.ClearanceInfo
 	1,  // 8: platform.v1.ProvisionAccountResponse.account:type_name -> platform.v1.AccountData
-	67, // 9: platform.v1.ProvisionServiceAccountRequest.expires_at:type_name -> google.protobuf.Timestamp
+	69, // 9: platform.v1.ProvisionServiceAccountRequest.expires_at:type_name -> google.protobuf.Timestamp
 	1,  // 10: platform.v1.ProvisionServiceAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 11: platform.v1.GetAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 12: platform.v1.ListAccountsResponse.accounts:type_name -> platform.v1.AccountData
 	0,  // 13: platform.v1.UpdateAccountRequest.clearance:type_name -> platform.v1.ClearanceInfo
-	67, // 14: platform.v1.UpdateAccountRequest.expires_at:type_name -> google.protobuf.Timestamp
+	69, // 14: platform.v1.UpdateAccountRequest.expires_at:type_name -> google.protobuf.Timestamp
 	1,  // 15: platform.v1.UpdateAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 16: platform.v1.SuspendAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 17: platform.v1.RecoverAccountResponse.account:type_name -> platform.v1.AccountData
 	1,  // 18: platform.v1.DeprovisionAccountResponse.account:type_name -> platform.v1.AccountData
-	67, // 19: platform.v1.Group.created_at:type_name -> google.protobuf.Timestamp
-	22, // 20: platform.v1.DefineGroupResponse.group:type_name -> platform.v1.Group
-	22, // 21: platform.v1.ListGroupsResponse.groups:type_name -> platform.v1.Group
-	67, // 22: platform.v1.Role.created_at:type_name -> google.protobuf.Timestamp
-	31, // 23: platform.v1.DefineRoleResponse.role:type_name -> platform.v1.Role
-	31, // 24: platform.v1.AccountAdminServiceListRolesResponse.roles:type_name -> platform.v1.Role
-	67, // 25: platform.v1.Entitlement.set_at:type_name -> google.protobuf.Timestamp
-	40, // 26: platform.v1.SetEntitlementResponse.entitlement:type_name -> platform.v1.Entitlement
-	40, // 27: platform.v1.ListEntitlementsResponse.entitlements:type_name -> platform.v1.Entitlement
-	67, // 28: platform.v1.Tenant.created_at:type_name -> google.protobuf.Timestamp
-	67, // 29: platform.v1.Tenant.updated_at:type_name -> google.protobuf.Timestamp
-	47, // 30: platform.v1.CreateTenantResponse.tenant:type_name -> platform.v1.Tenant
-	47, // 31: platform.v1.GetTenantResponse.tenant:type_name -> platform.v1.Tenant
-	47, // 32: platform.v1.ListTenantsResponse.tenants:type_name -> platform.v1.Tenant
-	67, // 33: platform.v1.PendingRecertificationRow.due_at:type_name -> google.protobuf.Timestamp
-	67, // 34: platform.v1.RecertificationHistoryRow.due_at:type_name -> google.protobuf.Timestamp
-	67, // 35: platform.v1.RecertificationHistoryRow.reviewed_at:type_name -> google.protobuf.Timestamp
-	54, // 36: platform.v1.AccountAdminServiceListPendingRecertificationsResponse.rows:type_name -> platform.v1.PendingRecertificationRow
-	55, // 37: platform.v1.AccountAdminServiceGetRecertificationHistoryResponse.rows:type_name -> platform.v1.RecertificationHistoryRow
-	67, // 38: platform.v1.AccountAdminServiceRecoveryEvent.requested_at:type_name -> google.protobuf.Timestamp
-	67, // 39: platform.v1.AccountAdminServiceRecoveryEvent.expires_at:type_name -> google.protobuf.Timestamp
-	67, // 40: platform.v1.AccountAdminServiceRecoveryEvent.consumed_at:type_name -> google.protobuf.Timestamp
-	65, // 41: platform.v1.AccountAdminServiceListRecoveryEventsResponse.events:type_name -> platform.v1.AccountAdminServiceRecoveryEvent
+	69, // 19: platform.v1.Group.created_at:type_name -> google.protobuf.Timestamp
+	24, // 20: platform.v1.DefineGroupResponse.group:type_name -> platform.v1.Group
+	24, // 21: platform.v1.ListGroupsResponse.groups:type_name -> platform.v1.Group
+	69, // 22: platform.v1.Role.created_at:type_name -> google.protobuf.Timestamp
+	33, // 23: platform.v1.DefineRoleResponse.role:type_name -> platform.v1.Role
+	33, // 24: platform.v1.AccountAdminServiceListRolesResponse.roles:type_name -> platform.v1.Role
+	69, // 25: platform.v1.Entitlement.set_at:type_name -> google.protobuf.Timestamp
+	42, // 26: platform.v1.SetEntitlementResponse.entitlement:type_name -> platform.v1.Entitlement
+	42, // 27: platform.v1.ListEntitlementsResponse.entitlements:type_name -> platform.v1.Entitlement
+	69, // 28: platform.v1.Tenant.created_at:type_name -> google.protobuf.Timestamp
+	69, // 29: platform.v1.Tenant.updated_at:type_name -> google.protobuf.Timestamp
+	49, // 30: platform.v1.CreateTenantResponse.tenant:type_name -> platform.v1.Tenant
+	49, // 31: platform.v1.GetTenantResponse.tenant:type_name -> platform.v1.Tenant
+	49, // 32: platform.v1.ListTenantsResponse.tenants:type_name -> platform.v1.Tenant
+	69, // 33: platform.v1.PendingRecertificationRow.due_at:type_name -> google.protobuf.Timestamp
+	69, // 34: platform.v1.RecertificationHistoryRow.due_at:type_name -> google.protobuf.Timestamp
+	69, // 35: platform.v1.RecertificationHistoryRow.reviewed_at:type_name -> google.protobuf.Timestamp
+	56, // 36: platform.v1.AccountAdminServiceListPendingRecertificationsResponse.rows:type_name -> platform.v1.PendingRecertificationRow
+	57, // 37: platform.v1.AccountAdminServiceGetRecertificationHistoryResponse.rows:type_name -> platform.v1.RecertificationHistoryRow
+	69, // 38: platform.v1.AccountAdminServiceRecoveryEvent.requested_at:type_name -> google.protobuf.Timestamp
+	69, // 39: platform.v1.AccountAdminServiceRecoveryEvent.expires_at:type_name -> google.protobuf.Timestamp
+	69, // 40: platform.v1.AccountAdminServiceRecoveryEvent.consumed_at:type_name -> google.protobuf.Timestamp
+	67, // 41: platform.v1.AccountAdminServiceListRecoveryEventsResponse.events:type_name -> platform.v1.AccountAdminServiceRecoveryEvent
 	2,  // 42: platform.v1.AccountAdminService.ProvisionAccount:input_type -> platform.v1.ProvisionAccountRequest
 	4,  // 43: platform.v1.AccountAdminService.ProvisionServiceAccount:input_type -> platform.v1.ProvisionServiceAccountRequest
 	6,  // 44: platform.v1.AccountAdminService.GetAccount:input_type -> platform.v1.GetAccountRequest
@@ -4856,59 +4973,61 @@ var file_platform_v1_identity_admin_proto_depIdxs = []int32{
 	10, // 46: platform.v1.AccountAdminService.UpdateAccount:input_type -> platform.v1.UpdateAccountRequest
 	12, // 47: platform.v1.AccountAdminService.AssistedAccountRecovery:input_type -> platform.v1.AssistedAccountRecoveryRequest
 	14, // 48: platform.v1.AccountAdminService.ForcePasswordReset:input_type -> platform.v1.ForcePasswordResetRequest
-	16, // 49: platform.v1.AccountAdminService.SuspendAccount:input_type -> platform.v1.SuspendAccountRequest
-	18, // 50: platform.v1.AccountAdminService.RecoverAccount:input_type -> platform.v1.RecoverAccountRequest
-	20, // 51: platform.v1.AccountAdminService.DeprovisionAccount:input_type -> platform.v1.DeprovisionAccountRequest
-	23, // 52: platform.v1.AccountAdminService.DefineGroup:input_type -> platform.v1.DefineGroupRequest
-	25, // 53: platform.v1.AccountAdminService.ListGroups:input_type -> platform.v1.ListGroupsRequest
-	27, // 54: platform.v1.AccountAdminService.AddAccountToGroup:input_type -> platform.v1.AddAccountToGroupRequest
-	29, // 55: platform.v1.AccountAdminService.RemoveAccountFromGroup:input_type -> platform.v1.RemoveAccountFromGroupRequest
-	32, // 56: platform.v1.AccountAdminService.DefineRole:input_type -> platform.v1.DefineRoleRequest
-	34, // 57: platform.v1.AccountAdminService.ListRoles:input_type -> platform.v1.AccountAdminServiceListRolesRequest
-	36, // 58: platform.v1.AccountAdminService.AssignRole:input_type -> platform.v1.AccountAdminServiceAssignRoleRequest
-	38, // 59: platform.v1.AccountAdminService.RevokeRole:input_type -> platform.v1.RevokeRoleRequest
-	41, // 60: platform.v1.AccountAdminService.SetEntitlement:input_type -> platform.v1.SetEntitlementRequest
-	43, // 61: platform.v1.AccountAdminService.DeleteEntitlement:input_type -> platform.v1.DeleteEntitlementRequest
-	45, // 62: platform.v1.AccountAdminService.ListEntitlements:input_type -> platform.v1.ListEntitlementsRequest
-	48, // 63: platform.v1.AccountAdminService.CreateTenant:input_type -> platform.v1.CreateTenantRequest
-	50, // 64: platform.v1.AccountAdminService.GetTenant:input_type -> platform.v1.GetTenantRequest
-	52, // 65: platform.v1.AccountAdminService.ListTenants:input_type -> platform.v1.ListTenantsRequest
-	56, // 66: platform.v1.AccountAdminService.ListPendingRecertifications:input_type -> platform.v1.AccountAdminServiceListPendingRecertificationsRequest
-	58, // 67: platform.v1.AccountAdminService.SubmitRecertificationDecision:input_type -> platform.v1.AccountAdminServiceSubmitRecertificationDecisionRequest
-	60, // 68: platform.v1.AccountAdminService.GetRecertificationHistory:input_type -> platform.v1.AccountAdminServiceGetRecertificationHistoryRequest
-	62, // 69: platform.v1.AccountAdminService.ClearAccountMFAFactors:input_type -> platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest
-	64, // 70: platform.v1.AccountAdminService.ListRecoveryEvents:input_type -> platform.v1.AccountAdminServiceListRecoveryEventsRequest
-	3,  // 71: platform.v1.AccountAdminService.ProvisionAccount:output_type -> platform.v1.ProvisionAccountResponse
-	5,  // 72: platform.v1.AccountAdminService.ProvisionServiceAccount:output_type -> platform.v1.ProvisionServiceAccountResponse
-	7,  // 73: platform.v1.AccountAdminService.GetAccount:output_type -> platform.v1.GetAccountResponse
-	9,  // 74: platform.v1.AccountAdminService.ListAccounts:output_type -> platform.v1.ListAccountsResponse
-	11, // 75: platform.v1.AccountAdminService.UpdateAccount:output_type -> platform.v1.UpdateAccountResponse
-	13, // 76: platform.v1.AccountAdminService.AssistedAccountRecovery:output_type -> platform.v1.AssistedAccountRecoveryResponse
-	15, // 77: platform.v1.AccountAdminService.ForcePasswordReset:output_type -> platform.v1.ForcePasswordResetResponse
-	17, // 78: platform.v1.AccountAdminService.SuspendAccount:output_type -> platform.v1.SuspendAccountResponse
-	19, // 79: platform.v1.AccountAdminService.RecoverAccount:output_type -> platform.v1.RecoverAccountResponse
-	21, // 80: platform.v1.AccountAdminService.DeprovisionAccount:output_type -> platform.v1.DeprovisionAccountResponse
-	24, // 81: platform.v1.AccountAdminService.DefineGroup:output_type -> platform.v1.DefineGroupResponse
-	26, // 82: platform.v1.AccountAdminService.ListGroups:output_type -> platform.v1.ListGroupsResponse
-	28, // 83: platform.v1.AccountAdminService.AddAccountToGroup:output_type -> platform.v1.AddAccountToGroupResponse
-	30, // 84: platform.v1.AccountAdminService.RemoveAccountFromGroup:output_type -> platform.v1.RemoveAccountFromGroupResponse
-	33, // 85: platform.v1.AccountAdminService.DefineRole:output_type -> platform.v1.DefineRoleResponse
-	35, // 86: platform.v1.AccountAdminService.ListRoles:output_type -> platform.v1.AccountAdminServiceListRolesResponse
-	37, // 87: platform.v1.AccountAdminService.AssignRole:output_type -> platform.v1.AccountAdminServiceAssignRoleResponse
-	39, // 88: platform.v1.AccountAdminService.RevokeRole:output_type -> platform.v1.RevokeRoleResponse
-	42, // 89: platform.v1.AccountAdminService.SetEntitlement:output_type -> platform.v1.SetEntitlementResponse
-	44, // 90: platform.v1.AccountAdminService.DeleteEntitlement:output_type -> platform.v1.DeleteEntitlementResponse
-	46, // 91: platform.v1.AccountAdminService.ListEntitlements:output_type -> platform.v1.ListEntitlementsResponse
-	49, // 92: platform.v1.AccountAdminService.CreateTenant:output_type -> platform.v1.CreateTenantResponse
-	51, // 93: platform.v1.AccountAdminService.GetTenant:output_type -> platform.v1.GetTenantResponse
-	53, // 94: platform.v1.AccountAdminService.ListTenants:output_type -> platform.v1.ListTenantsResponse
-	57, // 95: platform.v1.AccountAdminService.ListPendingRecertifications:output_type -> platform.v1.AccountAdminServiceListPendingRecertificationsResponse
-	59, // 96: platform.v1.AccountAdminService.SubmitRecertificationDecision:output_type -> platform.v1.AccountAdminServiceSubmitRecertificationDecisionResponse
-	61, // 97: platform.v1.AccountAdminService.GetRecertificationHistory:output_type -> platform.v1.AccountAdminServiceGetRecertificationHistoryResponse
-	63, // 98: platform.v1.AccountAdminService.ClearAccountMFAFactors:output_type -> platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse
-	66, // 99: platform.v1.AccountAdminService.ListRecoveryEvents:output_type -> platform.v1.AccountAdminServiceListRecoveryEventsResponse
-	71, // [71:100] is the sub-list for method output_type
-	42, // [42:71] is the sub-list for method input_type
+	16, // 49: platform.v1.AccountAdminService.SendAccountActivation:input_type -> platform.v1.SendAccountActivationRequest
+	18, // 50: platform.v1.AccountAdminService.SuspendAccount:input_type -> platform.v1.SuspendAccountRequest
+	20, // 51: platform.v1.AccountAdminService.RecoverAccount:input_type -> platform.v1.RecoverAccountRequest
+	22, // 52: platform.v1.AccountAdminService.DeprovisionAccount:input_type -> platform.v1.DeprovisionAccountRequest
+	25, // 53: platform.v1.AccountAdminService.DefineGroup:input_type -> platform.v1.DefineGroupRequest
+	27, // 54: platform.v1.AccountAdminService.ListGroups:input_type -> platform.v1.ListGroupsRequest
+	29, // 55: platform.v1.AccountAdminService.AddAccountToGroup:input_type -> platform.v1.AddAccountToGroupRequest
+	31, // 56: platform.v1.AccountAdminService.RemoveAccountFromGroup:input_type -> platform.v1.RemoveAccountFromGroupRequest
+	34, // 57: platform.v1.AccountAdminService.DefineRole:input_type -> platform.v1.DefineRoleRequest
+	36, // 58: platform.v1.AccountAdminService.ListRoles:input_type -> platform.v1.AccountAdminServiceListRolesRequest
+	38, // 59: platform.v1.AccountAdminService.AssignRole:input_type -> platform.v1.AccountAdminServiceAssignRoleRequest
+	40, // 60: platform.v1.AccountAdminService.RevokeRole:input_type -> platform.v1.RevokeRoleRequest
+	43, // 61: platform.v1.AccountAdminService.SetEntitlement:input_type -> platform.v1.SetEntitlementRequest
+	45, // 62: platform.v1.AccountAdminService.DeleteEntitlement:input_type -> platform.v1.DeleteEntitlementRequest
+	47, // 63: platform.v1.AccountAdminService.ListEntitlements:input_type -> platform.v1.ListEntitlementsRequest
+	50, // 64: platform.v1.AccountAdminService.CreateTenant:input_type -> platform.v1.CreateTenantRequest
+	52, // 65: platform.v1.AccountAdminService.GetTenant:input_type -> platform.v1.GetTenantRequest
+	54, // 66: platform.v1.AccountAdminService.ListTenants:input_type -> platform.v1.ListTenantsRequest
+	58, // 67: platform.v1.AccountAdminService.ListPendingRecertifications:input_type -> platform.v1.AccountAdminServiceListPendingRecertificationsRequest
+	60, // 68: platform.v1.AccountAdminService.SubmitRecertificationDecision:input_type -> platform.v1.AccountAdminServiceSubmitRecertificationDecisionRequest
+	62, // 69: platform.v1.AccountAdminService.GetRecertificationHistory:input_type -> platform.v1.AccountAdminServiceGetRecertificationHistoryRequest
+	64, // 70: platform.v1.AccountAdminService.ClearAccountMFAFactors:input_type -> platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest
+	66, // 71: platform.v1.AccountAdminService.ListRecoveryEvents:input_type -> platform.v1.AccountAdminServiceListRecoveryEventsRequest
+	3,  // 72: platform.v1.AccountAdminService.ProvisionAccount:output_type -> platform.v1.ProvisionAccountResponse
+	5,  // 73: platform.v1.AccountAdminService.ProvisionServiceAccount:output_type -> platform.v1.ProvisionServiceAccountResponse
+	7,  // 74: platform.v1.AccountAdminService.GetAccount:output_type -> platform.v1.GetAccountResponse
+	9,  // 75: platform.v1.AccountAdminService.ListAccounts:output_type -> platform.v1.ListAccountsResponse
+	11, // 76: platform.v1.AccountAdminService.UpdateAccount:output_type -> platform.v1.UpdateAccountResponse
+	13, // 77: platform.v1.AccountAdminService.AssistedAccountRecovery:output_type -> platform.v1.AssistedAccountRecoveryResponse
+	15, // 78: platform.v1.AccountAdminService.ForcePasswordReset:output_type -> platform.v1.ForcePasswordResetResponse
+	17, // 79: platform.v1.AccountAdminService.SendAccountActivation:output_type -> platform.v1.SendAccountActivationResponse
+	19, // 80: platform.v1.AccountAdminService.SuspendAccount:output_type -> platform.v1.SuspendAccountResponse
+	21, // 81: platform.v1.AccountAdminService.RecoverAccount:output_type -> platform.v1.RecoverAccountResponse
+	23, // 82: platform.v1.AccountAdminService.DeprovisionAccount:output_type -> platform.v1.DeprovisionAccountResponse
+	26, // 83: platform.v1.AccountAdminService.DefineGroup:output_type -> platform.v1.DefineGroupResponse
+	28, // 84: platform.v1.AccountAdminService.ListGroups:output_type -> platform.v1.ListGroupsResponse
+	30, // 85: platform.v1.AccountAdminService.AddAccountToGroup:output_type -> platform.v1.AddAccountToGroupResponse
+	32, // 86: platform.v1.AccountAdminService.RemoveAccountFromGroup:output_type -> platform.v1.RemoveAccountFromGroupResponse
+	35, // 87: platform.v1.AccountAdminService.DefineRole:output_type -> platform.v1.DefineRoleResponse
+	37, // 88: platform.v1.AccountAdminService.ListRoles:output_type -> platform.v1.AccountAdminServiceListRolesResponse
+	39, // 89: platform.v1.AccountAdminService.AssignRole:output_type -> platform.v1.AccountAdminServiceAssignRoleResponse
+	41, // 90: platform.v1.AccountAdminService.RevokeRole:output_type -> platform.v1.RevokeRoleResponse
+	44, // 91: platform.v1.AccountAdminService.SetEntitlement:output_type -> platform.v1.SetEntitlementResponse
+	46, // 92: platform.v1.AccountAdminService.DeleteEntitlement:output_type -> platform.v1.DeleteEntitlementResponse
+	48, // 93: platform.v1.AccountAdminService.ListEntitlements:output_type -> platform.v1.ListEntitlementsResponse
+	51, // 94: platform.v1.AccountAdminService.CreateTenant:output_type -> platform.v1.CreateTenantResponse
+	53, // 95: platform.v1.AccountAdminService.GetTenant:output_type -> platform.v1.GetTenantResponse
+	55, // 96: platform.v1.AccountAdminService.ListTenants:output_type -> platform.v1.ListTenantsResponse
+	59, // 97: platform.v1.AccountAdminService.ListPendingRecertifications:output_type -> platform.v1.AccountAdminServiceListPendingRecertificationsResponse
+	61, // 98: platform.v1.AccountAdminService.SubmitRecertificationDecision:output_type -> platform.v1.AccountAdminServiceSubmitRecertificationDecisionResponse
+	63, // 99: platform.v1.AccountAdminService.GetRecertificationHistory:output_type -> platform.v1.AccountAdminServiceGetRecertificationHistoryResponse
+	65, // 100: platform.v1.AccountAdminService.ClearAccountMFAFactors:output_type -> platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse
+	68, // 101: platform.v1.AccountAdminService.ListRecoveryEvents:output_type -> platform.v1.AccountAdminServiceListRecoveryEventsResponse
+	72, // [72:102] is the sub-list for method output_type
+	42, // [42:72] is the sub-list for method input_type
 	42, // [42:42] is the sub-list for extension type_name
 	42, // [42:42] is the sub-list for extension extendee
 	0,  // [0:42] is the sub-list for field type_name
@@ -4919,8 +5038,8 @@ func file_platform_v1_identity_admin_proto_init() {
 	if File_platform_v1_identity_admin_proto != nil {
 		return
 	}
-	file_platform_v1_identity_admin_proto_msgTypes[56].OneofWrappers = []any{}
-	file_platform_v1_identity_admin_proto_msgTypes[64].OneofWrappers = []any{
+	file_platform_v1_identity_admin_proto_msgTypes[58].OneofWrappers = []any{}
+	file_platform_v1_identity_admin_proto_msgTypes[66].OneofWrappers = []any{
 		(*AccountAdminServiceListRecoveryEventsRequest_AccountId)(nil),
 		(*AccountAdminServiceListRecoveryEventsRequest_Email)(nil),
 	}
@@ -4930,7 +5049,7 @@ func file_platform_v1_identity_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_platform_v1_identity_admin_proto_rawDesc), len(file_platform_v1_identity_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   67,
+			NumMessages:   69,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

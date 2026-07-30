@@ -54,6 +54,9 @@ const (
 	// AccountAdminServiceForcePasswordResetProcedure is the fully-qualified name of the
 	// AccountAdminService's ForcePasswordReset RPC.
 	AccountAdminServiceForcePasswordResetProcedure = "/platform.v1.AccountAdminService/ForcePasswordReset"
+	// AccountAdminServiceSendAccountActivationProcedure is the fully-qualified name of the
+	// AccountAdminService's SendAccountActivation RPC.
+	AccountAdminServiceSendAccountActivationProcedure = "/platform.v1.AccountAdminService/SendAccountActivation"
 	// AccountAdminServiceSuspendAccountProcedure is the fully-qualified name of the
 	// AccountAdminService's SuspendAccount RPC.
 	AccountAdminServiceSuspendAccountProcedure = "/platform.v1.AccountAdminService/SuspendAccount"
@@ -189,6 +192,46 @@ type AccountAdminServiceClient interface {
 	// The response is intentionally empty — no token or recovery URL is ever
 	// returned on the wire.
 	ForcePasswordReset(context.Context, *connect.Request[v1.ForcePasswordResetRequest]) (*connect.Response[v1.ForcePasswordResetResponse], error)
+	// SendAccountActivation mails the account holder the link that lets them set
+	// their FIRST password, for an account that has one provisioned but has never
+	// had a credential.
+	//
+	// WHY THIS IS NOT ForcePasswordReset. The mechanism is necessarily identical —
+	// this service has no set-password verb, so a first password is acquired
+	// exactly the way a forgotten one is replaced: the holder redeems an emailed
+	// token. Only the framing differs, and the framing is the entire point.
+	// ForcePasswordReset audits as auth.user.password_reset and sends copy that
+	// opens "your password was reset" and invites the reader to ignore the message
+	// if they did not request it. Sent to somebody who never asked for anything —
+	// a user whose account is being migrated onto this platform — that mail is
+	// indistinguishable from a phishing attempt, and it instructs exactly the
+	// wrong action. The audit record would be a permanent lie besides: nothing was
+	// reset, because there was never a password to reset.
+	//
+	// DELIBERATELY DOES NOT REVOKE SESSIONS. ForcePasswordReset revokes because a
+	// reset that leaves an attacker's session alive is not a reset. This RPC has
+	// no such premise: it targets accounts this issuer has never authenticated, so
+	// there is nothing here to revoke, and revoking would be an effect on some
+	// OTHER system's sessions that the caller never asked for.
+	//
+	// Like ForcePasswordReset it carries NO email field: the link goes to the
+	// address already on file, so this RPC structurally cannot repoint an account
+	// and is not an account-takeover primitive. An admin who must change the
+	// address first uses AssistedAccountRecovery, which is audited as the
+	// takeover-capable operation it is.
+	//
+	// RE-INVOCATION IS SAFE AND ADDITIVE. Each call mints an ADDITIONAL token and
+	// mails an ADDITIONAL link; it invalidates nothing. A link already in flight —
+	// one the holder may be partway through redeeming — keeps working until it
+	// expires or is consumed. This is what makes the RPC safe to drive from a
+	// migration that may be re-run.
+	//
+	// Authorization and assurance are enforced by the AOID handler + interceptors,
+	// NOT by this contract, exactly as for every other mutation on this service.
+	//
+	// The response is intentionally empty — no token or activation URL is ever
+	// returned on the wire.
+	SendAccountActivation(context.Context, *connect.Request[v1.SendAccountActivationRequest]) (*connect.Response[v1.SendAccountActivationResponse], error)
 	// SuspendAccount transitions the account to "suspended". Attributes retained.
 	SuspendAccount(context.Context, *connect.Request[v1.SuspendAccountRequest]) (*connect.Response[v1.SuspendAccountResponse], error)
 	// RecoverAccount transitions a suspended account back to "active".
@@ -298,6 +341,12 @@ func NewAccountAdminServiceClient(httpClient connect.HTTPClient, baseURL string,
 			httpClient,
 			baseURL+AccountAdminServiceForcePasswordResetProcedure,
 			connect.WithSchema(accountAdminServiceMethods.ByName("ForcePasswordReset")),
+			connect.WithClientOptions(opts...),
+		),
+		sendAccountActivation: connect.NewClient[v1.SendAccountActivationRequest, v1.SendAccountActivationResponse](
+			httpClient,
+			baseURL+AccountAdminServiceSendAccountActivationProcedure,
+			connect.WithSchema(accountAdminServiceMethods.ByName("SendAccountActivation")),
 			connect.WithClientOptions(opts...),
 		),
 		suspendAccount: connect.NewClient[v1.SuspendAccountRequest, v1.SuspendAccountResponse](
@@ -444,6 +493,7 @@ type accountAdminServiceClient struct {
 	updateAccount                 *connect.Client[v1.UpdateAccountRequest, v1.UpdateAccountResponse]
 	assistedAccountRecovery       *connect.Client[v1.AssistedAccountRecoveryRequest, v1.AssistedAccountRecoveryResponse]
 	forcePasswordReset            *connect.Client[v1.ForcePasswordResetRequest, v1.ForcePasswordResetResponse]
+	sendAccountActivation         *connect.Client[v1.SendAccountActivationRequest, v1.SendAccountActivationResponse]
 	suspendAccount                *connect.Client[v1.SuspendAccountRequest, v1.SuspendAccountResponse]
 	recoverAccount                *connect.Client[v1.RecoverAccountRequest, v1.RecoverAccountResponse]
 	deprovisionAccount            *connect.Client[v1.DeprovisionAccountRequest, v1.DeprovisionAccountResponse]
@@ -501,6 +551,11 @@ func (c *accountAdminServiceClient) AssistedAccountRecovery(ctx context.Context,
 // ForcePasswordReset calls platform.v1.AccountAdminService.ForcePasswordReset.
 func (c *accountAdminServiceClient) ForcePasswordReset(ctx context.Context, req *connect.Request[v1.ForcePasswordResetRequest]) (*connect.Response[v1.ForcePasswordResetResponse], error) {
 	return c.forcePasswordReset.CallUnary(ctx, req)
+}
+
+// SendAccountActivation calls platform.v1.AccountAdminService.SendAccountActivation.
+func (c *accountAdminServiceClient) SendAccountActivation(ctx context.Context, req *connect.Request[v1.SendAccountActivationRequest]) (*connect.Response[v1.SendAccountActivationResponse], error) {
+	return c.sendAccountActivation.CallUnary(ctx, req)
 }
 
 // SuspendAccount calls platform.v1.AccountAdminService.SuspendAccount.
@@ -681,6 +736,46 @@ type AccountAdminServiceHandler interface {
 	// The response is intentionally empty — no token or recovery URL is ever
 	// returned on the wire.
 	ForcePasswordReset(context.Context, *connect.Request[v1.ForcePasswordResetRequest]) (*connect.Response[v1.ForcePasswordResetResponse], error)
+	// SendAccountActivation mails the account holder the link that lets them set
+	// their FIRST password, for an account that has one provisioned but has never
+	// had a credential.
+	//
+	// WHY THIS IS NOT ForcePasswordReset. The mechanism is necessarily identical —
+	// this service has no set-password verb, so a first password is acquired
+	// exactly the way a forgotten one is replaced: the holder redeems an emailed
+	// token. Only the framing differs, and the framing is the entire point.
+	// ForcePasswordReset audits as auth.user.password_reset and sends copy that
+	// opens "your password was reset" and invites the reader to ignore the message
+	// if they did not request it. Sent to somebody who never asked for anything —
+	// a user whose account is being migrated onto this platform — that mail is
+	// indistinguishable from a phishing attempt, and it instructs exactly the
+	// wrong action. The audit record would be a permanent lie besides: nothing was
+	// reset, because there was never a password to reset.
+	//
+	// DELIBERATELY DOES NOT REVOKE SESSIONS. ForcePasswordReset revokes because a
+	// reset that leaves an attacker's session alive is not a reset. This RPC has
+	// no such premise: it targets accounts this issuer has never authenticated, so
+	// there is nothing here to revoke, and revoking would be an effect on some
+	// OTHER system's sessions that the caller never asked for.
+	//
+	// Like ForcePasswordReset it carries NO email field: the link goes to the
+	// address already on file, so this RPC structurally cannot repoint an account
+	// and is not an account-takeover primitive. An admin who must change the
+	// address first uses AssistedAccountRecovery, which is audited as the
+	// takeover-capable operation it is.
+	//
+	// RE-INVOCATION IS SAFE AND ADDITIVE. Each call mints an ADDITIONAL token and
+	// mails an ADDITIONAL link; it invalidates nothing. A link already in flight —
+	// one the holder may be partway through redeeming — keeps working until it
+	// expires or is consumed. This is what makes the RPC safe to drive from a
+	// migration that may be re-run.
+	//
+	// Authorization and assurance are enforced by the AOID handler + interceptors,
+	// NOT by this contract, exactly as for every other mutation on this service.
+	//
+	// The response is intentionally empty — no token or activation URL is ever
+	// returned on the wire.
+	SendAccountActivation(context.Context, *connect.Request[v1.SendAccountActivationRequest]) (*connect.Response[v1.SendAccountActivationResponse], error)
 	// SuspendAccount transitions the account to "suspended". Attributes retained.
 	SuspendAccount(context.Context, *connect.Request[v1.SuspendAccountRequest]) (*connect.Response[v1.SuspendAccountResponse], error)
 	// RecoverAccount transitions a suspended account back to "active".
@@ -786,6 +881,12 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 		AccountAdminServiceForcePasswordResetProcedure,
 		svc.ForcePasswordReset,
 		connect.WithSchema(accountAdminServiceMethods.ByName("ForcePasswordReset")),
+		connect.WithHandlerOptions(opts...),
+	)
+	accountAdminServiceSendAccountActivationHandler := connect.NewUnaryHandler(
+		AccountAdminServiceSendAccountActivationProcedure,
+		svc.SendAccountActivation,
+		connect.WithSchema(accountAdminServiceMethods.ByName("SendAccountActivation")),
 		connect.WithHandlerOptions(opts...),
 	)
 	accountAdminServiceSuspendAccountHandler := connect.NewUnaryHandler(
@@ -936,6 +1037,8 @@ func NewAccountAdminServiceHandler(svc AccountAdminServiceHandler, opts ...conne
 			accountAdminServiceAssistedAccountRecoveryHandler.ServeHTTP(w, r)
 		case AccountAdminServiceForcePasswordResetProcedure:
 			accountAdminServiceForcePasswordResetHandler.ServeHTTP(w, r)
+		case AccountAdminServiceSendAccountActivationProcedure:
+			accountAdminServiceSendAccountActivationHandler.ServeHTTP(w, r)
 		case AccountAdminServiceSuspendAccountProcedure:
 			accountAdminServiceSuspendAccountHandler.ServeHTTP(w, r)
 		case AccountAdminServiceRecoverAccountProcedure:
@@ -1015,6 +1118,10 @@ func (UnimplementedAccountAdminServiceHandler) AssistedAccountRecovery(context.C
 
 func (UnimplementedAccountAdminServiceHandler) ForcePasswordReset(context.Context, *connect.Request[v1.ForcePasswordResetRequest]) (*connect.Response[v1.ForcePasswordResetResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.ForcePasswordReset is not implemented"))
+}
+
+func (UnimplementedAccountAdminServiceHandler) SendAccountActivation(context.Context, *connect.Request[v1.SendAccountActivationRequest]) (*connect.Response[v1.SendAccountActivationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("platform.v1.AccountAdminService.SendAccountActivation is not implemented"))
 }
 
 func (UnimplementedAccountAdminServiceHandler) SuspendAccount(context.Context, *connect.Request[v1.SuspendAccountRequest]) (*connect.Response[v1.SuspendAccountResponse], error) {
