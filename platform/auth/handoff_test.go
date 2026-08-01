@@ -423,6 +423,60 @@ func TestHandoffCodeContainsNoTokens(t *testing.T) {
 	}
 }
 
+// TestHandoffPlaintextCodeIsNeverStoredAtRest: the store is keyed by the jti,
+// never by the code itself, and the code string appears nowhere in it — before
+// or after redemption.
+//
+// This matters because the code IS a bearer credential for the 60 seconds it is
+// alive. Storing it verbatim would mean a store dump (a heap snapshot, a Redis
+// KEYS scan, a debug log of the replay set) hands the reader a spendable
+// credential. Storing only the jti means a dump reveals which codes existed, not
+// what they were.
+func TestHandoffPlaintextCodeIsNeverStoredAtRest(t *testing.T) {
+	jm := newTestJWTManager(t)
+	store := NewInMemoryHandoffStore()
+
+	code, err := MintHandoff(t.Context(), jm, store, testHandoffAudience, testTokenPair())
+	if err != nil {
+		t.Fatalf("MintHandoff: %v", err)
+	}
+	signature := code[strings.LastIndex(code, ".")+1:]
+
+	check := func(when string) {
+		t.Helper()
+		store.mu.Lock()
+		var haystack strings.Builder
+		for jti, e := range store.entries {
+			haystack.WriteString(jti)
+			haystack.WriteString("\x00")
+			haystack.WriteString(e.resp.AccessToken)
+			haystack.WriteString("\x00")
+			haystack.WriteString(e.resp.RefreshToken)
+			haystack.WriteString("\x00")
+		}
+		for jti := range store.redeemed {
+			haystack.WriteString(jti)
+			haystack.WriteString("\x00")
+		}
+		store.mu.Unlock()
+
+		at := haystack.String()
+		if strings.Contains(at, code) {
+			t.Fatalf("SECURITY: the plaintext handoff code is stored at rest (%s redeem); "+
+				"a store dump would yield a spendable credential", when)
+		}
+		if strings.Contains(at, signature) {
+			t.Fatalf("SECURITY: the handoff code's signature is stored at rest (%s redeem)", when)
+		}
+	}
+
+	check("before")
+	if _, err := RedeemHandoff(t.Context(), jm, store, testHandoffAudience, code); err != nil {
+		t.Fatalf("RedeemHandoff: %v", err)
+	}
+	check("after")
+}
+
 // decodeJWTSegments returns the concatenated base64url-decoded header+payload
 // of a JWT, so a test can look inside rather than only at the wire form.
 func decodeJWTSegments(t *testing.T, token string) string {

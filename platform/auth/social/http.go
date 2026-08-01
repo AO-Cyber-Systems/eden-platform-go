@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/google/uuid"
 )
 
@@ -18,9 +19,14 @@ import (
 // on the query string (GET), but Apple posts the one-time `user` (name) field as
 // a form POST. 09-03 reads that field from the parsed form; this handler parses
 // it but otherwise ignores it.
+//
+// The exchange endpoint is registered for POST ONLY. That is deliberate: a GET
+// would put the handoff code in the request line and return the token pair in a
+// cacheable response. ServeMux answers a GET on this path with 405.
 func (s *SocialAuthService) RegisterSocialHTTPHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/social/callback", s.handleCallbackHTTP)
 	mux.HandleFunc("POST /auth/social/callback", s.handleCallbackHTTP)
+	mux.HandleFunc("POST /auth/social/exchange", s.handleExchangeHTTP)
 	// Meta requires a data-deletion callback to publish a Facebook app. This is a
 	// stub: it acknowledges the request (the {url, confirmation_code} shape Meta
 	// validates) and audits it, but performs NO real deletion here.
@@ -28,6 +34,7 @@ func (s *SocialAuthService) RegisterSocialHTTPHandlers(mux *http.ServeMux) {
 
 	slog.Info("registered social-login HTTP endpoints",
 		"social_callback", "/auth/social/callback (GET+POST)",
+		"social_exchange", "/auth/social/exchange (POST)",
 		"facebook_deletion", "/auth/social/facebook/deletion (POST)")
 }
 
@@ -70,12 +77,23 @@ func randomConfirmationCode() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// handleCallbackHTTP completes a social-login flow and delivers the issued token
-// pair to the app via redirect. code+state are read from the query string and,
-// for form POSTs (Apple), the form body. On success it 302-redirects to
-// redirectURI?access_token=A&refresh_token=B (same tail as the SSO OIDC
-// callback). On error it redirects to redirectURI?error=... when the redirect is
-// known, else returns an HTTP error (no open redirect to an unknown target).
+// handleCallbackHTTP completes a social-login flow and hands the app a
+// short-lived AUTHORIZATION CODE for the issued token pair. code+state are read
+// from the query string and, for form POSTs (Apple), the form body.
+//
+// On success it 302-redirects to redirectURI?code=<handoff>&state=<state>. The
+// app then POSTs that code to /auth/social/exchange and receives the token pair
+// in a JSON response BODY.
+//
+// This used to redirect to redirectURI?access_token=A&refresh_token=B. That put
+// both tokens in browser history, in every Referer header the app subsequently
+// sent, in every proxy access log along the path, and — for the desktop loopback
+// flow — in shell history via argv. The handoff code is single-use,
+// audience-bound and dead after 60 seconds, so the same URL exposure yields
+// nothing. (AOID obj-50 SDK-08 / decision D6.)
+//
+// On error it redirects to redirectURI?error=... when the redirect is known,
+// else returns an HTTP error (no open redirect to an unknown target).
 func (s *SocialAuthService) handleCallbackHTTP(w http.ResponseWriter, r *http.Request) {
 	// Parse the form so Apple's one-time `user` field is available to 09-03 and
 	// so POST callbacks expose code/state via r.FormValue. Tolerate a parse
@@ -121,9 +139,81 @@ func (s *SocialAuthService) handleCallbackHTTP(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	target := appendQuery(redirectURI, "access_token", resp.AccessToken)
-	target = appendQuery(target, "refresh_token", resp.RefreshToken)
+	handoffCode, err := auth.MintHandoff(r.Context(), s.jwt, s.HandoffStore(), redirectURI, resp)
+	if err != nil {
+		slog.Error("mint social handoff failed", "error", err)
+		http.Redirect(w, r, appendQuery(redirectURI, "error", "authentication_failed"), http.StatusFound)
+		return
+	}
+
+	target := appendQuery(redirectURI, "code", handoffCode)
+	target = appendQuery(target, "state", state)
 	http.Redirect(w, r, target, http.StatusFound)
+}
+
+// handleExchangeHTTP trades a handoff code for the token pair.
+//
+//	POST /auth/social/exchange
+//	Content-Type: application/x-www-form-urlencoded
+//	code=<handoff>&redirect_uri=<the exact target the code was delivered to>
+//
+//	200 OK
+//	Content-Type: application/json
+//	{"access_token":"...","refresh_token":"..."}
+//
+// POST only, and the parameters are read from the POST BODY specifically
+// (PostFormValue, not FormValue) so the code cannot be smuggled back into the
+// request line as a query parameter. The response carries Cache-Control:
+// no-store because it contains bearer credentials.
+//
+// Every failure — expired, replayed, wrong audience, unknown, malformed — is
+// reported identically. Distinguishing them would turn this endpoint into an
+// oracle telling an attacker which half of a guess was right.
+func (s *SocialAuthService) handleExchangeHTTP(w http.ResponseWriter, r *http.Request) {
+	// The mux registers POST only, so a GET is answered with 405 before it gets
+	// here. This guard makes the contract hold for consumers that mount the
+	// handler on a router without method matching.
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	handoffCode := r.PostFormValue("code")
+	redirectURI := r.PostFormValue("redirect_uri")
+	if handoffCode == "" || redirectURI == "" {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	// Defence in depth. The code is already bound to the exact target it was
+	// minted for, and minting only happens for an allowlisted target — but a
+	// caller naming a target this service would never redirect to is not a
+	// caller worth answering.
+	if !s.isAllowedRedirectURI(redirectURI) {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := auth.RedeemHandoff(r.Context(), s.jwt, s.HandoffStore(), redirectURI, handoffCode)
+	if err != nil {
+		slog.Warn("social handoff exchange refused", "error", err)
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"access_token":  resp.AccessToken,
+		"refresh_token": resp.RefreshToken,
+	})
 }
 
 // appendQuery appends key=value to a URL, choosing ? or & based on whether the
