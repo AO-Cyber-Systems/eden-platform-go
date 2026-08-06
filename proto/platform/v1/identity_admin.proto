@@ -471,6 +471,27 @@ message SendAccountActivationRequest {
   // so here — it is what separates a bulk activation wave from a support desk
   // one when the audit trail is read back months later.
   string reason = 3;
+
+  // client_id NAMES the OAuth client the holder should be returned to once
+  // they have set their password. It is a NAME, never a URL, and that is the
+  // whole design: the issuer resolves the destination from its own
+  // oauth_clients registry, so no caller-supplied address ever reaches a
+  // redirect on a password-set path. A caller can only ask to be sent
+  // somewhere the issuer already trusts; it cannot describe a destination.
+  //
+  // An allow-listed redirect_uri field would have been the obvious shape and
+  // is strictly weaker — it puts an attacker-influenceable string one regex
+  // bug away from an open redirect on the single endpoint where the user is
+  // typing a new credential. Compare platform/v1 handoff codes (50-05), which
+  // exist because putting the *token* in the URL was the same mistake in a
+  // different position.
+  //
+  // OPTIONAL. Empty means "no opinion" and MUST behave exactly as it did
+  // before this field existed: the holder lands on the issuer's own portal.
+  // Unknown or unregistered values resolve to that same default rather than
+  // erroring — a caller must not be able to probe the client registry by
+  // watching this RPC succeed or fail.
+  string client_id = 4;
 }
 
 // SendAccountActivationResponse is intentionally empty: success is the absence

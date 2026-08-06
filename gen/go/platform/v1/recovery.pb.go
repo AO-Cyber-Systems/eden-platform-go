@@ -26,9 +26,22 @@ const (
 // email entered by the user. Email enumeration defense: the server returns
 // success regardless of whether the account exists.
 type SelfRecoveryServiceRequestRecoveryRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TenantSlug    string                 `protobuf:"bytes,1,opt,name=tenant_slug,json=tenantSlug,proto3" json:"tenant_slug,omitempty"`
-	Email         string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	TenantSlug string                 `protobuf:"bytes,1,opt,name=tenant_slug,json=tenantSlug,proto3" json:"tenant_slug,omitempty"`
+	Email      string                 `protobuf:"bytes,2,opt,name=email,proto3" json:"email,omitempty"`
+	// client_id NAMES the OAuth client the user should be returned to after
+	// they set the new password — a NAME, never a URL. The issuer resolves the
+	// destination from its own oauth_clients registry, so no caller-supplied
+	// address ever reaches a redirect on a password-set path. See the longer
+	// note on SendAccountActivationRequest.client_id in identity_admin.proto.
+	//
+	// OPTIONAL, and it MUST NOT become an oracle. This RPC is the anonymous
+	// surface whose defining property is that it is always-success and reveals
+	// nothing about whether an account exists. An unknown, unregistered, or
+	// empty client_id must therefore produce the SAME response, the same
+	// timing, and the same outbound mail shape as a known one — it only ever
+	// changes where a user who successfully redeems the token is then sent.
+	ClientId      string `protobuf:"bytes,3,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -73,6 +86,13 @@ func (x *SelfRecoveryServiceRequestRecoveryRequest) GetTenantSlug() string {
 func (x *SelfRecoveryServiceRequestRecoveryRequest) GetEmail() string {
 	if x != nil {
 		return x.Email
+	}
+	return ""
+}
+
+func (x *SelfRecoveryServiceRequestRecoveryRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
 	}
 	return ""
 }
@@ -178,8 +198,26 @@ type SelfRecoveryServiceConsumeRecoveryTokenResponse struct {
 	Success           bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
 	LoginSessionToken string                 `protobuf:"bytes,2,opt,name=login_session_token,json=loginSessionToken,proto3" json:"login_session_token,omitempty"`
 	ExpiresAt         *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// return_url is where the portal should send the user now that the password
+	// is set. It is computed ENTIRELY BY THE SERVER: the issuer looks up the
+	// client_id recorded on the token when it was minted, reads that client's
+	// registered post-recovery destination out of oauth_clients, and emits it.
+	// Nothing a caller sent is echoed here — this field is an output of the
+	// registry, not a round-trip of an input.
+	//
+	// It carries NO token, code, or credential, and it never needs to: the user
+	// already holds an issuer session by the time they see it (login_session_token
+	// above), so the destination is a plain landing URL and the downstream app
+	// completes its own OIDC round trip against that session.
+	//
+	// EMPTY is the default and means "stay here" — the portal keeps its existing
+	// behaviour and routes to its own profile screen. Empty is what an absent,
+	// unknown, or un-configured client_id produces, so the pre-existing portal
+	// flow is unchanged by construction rather than by a branch someone has to
+	// remember to write.
+	ReturnUrl     string `protobuf:"bytes,4,opt,name=return_url,json=returnUrl,proto3" json:"return_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *SelfRecoveryServiceConsumeRecoveryTokenResponse) Reset() {
@@ -233,24 +271,34 @@ func (x *SelfRecoveryServiceConsumeRecoveryTokenResponse) GetExpiresAt() *timest
 	return nil
 }
 
+func (x *SelfRecoveryServiceConsumeRecoveryTokenResponse) GetReturnUrl() string {
+	if x != nil {
+		return x.ReturnUrl
+	}
+	return ""
+}
+
 var File_platform_v1_recovery_proto protoreflect.FileDescriptor
 
 const file_platform_v1_recovery_proto_rawDesc = "" +
 	"\n" +
-	"\x1aplatform/v1/recovery.proto\x12\vplatform.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"b\n" +
+	"\x1aplatform/v1/recovery.proto\x12\vplatform.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x7f\n" +
 	")SelfRecoveryServiceRequestRecoveryRequest\x12\x1f\n" +
 	"\vtenant_slug\x18\x01 \x01(\tR\n" +
 	"tenantSlug\x12\x14\n" +
-	"\x05email\x18\x02 \x01(\tR\x05email\",\n" +
+	"\x05email\x18\x02 \x01(\tR\x05email\x12\x1b\n" +
+	"\tclient_id\x18\x03 \x01(\tR\bclientId\",\n" +
 	"*SelfRecoveryServiceRequestRecoveryResponse\"i\n" +
 	".SelfRecoveryServiceConsumeRecoveryTokenRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12!\n" +
-	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"\xb6\x01\n" +
+	"\fnew_password\x18\x02 \x01(\tR\vnewPassword\"\xd5\x01\n" +
 	"/SelfRecoveryServiceConsumeRecoveryTokenResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12.\n" +
 	"\x13login_session_token\x18\x02 \x01(\tR\x11loginSessionToken\x129\n" +
 	"\n" +
-	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt2\xae\x02\n" +
+	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\x1d\n" +
+	"\n" +
+	"return_url\x18\x04 \x01(\tR\treturnUrl2\xae\x02\n" +
 	"\x13SelfRecoveryService\x12\x82\x01\n" +
 	"\x0fRequestRecovery\x126.platform.v1.SelfRecoveryServiceRequestRecoveryRequest\x1a7.platform.v1.SelfRecoveryServiceRequestRecoveryResponse\x12\x91\x01\n" +
 	"\x14ConsumeRecoveryToken\x12;.platform.v1.SelfRecoveryServiceConsumeRecoveryTokenRequest\x1a<.platform.v1.SelfRecoveryServiceConsumeRecoveryTokenResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"

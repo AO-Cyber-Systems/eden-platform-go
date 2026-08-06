@@ -33,6 +33,20 @@ service SelfRecoveryService {
 message SelfRecoveryServiceRequestRecoveryRequest {
   string tenant_slug = 1;
   string email = 2;
+
+  // client_id NAMES the OAuth client the user should be returned to after
+  // they set the new password — a NAME, never a URL. The issuer resolves the
+  // destination from its own oauth_clients registry, so no caller-supplied
+  // address ever reaches a redirect on a password-set path. See the longer
+  // note on SendAccountActivationRequest.client_id in identity_admin.proto.
+  //
+  // OPTIONAL, and it MUST NOT become an oracle. This RPC is the anonymous
+  // surface whose defining property is that it is always-success and reveals
+  // nothing about whether an account exists. An unknown, unregistered, or
+  // empty client_id must therefore produce the SAME response, the same
+  // timing, and the same outbound mail shape as a known one — it only ever
+  // changes where a user who successfully redeems the token is then sent.
+  string client_id = 3;
 }
 
 // SelfRecoveryServiceRequestRecoveryResponse is intentionally empty for v1.
@@ -54,4 +68,23 @@ message SelfRecoveryServiceConsumeRecoveryTokenResponse {
   bool success = 1;
   string login_session_token = 2;
   google.protobuf.Timestamp expires_at = 3;
+
+  // return_url is where the portal should send the user now that the password
+  // is set. It is computed ENTIRELY BY THE SERVER: the issuer looks up the
+  // client_id recorded on the token when it was minted, reads that client's
+  // registered post-recovery destination out of oauth_clients, and emits it.
+  // Nothing a caller sent is echoed here — this field is an output of the
+  // registry, not a round-trip of an input.
+  //
+  // It carries NO token, code, or credential, and it never needs to: the user
+  // already holds an issuer session by the time they see it (login_session_token
+  // above), so the destination is a plain landing URL and the downstream app
+  // completes its own OIDC round trip against that session.
+  //
+  // EMPTY is the default and means "stay here" — the portal keeps its existing
+  // behaviour and routes to its own profile screen. Empty is what an absent,
+  // unknown, or un-configured client_id produces, so the pre-existing portal
+  // flow is unchanged by construction rather than by a branch someone has to
+  // remember to write.
+  string return_url = 4;
 }
