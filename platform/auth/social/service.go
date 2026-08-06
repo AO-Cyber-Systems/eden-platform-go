@@ -50,6 +50,28 @@ type SocialAuthService struct {
 	// real OIDC discovery/network. formUserField carries Apple's one-time `user`
 	// (name) form POST; it is "" for every other provider.
 	callback func(ctx context.Context, code, stateJWT, formUserField string) (*auth.AuthResponse, string, error)
+
+	// handoffStore backs the ?code= callback contract (AOID obj-50 SDK-08 / D6):
+	// the token pair is parked here and the redirect carries only a reference.
+	// Defaults to a per-process store; see SetHandoffStore for the multi-replica
+	// requirement.
+	handoffStore auth.HandoffStore
+}
+
+// SetHandoffStore replaces the per-process handoff store.
+//
+// REQUIRED for any deployment with more than one replica unless the callback
+// redirect and the subsequent /auth/social/exchange POST are pinned to the same
+// pod by session affinity. The default store keeps both the token payload and
+// the single-use marker in process memory, so a code minted on pod A is not
+// redeemable on pod B — it fails closed (a failed login), never open.
+func (s *SocialAuthService) SetHandoffStore(store auth.HandoffStore) {
+	s.handoffStore = store
+}
+
+// HandoffStore returns the store used to park token pairs behind a handoff code.
+func (s *SocialAuthService) HandoffStore() auth.HandoffStore {
+	return s.handoffStore
 }
 
 // NewSocialAuthService constructs a SocialAuthService. The provider registry is
@@ -63,6 +85,7 @@ func NewSocialAuthService(social auth.SocialStore, users auth.AuthStore, jwt *au
 		baseURL:           strings.TrimRight(baseURL, "/"),
 		redirectAllowlist: allowlist,
 		providers:         make(map[string]ProviderConfig),
+		handoffStore:      auth.NewInMemoryHandoffStore(),
 	}
 	s.callback = s.HandleCallback
 	return s

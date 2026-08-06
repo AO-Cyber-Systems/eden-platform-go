@@ -1222,7 +1222,27 @@ type SendAccountActivationRequest struct {
 	// reason is required and recorded in the audit event. A migration should say
 	// so here — it is what separates a bulk activation wave from a support desk
 	// one when the audit trail is read back months later.
-	Reason        string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	// client_id NAMES the OAuth client the holder should be returned to once
+	// they have set their password. It is a NAME, never a URL, and that is the
+	// whole design: the issuer resolves the destination from its own
+	// oauth_clients registry, so no caller-supplied address ever reaches a
+	// redirect on a password-set path. A caller can only ask to be sent
+	// somewhere the issuer already trusts; it cannot describe a destination.
+	//
+	// An allow-listed redirect_uri field would have been the obvious shape and
+	// is strictly weaker — it puts an attacker-influenceable string one regex
+	// bug away from an open redirect on the single endpoint where the user is
+	// typing a new credential. Compare platform/v1 handoff codes (50-05), which
+	// exist because putting the *token* in the URL was the same mistake in a
+	// different position.
+	//
+	// OPTIONAL. Empty means "no opinion" and MUST behave exactly as it did
+	// before this field existed: the holder lands on the issuer's own portal.
+	// Unknown or unregistered values resolve to that same default rather than
+	// erroring — a caller must not be able to probe the client registry by
+	// watching this RPC succeed or fail.
+	ClientId      string `protobuf:"bytes,4,opt,name=client_id,json=clientId,proto3" json:"client_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1274,6 +1294,13 @@ func (x *SendAccountActivationRequest) GetAccountId() string {
 func (x *SendAccountActivationRequest) GetReason() string {
 	if x != nil {
 		return x.Reason
+	}
+	return ""
+}
+
+func (x *SendAccountActivationRequest) GetClientId() string {
+	if x != nil {
+		return x.ClientId
 	}
 	return ""
 }
@@ -4559,12 +4586,13 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"\n" +
 	"account_id\x18\x02 \x01(\tR\taccountId\x12\x16\n" +
 	"\x06reason\x18\x03 \x01(\tR\x06reason\"\x1c\n" +
-	"\x1aForcePasswordResetResponse\"r\n" +
+	"\x1aForcePasswordResetResponse\"\x8f\x01\n" +
 	"\x1cSendAccountActivationRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +
 	"\n" +
 	"account_id\x18\x02 \x01(\tR\taccountId\x12\x16\n" +
-	"\x06reason\x18\x03 \x01(\tR\x06reason\"\x1f\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\x12\x1b\n" +
+	"\tclient_id\x18\x04 \x01(\tR\bclientId\"\x1f\n" +
 	"\x1dSendAccountActivationResponse\"k\n" +
 	"\x15SuspendAccountRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x1d\n" +

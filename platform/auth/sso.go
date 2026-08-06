@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -37,6 +38,27 @@ type SSOService struct {
 
 	// SAML SP certificate (auto-generated for dev)
 	samlCert tls.Certificate
+
+	// callback is the code+state → tokens completion used by the OIDC HTTP
+	// callback handler. It defaults to HandleOIDCCallbackWithState; tests inject
+	// a canned result so the redirect tail can be exercised without real OIDC
+	// discovery. (Mirrors the seam SocialAuthService already uses.)
+	callback func(ctx context.Context, code, stateJWT string) (*AuthResponse, string, error)
+
+	// handoffStore backs the ?code= callback contract (AOID obj-50 SDK-08 / D6):
+	// the token pair is parked here and the redirect carries only a reference.
+	handoffStore HandoffStore
+}
+
+// SetHandoffStore replaces the per-process handoff store.
+//
+// REQUIRED for any deployment with more than one replica unless the callback
+// redirect and the subsequent /auth/oidc/exchange POST are pinned to the same
+// pod by session affinity. The default store keeps both the token payload and
+// the single-use marker in process memory, so a code minted on pod A is not
+// redeemable on pod B — it fails closed (a failed login), never open.
+func (s *SSOService) SetHandoffStore(store HandoffStore) {
+	s.handoffStore = store
 }
 
 type oidcCachedProvider struct {
@@ -51,7 +73,9 @@ func NewSSOService(store AuthStore, jwtManager *JWTManager, baseURL string) *SSO
 		jwtManager:    jwtManager,
 		baseURL:       strings.TrimRight(baseURL, "/"),
 		oidcProviders: make(map[string]*oidcCachedProvider),
+		handoffStore:  NewInMemoryHandoffStore(),
 	}
+	svc.callback = svc.HandleOIDCCallbackWithState
 
 	// Generate self-signed SAML SP certificate for development
 	cert, err := generateSelfSignedCert()
@@ -338,11 +362,15 @@ func (s *SSOService) HandleSAMLCallback(r *http.Request, companyID uuid.UUID) (*
 // RegisterHTTPHandlers registers SSO callback HTTP handlers on the given mux.
 func (s *SSOService) RegisterHTTPHandlers(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/oidc/callback", s.handleOIDCCallbackHTTP)
+	// POST only: a GET would put the handoff code in the request line and return
+	// the token pair in a cacheable response. ServeMux answers a GET with 405.
+	mux.HandleFunc("POST /auth/oidc/exchange", s.handleOIDCExchangeHTTP)
 	mux.HandleFunc("POST /auth/saml/acs", s.handleSAMLACSHTTP)
 	mux.HandleFunc("GET /auth/saml/metadata", s.handleSAMLMetadataHTTP)
 
 	slog.Info("registered SSO HTTP endpoints",
 		"oidc_callback", "/auth/oidc/callback",
+		"oidc_exchange", "/auth/oidc/exchange (POST)",
 		"saml_acs", "/auth/saml/acs",
 		"saml_metadata", "/auth/saml/metadata",
 	)
@@ -357,35 +385,111 @@ func (s *SSOService) handleOIDCCallbackHTTP(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	resp, redirectURI, err := s.HandleOIDCCallbackWithState(r.Context(), code, stateJWT)
+	resp, redirectURI, err := s.callback(r.Context(), code, stateJWT)
 	if err != nil {
 		slog.Error("OIDC callback failed", "error", err)
 		http.Error(w, "authentication failed", http.StatusInternalServerError)
 		return
 	}
 
-	// Redirect based on the redirectURI encoded in the state JWT, appending the
-	// tokens as query params. Callers targeting a HASH-routed SPA should point the
-	// redirectURI at the in-app route in the URL fragment (e.g.
-	// "https://host/#/auth/complete") — the tokens then land INSIDE the fragment
-	// ("…/#/auth/complete?access_token=…"), which (a) is never sent to the origin
-	// so a ~9.6KB URL from ML-DSA tokens can't 414 the SPA nginx, and (b) is parsed
-	// by the SPA router as the route's query. (A path-routed SPA can pass a plain
-	// path and read window.location.search, at the cost of the tokens hitting the
-	// request line.)
+	// Redirect based on the redirectURI encoded in the state JWT, appending a
+	// short-lived AUTHORIZATION CODE — never the tokens.
+	//
+	// This used to append "access_token=…&refresh_token=…" directly, which put a
+	// ~9.6KB ML-DSA token pair into a URL: browser history, Referer headers,
+	// every proxy access log on the path. The fragment note below dates from
+	// that era; it survives because a hash-routed consumer may still pass a
+	// fragment-shaped redirectURI and the ?code= tail must compose with it. A
+	// ~200-byte code no longer needs the workaround to dodge a 414.
+	//
+	// Callers targeting a HASH-routed SPA point redirectURI at the in-app route
+	// in the URL fragment (e.g. "https://host/#/auth/complete"); the code then
+	// lands INSIDE the fragment ("…/#/auth/complete?code=…"), which the SPA
+	// router parses as the route's query. A path-routed SPA passes a plain path
+	// and reads window.location.search.
+	//
+	// The pair is obtainable only by POSTing the code to /auth/oidc/exchange,
+	// which returns it in a JSON response BODY. (AOID obj-50 SDK-08 / D6.)
 	if redirectURI != "" && redirectURI != "json" {
-		sep := "?"
-		if strings.Contains(redirectURI, "?") {
-			sep = "&"
+		handoffCode, err := MintHandoff(r.Context(), s.jwtManager, s.handoffStore, redirectURI, resp)
+		if err != nil {
+			slog.Error("mint OIDC handoff failed", "error", err)
+			http.Error(w, "authentication failed", http.StatusInternalServerError)
+			return
 		}
-		target := fmt.Sprintf("%s%saccess_token=%s&refresh_token=%s", redirectURI, sep, resp.AccessToken, resp.RefreshToken)
+		target := appendSSOQuery(redirectURI, "code", handoffCode)
+		target = appendSSOQuery(target, "state", stateJWT)
 		http.Redirect(w, r, target, http.StatusFound)
 		return
 	}
 
-	// Default: return JSON (for API clients or testing).
+	// Default: return JSON (for API clients or testing). This branch was always
+	// safe — tokens in a BODY, not a URL — and is the shape the exchange
+	// endpoint mimics.
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
 	fmt.Fprintf(w, `{"access_token":"%s","refresh_token":"%s"}`, resp.AccessToken, resp.RefreshToken)
+}
+
+// appendSSOQuery appends key=value to a URL, choosing ? or & based on whether
+// the URL already carries a query string. A fragment-shaped redirectURI
+// ("https://host/#/route") gets the query appended INSIDE the fragment, which is
+// what a hash-routed SPA parses.
+func appendSSOQuery(rawURL, key, value string) string {
+	sep := "?"
+	if strings.Contains(rawURL, "?") {
+		sep = "&"
+	}
+	return fmt.Sprintf("%s%s%s=%s", rawURL, sep, key, url.QueryEscape(value))
+}
+
+// handleOIDCExchangeHTTP trades an SSO handoff code for the token pair.
+//
+//	POST /auth/oidc/exchange
+//	Content-Type: application/x-www-form-urlencoded
+//	code=<handoff>&redirect_uri=<the exact target the code was delivered to>
+//
+//	200 OK
+//	Content-Type: application/json
+//	{"access_token":"...","refresh_token":"..."}
+//
+// POST only, and the parameters are read from the POST BODY specifically
+// (PostFormValue, not FormValue) so the code cannot be smuggled back into the
+// request line. Every failure is reported identically so the endpoint is not an
+// oracle.
+func (s *SSOService) handleOIDCExchangeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	handoffCode := r.PostFormValue("code")
+	redirectURI := r.PostFormValue("redirect_uri")
+	if handoffCode == "" || redirectURI == "" {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	resp, err := RedeemHandoff(r.Context(), s.jwtManager, s.handoffStore, redirectURI, handoffCode)
+	if err != nil {
+		slog.Warn("OIDC handoff exchange refused", "error", err)
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"access_token":  resp.AccessToken,
+		"refresh_token": resp.RefreshToken,
+	})
 }
 
 func (s *SSOService) handleSAMLACSHTTP(w http.ResponseWriter, r *http.Request) {
