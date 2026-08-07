@@ -59,4 +59,10 @@ WHERE ch.descendant_id = $1 AND ch.generations > 0
 ORDER BY ch.generations ASC;
 
 -- name: ListUserCompanyIDs :many
-SELECT company_id FROM company_memberships WHERE user_id = $1;
+-- Deterministic order: oldest membership ("home" company) first, with a stable
+-- company_id tiebreak. GetCompanyMembershipByUser takes [0], so without a defined
+-- order a multi-company user resolved into an ARBITRARY company that could flip
+-- between logins. Ordering here fixes that for every consumer + both the linked-sub
+-- fast path and the invite-attach path.
+SELECT company_id FROM company_memberships WHERE user_id = $1
+ORDER BY created_at ASC, company_id ASC;

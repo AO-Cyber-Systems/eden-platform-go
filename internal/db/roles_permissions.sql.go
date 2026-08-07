@@ -353,8 +353,14 @@ func (q *Queries) ListRolesByCompany(ctx context.Context, companyID pgtype.UUID)
 
 const listUserCompanyIDs = `-- name: ListUserCompanyIDs :many
 SELECT company_id FROM company_memberships WHERE user_id = $1
+ORDER BY created_at ASC, company_id ASC
 `
 
+// Deterministic order: oldest membership ("home" company) first, with a stable
+// company_id tiebreak. GetCompanyMembershipByUser takes [0], so without a defined
+// order a multi-company user resolved into an ARBITRARY company that could flip
+// between logins. Ordering here fixes that for every consumer + both the linked-sub
+// fast path and the invite-attach path.
 func (q *Queries) ListUserCompanyIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listUserCompanyIDs, userID)
 	if err != nil {
