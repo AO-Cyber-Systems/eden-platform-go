@@ -108,24 +108,26 @@ type Permission struct {
 }
 
 type PlatformHousehold struct {
-	ID                   uuid.UUID       `json:"id"`
-	PrimaryContactUserID uuid.UUID       `json:"primary_contact_user_id"`
-	DisplayName          string          `json:"display_name"`
-	Metadata             json.RawMessage `json:"metadata"`
-	CreatedAt            time.Time       `json:"created_at"`
-	UpdatedAt            time.Time       `json:"updated_at"`
+	ID                       uuid.UUID       `json:"id"`
+	PrimaryContactIdentityID uuid.UUID       `json:"primary_contact_identity_id"`
+	DisplayName              string          `json:"display_name"`
+	Metadata                 json.RawMessage `json:"metadata"`
+	CreatedAt                time.Time       `json:"created_at"`
+	UpdatedAt                time.Time       `json:"updated_at"`
 }
 
 type PlatformHouseholdMember struct {
-	ID           uuid.UUID          `json:"id"`
-	HouseholdID  uuid.UUID          `json:"household_id"`
-	UserID       uuid.UUID          `json:"user_id"`
-	Role         string             `json:"role"`
-	Status       string             `json:"status"`
-	Birthdate    pgtype.Date        `json:"birthdate"`
-	Capabilities json.RawMessage    `json:"capabilities"`
-	AddedAt      time.Time          `json:"added_at"`
-	RemovedAt    pgtype.Timestamptz `json:"removed_at"`
+	ID             uuid.UUID          `json:"id"`
+	HouseholdID    uuid.UUID          `json:"household_id"`
+	IdentityID     uuid.UUID          `json:"identity_id"`
+	Role           string             `json:"role"`
+	Status         string             `json:"status"`
+	Birthdate      pgtype.Date        `json:"birthdate"`
+	Capabilities   json.RawMessage    `json:"capabilities"`
+	AddedAt        time.Time          `json:"added_at"`
+	RemovedAt      pgtype.Timestamptz `json:"removed_at"`
+	IsManager      bool               `json:"is_manager"`
+	IsAccountOwner bool               `json:"is_account_owner"`
 }
 
 type PlatformParentOfRecord struct {

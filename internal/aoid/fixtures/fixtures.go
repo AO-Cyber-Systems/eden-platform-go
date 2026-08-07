@@ -70,11 +70,12 @@ func Seed(ctx context.Context, svcs *composition.Services) (*Fixture, error) {
 	}
 
 	parentMember, err := svcs.Household.AddMember(ctx, ac, household.Member{
-		HouseholdID:  hh.ID,
-		UserID:       parentUserID,
-		Role:         household.RoleParentOfRecord,
-		Status:       household.StatusActive,
-		Capabilities: household.DefaultCapabilities(household.RoleParentOfRecord),
+		HouseholdID:    hh.ID,
+		IdentityID:     parentUserID,
+		Role:           household.RoleGuardian,
+		Status:         household.StatusActive,
+		IsManager:      true,
+		IsAccountOwner: true,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("fixtures: add parent member: %w", err)
@@ -85,12 +86,11 @@ func Seed(ctx context.Context, svcs *composition.Services) (*Fixture, error) {
 	childDOB := time.Now().UTC().AddDate(-8, 0, 0)
 	childUserID := uuid.New()
 	childMember, err := svcs.Household.AddMember(ctx, ac, household.Member{
-		HouseholdID:  hh.ID,
-		UserID:       childUserID,
-		Role:         household.RoleChild,
-		Status:       household.StatusActive,
-		Birthdate:    &childDOB,
-		Capabilities: household.DefaultCapabilities(household.RoleChild),
+		HouseholdID: hh.ID,
+		IdentityID:  childUserID,
+		Role:        household.RoleChild,
+		Status:      household.StatusActive,
+		Birthdate:   &childDOB,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("fixtures: add child member: %w", err)

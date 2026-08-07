@@ -2,6 +2,8 @@ package composition
 
 import (
 	"context"
+	"encoding/json"
+	"sort"
 	"sync"
 	"time"
 
@@ -11,12 +13,10 @@ import (
 
 // inMemoryHouseholdStore is a thread-safe map-backed household.Store for
 // dev / smoke-test runs. The platform/household package's own memStore is
-// unexported (test-only) and would force composition_test to import test
-// files; this is the public dev twin.
+// unexported (test-only); this is the public dev twin.
 //
-// Behaviour mirrors platform/pgstore.HouseholdStore for the operations
-// the service uses; anything not currently exercised is a TODO marker so
-// production composers spot the gap.
+// Behaviour mirrors platform/pgstore.HouseholdStore for the operations the
+// service uses.
 type inMemoryHouseholdStore struct {
 	mu          sync.Mutex
 	households  map[uuid.UUID]household.Household
@@ -45,7 +45,7 @@ func (s *inMemoryHouseholdStore) CreateHousehold(_ context.Context, h household.
 	return h, nil
 }
 
-func (s *inMemoryHouseholdStore) GetHousehold(_ context.Context, id uuid.UUID) (household.Household, error) {
+func (s *inMemoryHouseholdStore) GetHouseholdByID(_ context.Context, id uuid.UUID) (household.Household, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	h, ok := s.households[id]
@@ -84,8 +84,18 @@ func (s *inMemoryHouseholdStore) DeleteHousehold(_ context.Context, id uuid.UUID
 func (s *inMemoryHouseholdStore) AddMember(_ context.Context, m household.Member) (household.Member, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if m.IsAccountOwner {
+		for _, e := range s.members {
+			if e.HouseholdID == m.HouseholdID && e.IsAccountOwner && e.Status != household.StatusRemoved {
+				return household.Member{}, household.ErrAccountOwnerExists
+			}
+		}
+	}
 	m.ID = uuid.New()
 	m.AddedAt = time.Now().UTC()
+	if len(m.Capabilities) == 0 {
+		m.Capabilities = json.RawMessage("{}")
+	}
 	s.members[m.ID] = m
 	return m, nil
 }
@@ -100,15 +110,37 @@ func (s *inMemoryHouseholdStore) GetMember(_ context.Context, id uuid.UUID) (hou
 	return m, nil
 }
 
-func (s *inMemoryHouseholdStore) UpdateMemberRole(_ context.Context, memberID uuid.UUID, role household.Role, caps household.Capabilities) (household.Member, error) {
+func (s *inMemoryHouseholdStore) GetMemberByIdentity(_ context.Context, householdID, identityID uuid.UUID) (household.Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, m := range s.members {
+		if m.HouseholdID == householdID && m.IdentityID == identityID && m.Status != household.StatusRemoved {
+			return m, nil
+		}
+	}
+	return household.Member{}, household.ErrNotFound
+}
+
+func (s *inMemoryHouseholdStore) UpdateMemberRole(_ context.Context, memberID uuid.UUID, role household.Role, isManager, isAccountOwner bool, caps []byte) (household.Member, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	m, ok := s.members[memberID]
 	if !ok {
 		return household.Member{}, household.ErrNotFound
 	}
+	if isAccountOwner && !m.IsAccountOwner {
+		for id, e := range s.members {
+			if id != memberID && e.HouseholdID == m.HouseholdID && e.IsAccountOwner && e.Status != household.StatusRemoved {
+				return household.Member{}, household.ErrAccountOwnerExists
+			}
+		}
+	}
 	m.Role = role
-	m.Capabilities = caps
+	m.IsManager = isManager
+	m.IsAccountOwner = isAccountOwner
+	if len(caps) > 0 {
+		m.Capabilities = json.RawMessage(caps)
+	}
 	s.members[memberID] = m
 	return m, nil
 }
@@ -136,16 +168,51 @@ func (s *inMemoryHouseholdStore) ListMembers(_ context.Context, householdID uuid
 			out = append(out, m)
 		}
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i].AddedAt.Before(out[j].AddedAt) })
 	return out, nil
 }
 
-func (s *inMemoryHouseholdStore) ListHouseholdsForUser(_ context.Context, userID uuid.UUID) ([]household.Household, error) {
+func (s *inMemoryHouseholdStore) CountManagers(_ context.Context, householdID uuid.UUID) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := 0
+	for _, m := range s.members {
+		if m.HouseholdID == householdID && m.IsManager && m.Status != household.StatusRemoved {
+			n++
+		}
+	}
+	return n, nil
+}
+
+func (s *inMemoryHouseholdStore) GetHouseholdForIdentity(_ context.Context, identityID uuid.UUID) (household.Household, household.Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var found *household.Member
+	for _, m := range s.members {
+		mm := m
+		if mm.IdentityID == identityID && mm.Status != household.StatusRemoved {
+			if found == nil || mm.AddedAt.Before(found.AddedAt) {
+				found = &mm
+			}
+		}
+	}
+	if found == nil {
+		return household.Household{}, household.Member{}, household.ErrNotFound
+	}
+	h, ok := s.households[found.HouseholdID]
+	if !ok {
+		return household.Household{}, household.Member{}, household.ErrNotFound
+	}
+	return h, *found, nil
+}
+
+func (s *inMemoryHouseholdStore) ListHouseholdsForIdentity(_ context.Context, identityID uuid.UUID) ([]household.Household, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	seen := map[uuid.UUID]bool{}
 	var out []household.Household
 	for _, m := range s.members {
-		if m.UserID == userID && m.Status != household.StatusRemoved && !seen[m.HouseholdID] {
+		if m.IdentityID == identityID && m.Status != household.StatusRemoved && !seen[m.HouseholdID] {
 			if h, ok := s.households[m.HouseholdID]; ok {
 				out = append(out, h)
 				seen[m.HouseholdID] = true
@@ -153,6 +220,24 @@ func (s *inMemoryHouseholdStore) ListHouseholdsForUser(_ context.Context, userID
 		}
 	}
 	return out, nil
+}
+
+func (s *inMemoryHouseholdStore) SetAccountOwner(_ context.Context, householdID, newOwnerMemberID uuid.UUID) (household.Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	target, ok := s.members[newOwnerMemberID]
+	if !ok || target.HouseholdID != householdID || target.Status == household.StatusRemoved {
+		return household.Member{}, household.ErrNotFound
+	}
+	for id, m := range s.members {
+		if m.HouseholdID == householdID && m.IsAccountOwner {
+			m.IsAccountOwner = false
+			s.members[id] = m
+		}
+	}
+	target.IsAccountOwner = true
+	s.members[newOwnerMemberID] = target
+	return target, nil
 }
 
 func (s *inMemoryHouseholdStore) EstablishParentOfRecord(_ context.Context, childMemberID, parentMemberID uuid.UUID) (household.ParentOfRecord, error) {
