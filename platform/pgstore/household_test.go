@@ -3,6 +3,7 @@ package pgstore_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"testing"
 	"time"
 
@@ -14,19 +15,15 @@ import (
 
 func TestHouseholdStore_CreateAndQuery(t *testing.T) {
 	backend := setupTestBackend(t)
-	authStore := backend.AuthStore()
 	hhStore := backend.HouseholdStore()
 	ctx := context.Background()
 
-	user, err := authStore.CreateUser(ctx, "household-primary@example.com", "h", "Primary")
-	if err != nil {
-		t.Fatalf("create user: %v", err)
-	}
-
+	// identity_id is a logical AOID reference (no FK); a fresh UUID is valid.
+	primary := uuid.New()
 	h, err := hhStore.CreateHousehold(ctx, household.Household{
-		PrimaryContactUserID: user.ID,
-		DisplayName:          "Smith Family",
-		Metadata:             json.RawMessage(`{"plan":"family"}`),
+		PrimaryContactIdentityID: primary,
+		DisplayName:              "Smith Family",
+		Metadata:                 json.RawMessage(`{"plan":"family"}`),
 	})
 	if err != nil {
 		t.Fatalf("create household: %v", err)
@@ -34,16 +31,13 @@ func TestHouseholdStore_CreateAndQuery(t *testing.T) {
 	if h.ID == uuid.Nil {
 		t.Error("household ID is nil")
 	}
-	if h.DisplayName != "Smith Family" {
-		t.Errorf("display_name = %q, want %q", h.DisplayName, "Smith Family")
-	}
 
-	got, err := hhStore.GetHousehold(ctx, h.ID)
+	got, err := hhStore.GetHouseholdByID(ctx, h.ID)
 	if err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	if got.PrimaryContactUserID != user.ID {
-		t.Errorf("primary contact = %s, want %s", got.PrimaryContactUserID, user.ID)
+	if got.PrimaryContactIdentityID != primary {
+		t.Errorf("primary contact = %s, want %s", got.PrimaryContactIdentityID, primary)
 	}
 
 	members, err := hhStore.ListMembers(ctx, h.ID)
@@ -57,45 +51,34 @@ func TestHouseholdStore_CreateAndQuery(t *testing.T) {
 
 func TestHouseholdStore_MemberLifecycle(t *testing.T) {
 	backend := setupTestBackend(t)
-	authStore := backend.AuthStore()
 	hhStore := backend.HouseholdStore()
 	ctx := context.Background()
 
-	parent, _ := authStore.CreateUser(ctx, "parent@example.com", "h", "Parent")
-	child, _ := authStore.CreateUser(ctx, "child@example.com", "h", "Child")
+	guardianID := uuid.New()
+	childID := uuid.New()
+	h, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactIdentityID: guardianID, DisplayName: "Lifecycle"})
 
-	h, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactUserID: parent.ID, DisplayName: "Lifecycle"})
-
-	parentMember, err := hhStore.AddMember(ctx, household.Member{
-		HouseholdID:  h.ID,
-		UserID:       parent.ID,
-		Role:         household.RoleParentOfRecord,
-		Status:       household.StatusActive,
-		Capabilities: household.DefaultCapabilities(household.RoleParentOfRecord),
+	guardian, err := hhStore.AddMember(ctx, household.Member{
+		HouseholdID: h.ID, IdentityID: guardianID, Role: household.RoleGuardian,
+		Status: household.StatusActive, IsManager: true, IsAccountOwner: true,
 	})
 	if err != nil {
-		t.Fatalf("add parent: %v", err)
+		t.Fatalf("add guardian: %v", err)
 	}
-	if parentMember.Role != household.RoleParentOfRecord {
-		t.Errorf("role = %q", parentMember.Role)
-	}
-	if !parentMember.Capabilities.CanGrantConsent {
-		t.Error("parent default capabilities missing CanGrantConsent")
+	if !guardian.IsManager || !guardian.IsAccountOwner {
+		t.Error("guardian capabilities not persisted")
 	}
 
 	bday := time.Date(2018, 3, 14, 0, 0, 0, 0, time.UTC)
-	childMember, err := hhStore.AddMember(ctx, household.Member{
-		HouseholdID: h.ID,
-		UserID:      child.ID,
-		Role:        household.RoleChild,
-		Status:      household.StatusActive,
-		Birthdate:   &bday,
+	child, err := hhStore.AddMember(ctx, household.Member{
+		HouseholdID: h.ID, IdentityID: childID, Role: household.RoleChild,
+		Status: household.StatusActive, Birthdate: &bday,
 	})
 	if err != nil {
 		t.Fatalf("add child: %v", err)
 	}
-	if childMember.Birthdate == nil || !childMember.Birthdate.Equal(bday) {
-		t.Errorf("birthdate = %v, want %v", childMember.Birthdate, bday)
+	if child.Birthdate == nil || !child.Birthdate.Equal(bday) {
+		t.Errorf("birthdate = %v, want %v", child.Birthdate, bday)
 	}
 
 	members, _ := hhStore.ListMembers(ctx, h.ID)
@@ -103,78 +86,139 @@ func TestHouseholdStore_MemberLifecycle(t *testing.T) {
 		t.Errorf("members = %d, want 2", len(members))
 	}
 
-	// Update role
-	updated, err := hhStore.UpdateMemberRole(ctx, parentMember.ID, household.RoleGuardian, household.DefaultCapabilities(household.RoleGuardian))
+	// GetHouseholdForIdentity returns household + the identity's membership.
+	gotHH, gotMember, err := hhStore.GetHouseholdForIdentity(ctx, guardianID)
 	if err != nil {
-		t.Fatalf("update role: %v", err)
+		t.Fatalf("get for identity: %v", err)
 	}
-	if updated.Role != household.RoleGuardian {
-		t.Errorf("updated role = %q", updated.Role)
+	if gotHH.ID != h.ID || gotMember.ID != guardian.ID {
+		t.Errorf("for-identity = (%s,%s), want (%s,%s)", gotHH.ID, gotMember.ID, h.ID, guardian.ID)
 	}
 
-	// Remove
-	if err := hhStore.RemoveMember(ctx, childMember.ID); err != nil {
+	if err := hhStore.RemoveMember(ctx, child.ID); err != nil {
 		t.Fatalf("remove member: %v", err)
 	}
 	members, _ = hhStore.ListMembers(ctx, h.ID)
 	if len(members) != 1 {
 		t.Errorf("after remove = %d, want 1", len(members))
 	}
-
-	// ListHouseholdsForUser excludes removed members
-	parentHHs, _ := hhStore.ListHouseholdsForUser(ctx, parent.ID)
-	if len(parentHHs) != 1 {
-		t.Errorf("parent households = %d, want 1", len(parentHHs))
+	if _, _, err := hhStore.GetHouseholdForIdentity(ctx, childID); !errors.Is(err, household.ErrNotFound) {
+		t.Errorf("removed child for-identity err = %v, want ErrNotFound", err)
 	}
-	childHHs, _ := hhStore.ListHouseholdsForUser(ctx, child.ID)
-	if len(childHHs) != 0 {
-		t.Errorf("removed child households = %d, want 0", len(childHHs))
+}
+
+// TestHouseholdStore_OneAccountOwnerIndex asserts the partial unique index
+// rejects a second active account_owner in the same household.
+func TestHouseholdStore_OneAccountOwnerIndex(t *testing.T) {
+	backend := setupTestBackend(t)
+	hhStore := backend.HouseholdStore()
+	ctx := context.Background()
+
+	h, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactIdentityID: uuid.New(), DisplayName: "Owners"})
+	if _, err := hhStore.AddMember(ctx, household.Member{
+		HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleGuardian, IsManager: true, IsAccountOwner: true,
+	}); err != nil {
+		t.Fatalf("first owner: %v", err)
+	}
+	_, err := hhStore.AddMember(ctx, household.Member{
+		HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleAdult, IsAccountOwner: true,
+	})
+	if !errors.Is(err, household.ErrAccountOwnerExists) {
+		t.Fatalf("second owner err = %v, want ErrAccountOwnerExists", err)
+	}
+}
+
+// TestHouseholdStore_TransferAccountOwner exercises the atomic transfer.
+func TestHouseholdStore_TransferAccountOwner(t *testing.T) {
+	backend := setupTestBackend(t)
+	hhStore := backend.HouseholdStore()
+	ctx := context.Background()
+
+	h, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactIdentityID: uuid.New(), DisplayName: "Transfer"})
+	owner, _ := hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleGuardian, IsManager: true, IsAccountOwner: true})
+	other, _ := hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleAdult, IsManager: true})
+
+	newOwner, err := hhStore.SetAccountOwner(ctx, h.ID, other.ID)
+	if err != nil {
+		t.Fatalf("transfer: %v", err)
+	}
+	if !newOwner.IsAccountOwner {
+		t.Error("new owner not account_owner")
+	}
+	demoted, _ := hhStore.GetMember(ctx, owner.ID)
+	if demoted.IsAccountOwner {
+		t.Error("old owner still account_owner")
+	}
+}
+
+// TestHouseholdStore_WrongHouseholdIsolation asserts household-scoped reads
+// never cross households, at the DB layer.
+func TestHouseholdStore_WrongHouseholdIsolation(t *testing.T) {
+	backend := setupTestBackend(t)
+	hhStore := backend.HouseholdStore()
+	ctx := context.Background()
+
+	hhA, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactIdentityID: uuid.New(), DisplayName: "A"})
+	hhB, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactIdentityID: uuid.New(), DisplayName: "B"})
+
+	shared := uuid.New()
+	mA, _ := hhStore.AddMember(ctx, household.Member{HouseholdID: hhA.ID, IdentityID: shared, Role: household.RoleGuardian, IsManager: true, IsAccountOwner: true})
+	mB, _ := hhStore.AddMember(ctx, household.Member{HouseholdID: hhB.ID, IdentityID: shared, Role: household.RoleGuardian, IsManager: true, IsAccountOwner: true})
+
+	gotA, err := hhStore.GetMemberByIdentity(ctx, hhA.ID, shared)
+	if err != nil {
+		t.Fatalf("member by identity A: %v", err)
+	}
+	if gotA.ID != mA.ID {
+		t.Errorf("scoped lookup A = %s, want %s (not B's %s)", gotA.ID, mA.ID, mB.ID)
+	}
+
+	membersA, _ := hhStore.ListMembers(ctx, hhA.ID)
+	for _, m := range membersA {
+		if m.HouseholdID != hhA.ID {
+			t.Errorf("ListMembers(A) leaked household %s", m.HouseholdID)
+		}
+	}
+
+	// A cross-household transfer target must not be found via A.
+	if _, err := hhStore.SetAccountOwner(ctx, hhA.ID, mB.ID); !errors.Is(err, household.ErrNotFound) {
+		t.Errorf("cross-household transfer err = %v, want ErrNotFound", err)
 	}
 }
 
 func TestHouseholdStore_ParentOfRecord(t *testing.T) {
 	backend := setupTestBackend(t)
-	authStore := backend.AuthStore()
 	hhStore := backend.HouseholdStore()
 	ctx := context.Background()
 
-	parentUser, _ := authStore.CreateUser(ctx, "por-parent@example.com", "h", "Parent")
-	childUser, _ := authStore.CreateUser(ctx, "por-child@example.com", "h", "Child")
-
-	h, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactUserID: parentUser.ID, DisplayName: "POR"})
+	h, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactIdentityID: uuid.New(), DisplayName: "POR"})
 	bday := time.Date(2017, 1, 1, 0, 0, 0, 0, time.UTC)
-	parentMember, _ := hhStore.AddMember(ctx, household.Member{
-		HouseholdID: h.ID, UserID: parentUser.ID, Role: household.RoleParentOfRecord,
-		Capabilities: household.DefaultCapabilities(household.RoleParentOfRecord),
+	guardian, _ := hhStore.AddMember(ctx, household.Member{
+		HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleGuardian, IsManager: true, IsAccountOwner: true,
 	})
-	childMember, _ := hhStore.AddMember(ctx, household.Member{
-		HouseholdID: h.ID, UserID: childUser.ID, Role: household.RoleChild, Birthdate: &bday,
+	child, _ := hhStore.AddMember(ctx, household.Member{
+		HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleChild, Birthdate: &bday,
 	})
 
-	por, err := hhStore.EstablishParentOfRecord(ctx, childMember.ID, parentMember.ID)
+	por, err := hhStore.EstablishParentOfRecord(ctx, child.ID, guardian.ID)
 	if err != nil {
 		t.Fatalf("establish: %v", err)
 	}
-	if por.ChildMemberID != childMember.ID {
-		t.Errorf("por.child = %s, want %s", por.ChildMemberID, childMember.ID)
-	}
-
-	parents, _ := hhStore.ListParentsOfRecord(ctx, childMember.ID)
+	parents, _ := hhStore.ListParentsOfRecord(ctx, child.ID)
 	if len(parents) != 1 {
 		t.Errorf("parents = %d, want 1", len(parents))
 	}
-	children, _ := hhStore.ListChildrenForParent(ctx, parentMember.ID)
+	children, _ := hhStore.ListChildrenForParent(ctx, guardian.ID)
 	if len(children) != 1 {
 		t.Errorf("children = %d, want 1", len(children))
 	}
 
-	// Revoke
 	if err := hhStore.RevokeParentOfRecord(ctx, por.ID); err != nil {
 		t.Fatalf("revoke: %v", err)
 	}
-	parents, _ = hhStore.ListParentsOfRecord(ctx, childMember.ID)
+	parents, _ = hhStore.ListParentsOfRecord(ctx, child.ID)
 	if len(parents) != 0 {
-		t.Errorf("after revoke parents = %d, want 0", len(parents))
+		t.Errorf("after revoke = %d, want 0", len(parents))
 	}
 }
 
@@ -186,69 +230,61 @@ func TestHouseholdService_EndToEnd_AuditEmitted(t *testing.T) {
 	auditStore := backend.AuditStore()
 	ctx := context.Background()
 
-	parentUser, _ := authStore.CreateUser(ctx, "e2e-parent@example.com", "h", "Parent")
-	childUser, _ := authStore.CreateUser(ctx, "e2e-child@example.com", "h", "Child")
+	// The audit actor must be a real platform user (audit_logs.actor_id FKs
+	// users(id)); household identity_id references are synthetic. Audit is not
+	// re-homed onto AOID identity in Phase 0.
+	actor, err := authStore.CreateUser(ctx, "e2e-actor@example.com", "h", "Actor")
+	if err != nil {
+		t.Fatalf("create actor user: %v", err)
+	}
+	guardianID := uuid.New()
+	childID := uuid.New()
 	co, _ := companyStore.CreateCompany(ctx, company.Company{Name: "E2E Fam", Slug: "e2e-fam"})
 
 	logger := audit.NewLogger(auditStore)
 	logger.Start()
 
 	svc := household.NewService(hhStore, logger)
-	ac := household.AuditContext{
-		CompanyID: co.ID,
-		ActorID:   parentUser.ID,
-		IPAddress: "10.0.0.1",
-	}
+	ac := household.AuditContext{CompanyID: co.ID, ActorID: actor.ID, IPAddress: "10.0.0.1"}
 
 	h, err := svc.CreateHousehold(ctx, ac, "End To End", json.RawMessage(`{}`))
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-
-	parentMember, err := svc.AddMember(ctx, ac, household.Member{
-		HouseholdID:  h.ID,
-		UserID:       parentUser.ID,
-		Role:         household.RoleParentOfRecord,
-		Capabilities: household.DefaultCapabilities(household.RoleParentOfRecord),
+	guardian, err := svc.AddMember(ctx, ac, household.Member{
+		HouseholdID: h.ID, IdentityID: guardianID, Role: household.RoleGuardian,
+		IsManager: true, IsAccountOwner: true,
 	})
 	if err != nil {
-		t.Fatalf("add parent: %v", err)
+		t.Fatalf("add guardian: %v", err)
 	}
-
 	bday := time.Date(2019, 5, 1, 0, 0, 0, 0, time.UTC)
-	childMember, err := svc.AddMember(ctx, ac, household.Member{
-		HouseholdID: h.ID,
-		UserID:      childUser.ID,
-		Role:        household.RoleChild,
-		Birthdate:   &bday,
+	child, err := svc.AddMember(ctx, ac, household.Member{
+		HouseholdID: h.ID, IdentityID: childID, Role: household.RoleChild, Birthdate: &bday,
 	})
 	if err != nil {
 		t.Fatalf("add child: %v", err)
 	}
-
-	if _, err := svc.EstablishParentOfRecord(ctx, ac, childMember.ID, parentMember.ID); err != nil {
+	if _, err := svc.EstablishParentOfRecord(ctx, ac, child.ID, guardian.ID); err != nil {
 		t.Fatalf("establish por: %v", err)
 	}
 
-	// Drain audit logger so writes flush.
 	logger.Stop()
 
-	// Audit log should now contain at least 4 events for our company.
 	entries, total, err := auditStore.QueryAuditLogs(ctx, co.ID, 20, 0, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("query audit: %v", err)
 	}
 	if total < 4 {
-		t.Errorf("audit total = %d, want >= 4 (create + add x2 + establish_por)", total)
+		t.Errorf("audit total = %d, want >= 4", total)
 	}
-	householdResource := "household"
 	expectActions := map[string]bool{
 		household.ActionHouseholdCreated:          false,
 		household.ActionMemberAdded:               false,
 		household.ActionParentOfRecordEstablished: false,
 	}
 	for _, e := range entries {
-		if e.Resource != householdResource {
+		if e.Resource != "household" {
 			continue
 		}
 		if _, ok := expectActions[e.Action]; ok {

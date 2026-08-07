@@ -43,7 +43,7 @@ func (s *memHouseholdStore) CreateHousehold(_ context.Context, h household.House
 	return h, nil
 }
 
-func (s *memHouseholdStore) GetHousehold(_ context.Context, id uuid.UUID) (household.Household, error) {
+func (s *memHouseholdStore) GetHouseholdByID(_ context.Context, id uuid.UUID) (household.Household, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	h, ok := s.households[id]
@@ -82,6 +82,13 @@ func (s *memHouseholdStore) DeleteHousehold(_ context.Context, id uuid.UUID) err
 func (s *memHouseholdStore) AddMember(_ context.Context, m household.Member) (household.Member, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if m.IsAccountOwner {
+		for _, e := range s.members {
+			if e.HouseholdID == m.HouseholdID && e.IsAccountOwner && e.Status != household.StatusRemoved {
+				return household.Member{}, household.ErrAccountOwnerExists
+			}
+		}
+	}
 	m.ID = uuid.New()
 	m.AddedAt = time.Now().UTC()
 	s.members[m.ID] = m
@@ -98,7 +105,18 @@ func (s *memHouseholdStore) GetMember(_ context.Context, id uuid.UUID) (househol
 	return m, nil
 }
 
-func (s *memHouseholdStore) UpdateMemberRole(_ context.Context, memberID uuid.UUID, role household.Role, caps household.Capabilities) (household.Member, error) {
+func (s *memHouseholdStore) GetMemberByIdentity(_ context.Context, householdID, identityID uuid.UUID) (household.Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, m := range s.members {
+		if m.HouseholdID == householdID && m.IdentityID == identityID && m.Status != household.StatusRemoved {
+			return m, nil
+		}
+	}
+	return household.Member{}, household.ErrNotFound
+}
+
+func (s *memHouseholdStore) UpdateMemberRole(_ context.Context, memberID uuid.UUID, role household.Role, isManager, isAccountOwner bool, caps []byte) (household.Member, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	m, ok := s.members[memberID]
@@ -106,9 +124,65 @@ func (s *memHouseholdStore) UpdateMemberRole(_ context.Context, memberID uuid.UU
 		return household.Member{}, household.ErrNotFound
 	}
 	m.Role = role
-	m.Capabilities = caps
+	m.IsManager = isManager
+	m.IsAccountOwner = isAccountOwner
+	if len(caps) > 0 {
+		m.Capabilities = caps
+	}
 	s.members[memberID] = m
 	return m, nil
+}
+
+func (s *memHouseholdStore) CountManagers(_ context.Context, householdID uuid.UUID) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := 0
+	for _, m := range s.members {
+		if m.HouseholdID == householdID && m.IsManager && m.Status != household.StatusRemoved {
+			n++
+		}
+	}
+	return n, nil
+}
+
+func (s *memHouseholdStore) GetHouseholdForIdentity(_ context.Context, identityID uuid.UUID) (household.Household, household.Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var found *household.Member
+	for _, m := range s.members {
+		mm := m
+		if mm.IdentityID == identityID && mm.Status != household.StatusRemoved {
+			if found == nil || mm.AddedAt.Before(found.AddedAt) {
+				found = &mm
+			}
+		}
+	}
+	if found == nil {
+		return household.Household{}, household.Member{}, household.ErrNotFound
+	}
+	h, ok := s.households[found.HouseholdID]
+	if !ok {
+		return household.Household{}, household.Member{}, household.ErrNotFound
+	}
+	return h, *found, nil
+}
+
+func (s *memHouseholdStore) SetAccountOwner(_ context.Context, householdID, newOwnerMemberID uuid.UUID) (household.Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	target, ok := s.members[newOwnerMemberID]
+	if !ok || target.HouseholdID != householdID || target.Status == household.StatusRemoved {
+		return household.Member{}, household.ErrNotFound
+	}
+	for id, m := range s.members {
+		if m.HouseholdID == householdID && m.IsAccountOwner {
+			m.IsAccountOwner = false
+			s.members[id] = m
+		}
+	}
+	target.IsAccountOwner = true
+	s.members[newOwnerMemberID] = target
+	return target, nil
 }
 
 func (s *memHouseholdStore) RemoveMember(_ context.Context, memberID uuid.UUID) error {
@@ -137,13 +211,13 @@ func (s *memHouseholdStore) ListMembers(_ context.Context, householdID uuid.UUID
 	return out, nil
 }
 
-func (s *memHouseholdStore) ListHouseholdsForUser(_ context.Context, userID uuid.UUID) ([]household.Household, error) {
+func (s *memHouseholdStore) ListHouseholdsForIdentity(_ context.Context, identityID uuid.UUID) ([]household.Household, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	seen := map[uuid.UUID]bool{}
 	var out []household.Household
 	for _, m := range s.members {
-		if m.UserID == userID && m.Status != household.StatusRemoved && !seen[m.HouseholdID] {
+		if m.IdentityID == identityID && m.Status != household.StatusRemoved && !seen[m.HouseholdID] {
 			if h, ok := s.households[m.HouseholdID]; ok {
 				out = append(out, h)
 				seen[m.HouseholdID] = true
