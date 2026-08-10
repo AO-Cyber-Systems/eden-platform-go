@@ -11,7 +11,12 @@ import (
 )
 
 // AuditContext carries the actor / company / IP triple needed for audit
-// emission. For the re-homed model ActorID is the acting AOID identity.
+// emission. For the re-homed household model ActorID is the acting AOID
+// identity (aoid.identities(id)) — NOT a platform.users(id). This is a true
+// contract as of migration 017, which dropped the audit_logs.actor_id ->
+// users(id) FK so actor_id is a logical actor UUID spanning both id-spaces.
+// Before 017 an identity actor would FK-fail on insert and be silently
+// dropped by the audit logger; see platform/audit/logger.go.
 type AuditContext struct {
 	CompanyID uuid.UUID
 	ActorID   uuid.UUID

@@ -224,19 +224,18 @@ func TestHouseholdStore_ParentOfRecord(t *testing.T) {
 
 func TestHouseholdService_EndToEnd_AuditEmitted(t *testing.T) {
 	backend := setupTestBackend(t)
-	authStore := backend.AuthStore()
 	companyStore := backend.CompanyStore()
 	hhStore := backend.HouseholdStore()
 	auditStore := backend.AuditStore()
 	ctx := context.Background()
 
-	// The audit actor must be a real platform user (audit_logs.actor_id FKs
-	// users(id)); household identity_id references are synthetic. Audit is not
-	// re-homed onto AOID identity in Phase 0.
-	actor, err := authStore.CreateUser(ctx, "e2e-actor@example.com", "h", "Actor")
-	if err != nil {
-		t.Fatalf("create actor user: %v", err)
-	}
+	// Prove the REAL production contract: the audit actor is the acting AOID
+	// identity (aoid.identities(id)), NOT a platform.users row. No throwaway
+	// user is created. Before migration 017 dropped the audit_logs.actor_id ->
+	// users(id) FK, this identity UUID would FK-fail on insert and be silently
+	// swallowed by the audit logger, so no rows would persist and the
+	// assertions below would fail. That the rows ARE written proves the fix.
+	actorIdentityID := uuid.New()
 	guardianID := uuid.New()
 	childID := uuid.New()
 	co, _ := companyStore.CreateCompany(ctx, company.Company{Name: "E2E Fam", Slug: "e2e-fam"})
@@ -245,7 +244,7 @@ func TestHouseholdService_EndToEnd_AuditEmitted(t *testing.T) {
 	logger.Start()
 
 	svc := household.NewService(hhStore, logger)
-	ac := household.AuditContext{CompanyID: co.ID, ActorID: actor.ID, IPAddress: "10.0.0.1"}
+	ac := household.AuditContext{CompanyID: co.ID, ActorID: actorIdentityID, IPAddress: "10.0.0.1"}
 
 	h, err := svc.CreateHousehold(ctx, ac, "End To End", json.RawMessage(`{}`))
 	if err != nil {
@@ -283,13 +282,24 @@ func TestHouseholdService_EndToEnd_AuditEmitted(t *testing.T) {
 		household.ActionMemberAdded:               false,
 		household.ActionParentOfRecordEstablished: false,
 	}
+	householdRows := 0
 	for _, e := range entries {
 		if e.Resource != "household" {
 			continue
 		}
+		householdRows++
+		// The persisted row must carry the AOID identity as its actor — proof
+		// the identity-space actor survived the insert (would have FK-failed
+		// and been dropped before migration 017).
+		if e.GetActorId() != actorIdentityID.String() {
+			t.Errorf("audit actor_id = %q, want identity %q", e.GetActorId(), actorIdentityID.String())
+		}
 		if _, ok := expectActions[e.Action]; ok {
 			expectActions[e.Action] = true
 		}
+	}
+	if householdRows == 0 {
+		t.Fatal("no household audit rows persisted — identity-actor inserts were dropped")
 	}
 	for action, seen := range expectActions {
 		if !seen {
