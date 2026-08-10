@@ -9,13 +9,22 @@
 -- AOID (aoid) live in separate databases.
 --
 -- Role axis (relationship):   guardian | adult | child
--- Capability axis:            is_manager       (0..n per household, >=1 required)
---                             is_account_owner (exactly 1 per household)
+-- Capability axis:            is_manager       (0..n per household)
+--                             is_account_owner (at most 1 per household)
 --
 -- Enforced here (DB): role domain, child-never-manager, child-never-owner,
--- at-most-one account_owner (partial unique index). The lower bounds
--- (>=1 manager, exactly-one owner) and "account_owner must be an adult" are
--- enforced in the store/service layer + tests.
+-- at-most-one account_owner (the partial unique index below).
+--
+-- Enforced in the service layer (not the DB): "account_owner must be an adult"
+-- (non-child), the account_owner cannot be removed without first transferring
+-- it, and the last manager cannot be removed.
+--
+-- NOT enforced by anything in this phase: any LOWER bound. There is no
+-- ">=1 manager" or "exactly-one owner" guarantee here — CreateHousehold makes
+-- an EMPTY household, so zero managers / zero owners is reachable through the
+-- store/service alone. The atomic existence guarantee (create a household and
+-- seed its first manager + account_owner together) is built at the Phase 0.4
+-- provisioning seam, NOT in this migration or this phase.
 
 -- ---- platform_households: primary contact becomes an identity reference ----
 ALTER TABLE platform_households
