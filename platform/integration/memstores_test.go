@@ -43,6 +43,33 @@ func (s *memHouseholdStore) CreateHousehold(_ context.Context, h household.House
 	return h, nil
 }
 
+func (s *memHouseholdStore) CreateHouseholdWithOwner(_ context.Context, h household.Household, owner household.Member) (household.Household, household.Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().UTC()
+	h.ID = uuid.New()
+	h.CreatedAt = now
+	h.UpdatedAt = now
+	owner.ID = uuid.New()
+	owner.HouseholdID = h.ID
+	owner.AddedAt = now
+	if owner.Status == "" {
+		owner.Status = household.StatusActive
+	}
+	// Household + owner commit together, or neither (mirrors the pg single-tx
+	// insert). A fresh household cannot collide with an existing account_owner.
+	if owner.IsAccountOwner {
+		for _, e := range s.members {
+			if e.HouseholdID == h.ID && e.IsAccountOwner && e.Status != household.StatusRemoved {
+				return household.Household{}, household.Member{}, household.ErrAccountOwnerExists
+			}
+		}
+	}
+	s.households[h.ID] = h
+	s.members[owner.ID] = owner
+	return h, owner, nil
+}
+
 func (s *memHouseholdStore) GetHouseholdByID(_ context.Context, id uuid.UUID) (household.Household, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

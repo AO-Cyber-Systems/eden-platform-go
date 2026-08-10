@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/aocybersystems/eden-platform-go/platform/audit"
 	"github.com/google/uuid"
@@ -108,6 +109,68 @@ func (s *Service) CreateHousehold(ctx context.Context, ac AuditContext, displayN
 	}
 	s.emit(ac, ActionHouseholdCreated, h.ID, map[string]any{"display_name": displayName})
 	return h, nil
+}
+
+// OwnerInput describes the first owner of a household created via
+// CreateHouseholdWithOwner. Role must be a non-child role (guardian or adult);
+// the owner is always seeded as a manager + account_owner.
+type OwnerInput struct {
+	IdentityID uuid.UUID
+	Role       Role
+	Birthdate  *time.Time
+}
+
+// CreateHouseholdWithOwner is the provisioning entry point: it atomically
+// creates a household AND its first member — a manager + account_owner — so a
+// household created via the real path always has exactly one account_owner and
+// at least one manager. The empty-household CreateHousehold is retained for
+// internal / test use; anything that trusts "the household's account_owner"
+// must be provisioned through this seam.
+//
+// The owner's role must be non-child; a child is rejected with
+// ErrChildCannotHoldCapability (an account_owner must be an adult). The
+// household's primary_contact_identity_id is set to the owner's identity. The
+// insert is one transaction in the store, so a failure on either statement
+// rolls back and leaves no orphan household.
+func (s *Service) CreateHouseholdWithOwner(ctx context.Context, ac AuditContext, displayName string, owner OwnerInput, metadata json.RawMessage) (*Household, *Member, error) {
+	if !owner.Role.Valid() {
+		return nil, nil, fmt.Errorf("%w: %q", ErrInvalidRole, owner.Role)
+	}
+	// The owner is always manager + account_owner: validateCapabilities rejects
+	// a child (ErrChildCannotHoldCapability) and any non-adult owner role
+	// (ErrAccountOwnerMustBeAdult).
+	if err := validateCapabilities(owner.Role, true, true); err != nil {
+		return nil, nil, err
+	}
+	if metadata == nil {
+		metadata = json.RawMessage("{}")
+	}
+	h := Household{
+		PrimaryContactIdentityID: owner.IdentityID,
+		DisplayName:              displayName,
+		Metadata:                 metadata,
+	}
+	m := Member{
+		IdentityID:     owner.IdentityID,
+		Role:           owner.Role,
+		Status:         StatusActive,
+		IsManager:      true,
+		IsAccountOwner: true,
+		Birthdate:      owner.Birthdate,
+	}
+	createdHH, createdMember, err := s.store.CreateHouseholdWithOwner(ctx, h, m)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create household with owner: %w", err)
+	}
+	s.emit(ac, ActionHouseholdCreated, createdHH.ID, map[string]any{"display_name": displayName})
+	s.emit(ac, ActionMemberAdded, createdHH.ID, map[string]any{
+		"member_id":        createdMember.ID.String(),
+		"identity_id":      createdMember.IdentityID.String(),
+		"role":             string(createdMember.Role),
+		"is_manager":       createdMember.IsManager,
+		"is_account_owner": createdMember.IsAccountOwner,
+	})
+	return &createdHH, &createdMember, nil
 }
 
 // GetHouseholdByID returns the household by id (or ErrNotFound).

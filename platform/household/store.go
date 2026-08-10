@@ -25,6 +25,14 @@ var ErrAccountOwnerExists = errors.New("household: an account_owner already exis
 type Store interface {
 	// Households
 	CreateHousehold(ctx context.Context, h Household) (Household, error)
+	// CreateHouseholdWithOwner atomically inserts a household and its first
+	// member (the account_owner) in a single transaction. This is the
+	// provisioning entry point that establishes the existence lower-bound
+	// (exactly one account_owner, >=1 manager) at creation time. If either
+	// insert fails the whole operation rolls back, so no orphan household is
+	// ever persisted. owner.HouseholdID is ignored — it is set to the newly
+	// created household.
+	CreateHouseholdWithOwner(ctx context.Context, h Household, owner Member) (Household, Member, error)
 	GetHouseholdByID(ctx context.Context, id uuid.UUID) (Household, error)
 	UpdateHousehold(ctx context.Context, h Household) (Household, error)
 	DeleteHousehold(ctx context.Context, id uuid.UUID) error

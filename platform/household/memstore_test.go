@@ -42,6 +42,38 @@ func (s *memStore) CreateHousehold(_ context.Context, h Household) (Household, e
 	return h, nil
 }
 
+func (s *memStore) CreateHouseholdWithOwner(_ context.Context, h Household, owner Member) (Household, Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().UTC()
+	h.ID = uuid.New()
+	h.CreatedAt = now
+	h.UpdatedAt = now
+	owner.ID = uuid.New()
+	owner.HouseholdID = h.ID
+	owner.AddedAt = now
+	if owner.Status == "" {
+		owner.Status = StatusActive
+	}
+	if len(owner.Capabilities) == 0 {
+		owner.Capabilities = json.RawMessage("{}")
+	}
+	// Mirrors the pg single-tx insert: household + owner commit together, or
+	// neither is persisted. A fresh household can never collide with an existing
+	// account_owner; the guard documents the invariant and keeps partial state
+	// from ever being written.
+	if owner.IsAccountOwner {
+		for _, e := range s.members {
+			if e.HouseholdID == h.ID && e.IsAccountOwner && e.Status != StatusRemoved {
+				return Household{}, Member{}, ErrAccountOwnerExists
+			}
+		}
+	}
+	s.households[h.ID] = h
+	s.members[owner.ID] = owner
+	return h, owner, nil
+}
+
 func (s *memStore) GetHouseholdByID(_ context.Context, id uuid.UUID) (Household, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

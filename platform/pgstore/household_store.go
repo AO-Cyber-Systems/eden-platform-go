@@ -60,6 +60,69 @@ func (s *HouseholdStore) CreateHousehold(ctx context.Context, h household.Househ
 	return dbHouseholdToDomain(row), nil
 }
 
+// CreateHouseholdWithOwner inserts the household and its first member (the
+// account_owner) in a single transaction. If the member insert fails, the
+// household insert is rolled back with it, so no orphan household is ever
+// persisted. This is the provisioning entry point that establishes the
+// existence lower-bound (exactly one account_owner + >=1 manager) at creation.
+func (s *HouseholdStore) CreateHouseholdWithOwner(ctx context.Context, h household.Household, owner household.Member) (household.Household, household.Member, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return household.Household{}, household.Member{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	q := db.New(tx)
+
+	metadata := h.Metadata
+	if len(metadata) == 0 {
+		metadata = json.RawMessage("{}")
+	}
+	hhRow, err := q.CreateHousehold(ctx, db.CreateHouseholdParams{
+		PrimaryContactIdentityID: h.PrimaryContactIdentityID,
+		DisplayName:              h.DisplayName,
+		Metadata:                 metadata,
+	})
+	if err != nil {
+		return household.Household{}, household.Member{}, fmt.Errorf("create household: %w", err)
+	}
+
+	caps := owner.Capabilities
+	if len(caps) == 0 {
+		caps = json.RawMessage("{}")
+	}
+	status := owner.Status
+	if status == "" {
+		status = household.StatusActive
+	}
+	memberRow, err := q.AddHouseholdMember(ctx, db.AddHouseholdMemberParams{
+		HouseholdID:    hhRow.ID,
+		IdentityID:     owner.IdentityID,
+		Role:           string(owner.Role),
+		Status:         string(status),
+		Birthdate:      timeToPgDate(owner.Birthdate),
+		IsManager:      owner.IsManager,
+		IsAccountOwner: owner.IsAccountOwner,
+		Capabilities:   caps,
+	})
+	if err != nil {
+		if isAccountOwnerConflict(err) {
+			return household.Household{}, household.Member{}, household.ErrAccountOwnerExists
+		}
+		return household.Household{}, household.Member{}, fmt.Errorf("add household owner: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return household.Household{}, household.Member{}, fmt.Errorf("commit tx: %w", err)
+	}
+
+	member, err := dbMemberToDomain(memberRow)
+	if err != nil {
+		return household.Household{}, household.Member{}, err
+	}
+	return dbHouseholdToDomain(hhRow), member, nil
+}
+
 func (s *HouseholdStore) GetHouseholdByID(ctx context.Context, id uuid.UUID) (household.Household, error) {
 	row, err := s.queries().GetHouseholdByID(ctx, id)
 	if err != nil {
