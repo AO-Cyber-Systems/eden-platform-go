@@ -6,6 +6,18 @@ package household
 // Households
 //   - CreateHousehold sets primary_contact = acting identity and emits audit.
 //
+// Atomic provisioning seam (Phase 0.4)
+//   - CreateHouseholdWithOwner (guardian) persists the household + exactly one
+//     member who is guardian + manager + account_owner; primary_contact is the
+//     owner's identity; GetHouseholdForIdentity(owner) returns it; a
+//     household.created and a member_added audit row carry the identity actor.
+//   - CreateHouseholdWithOwner (adult) is allowed.
+//   - CreateHouseholdWithOwner (child) is rejected; nothing is persisted and no
+//     audit is emitted.
+//   - Atomicity: when the store's atomic insert fails, the service persists no
+//     household (it never creates one independently of the atomic call).
+//   - Resulting invariants: exactly one account_owner, >=1 manager.
+//
 // Members / role validation
 //   - AddMember rejects an unknown role.
 //   - AddMember rejects a child with no birthdate.
@@ -120,6 +132,146 @@ func TestService_CreateHousehold_EmitsAudit(t *testing.T) {
 	}
 	if events[0].ResourceID != h.ID.String() {
 		t.Errorf("resource_id = %q, want %s", events[0].ResourceID, h.ID)
+	}
+}
+
+// failOwnerInsertStore wraps memStore but makes the atomic
+// CreateHouseholdWithOwner fail as if the member insert (the second statement in
+// the transaction) errored — persisting NOTHING. It proves the service
+// delegates to a single atomic store call rather than creating the household
+// independently (which would leave an orphan household on member failure).
+type failOwnerInsertStore struct {
+	*memStore
+	called bool
+}
+
+func (s *failOwnerInsertStore) CreateHouseholdWithOwner(context.Context, Household, Member) (Household, Member, error) {
+	s.called = true
+	return Household{}, Member{}, errors.New("simulated owner insert failure")
+}
+
+func TestService_CreateHouseholdWithOwner_HappyPath(t *testing.T) {
+	svc, store, rec := newServiceWithRecorder(t)
+	ac := newAC()
+	ctx := context.Background()
+	ownerID := uuid.New()
+
+	hh, owner, err := svc.CreateHouseholdWithOwner(ctx, ac, "Provisioned Fam",
+		OwnerInput{IdentityID: ownerID, Role: RoleGuardian}, json.RawMessage(`{"plan":"family"}`))
+	if err != nil {
+		t.Fatalf("create with owner: %v", err)
+	}
+	if hh.PrimaryContactIdentityID != ownerID {
+		t.Errorf("primary contact = %s, want owner identity %s", hh.PrimaryContactIdentityID, ownerID)
+	}
+	if owner.Role != RoleGuardian || !owner.IsManager || !owner.IsAccountOwner || owner.Status != StatusActive {
+		t.Errorf("owner = %+v, want active guardian manager+owner", owner)
+	}
+
+	// Exactly one member, and it's the owner.
+	members, _ := svc.ListMembers(ctx, hh.ID)
+	if len(members) != 1 || members[0].ID != owner.ID {
+		t.Fatalf("members = %+v, want exactly the owner", members)
+	}
+	// Invariants: exactly one account_owner, >=1 manager.
+	owners := 0
+	for _, m := range members {
+		if m.IsAccountOwner {
+			owners++
+		}
+	}
+	if owners != 1 {
+		t.Errorf("account_owners = %d, want exactly 1", owners)
+	}
+	if n, _ := store.CountManagers(ctx, hh.ID); n < 1 {
+		t.Errorf("managers = %d, want >= 1", n)
+	}
+
+	// Read path returns the household + the owner's membership.
+	gotHH, gotMember, err := svc.GetHouseholdForIdentity(ctx, ownerID)
+	if err != nil {
+		t.Fatalf("get for identity: %v", err)
+	}
+	if gotHH.ID != hh.ID || gotMember.ID != owner.ID {
+		t.Errorf("for-identity = (%s,%s), want (%s,%s)", gotHH.ID, gotMember.ID, hh.ID, owner.ID)
+	}
+
+	// Audit: a household.created and a member_added row, both carrying the
+	// identity actor from the AuditContext.
+	var created, added bool
+	for _, e := range rec.snapshot() {
+		if e.ActorID != ac.ActorID.String() {
+			t.Errorf("audit actor = %q, want identity %q", e.ActorID, ac.ActorID)
+		}
+		switch e.Action {
+		case ActionHouseholdCreated:
+			created = true
+		case ActionMemberAdded:
+			added = true
+		}
+	}
+	if !created || !added {
+		t.Errorf("audit events = %+v, want household.created + member_added", rec.snapshot())
+	}
+}
+
+func TestService_CreateHouseholdWithOwner_AdultAllowed(t *testing.T) {
+	svc, _, _ := newServiceWithRecorder(t)
+	ac := newAC()
+	_, owner, err := svc.CreateHouseholdWithOwner(context.Background(), ac, "Adult Fam",
+		OwnerInput{IdentityID: uuid.New(), Role: RoleAdult}, nil)
+	if err != nil {
+		t.Fatalf("adult owner: %v", err)
+	}
+	if owner.Role != RoleAdult || !owner.IsAccountOwner || !owner.IsManager {
+		t.Errorf("owner = %+v, want adult manager+account_owner", owner)
+	}
+}
+
+func TestService_CreateHouseholdWithOwner_RejectsChild(t *testing.T) {
+	svc, store, rec := newServiceWithRecorder(t)
+	ac := newAC()
+	ctx := context.Background()
+	ownerID := uuid.New()
+
+	_, _, err := svc.CreateHouseholdWithOwner(ctx, ac, "Kid",
+		OwnerInput{IdentityID: ownerID, Role: RoleChild, Birthdate: childDOB()}, nil)
+	if !errors.Is(err, ErrChildCannotHoldCapability) {
+		t.Fatalf("err = %v, want ErrChildCannotHoldCapability", err)
+	}
+	// Nothing persisted, nothing emitted.
+	if _, _, err := svc.GetHouseholdForIdentity(ctx, ownerID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("household persisted for rejected child owner: err = %v, want ErrNotFound", err)
+	}
+	if len(store.households) != 0 {
+		t.Errorf("household rows = %d, want 0", len(store.households))
+	}
+	if evs := rec.snapshot(); len(evs) != 0 {
+		t.Errorf("audit events for rejected create = %+v, want none", evs)
+	}
+}
+
+func TestService_CreateHouseholdWithOwner_AtomicRollback(t *testing.T) {
+	base := newMemStore()
+	store := &failOwnerInsertStore{memStore: base}
+	svc := &Service{store: store, auditor: &recorder{}}
+	ac := newAC()
+
+	_, _, err := svc.CreateHouseholdWithOwner(context.Background(), ac, "Rollback",
+		OwnerInput{IdentityID: uuid.New(), Role: RoleGuardian}, nil)
+	if err == nil {
+		t.Fatal("expected error from failing owner insert")
+	}
+	if !store.called {
+		t.Error("service did not delegate to the atomic store method")
+	}
+	// The service must NOT have created a household independently of the atomic
+	// call — no orphan household or member is persisted.
+	if len(base.households) != 0 {
+		t.Errorf("orphan household rows = %d, want 0 (service must create atomically)", len(base.households))
+	}
+	if len(base.members) != 0 {
+		t.Errorf("orphan member rows = %d, want 0", len(base.members))
 	}
 }
 

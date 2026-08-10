@@ -107,6 +107,126 @@ func TestHouseholdStore_MemberLifecycle(t *testing.T) {
 	}
 }
 
+// TestHouseholdStore_CreateWithOwner asserts the atomic provisioning seam
+// persists a household AND its first member (guardian + manager + account_owner)
+// so the existence lower-bound holds from creation.
+func TestHouseholdStore_CreateWithOwner(t *testing.T) {
+	backend := setupTestBackend(t)
+	hhStore := backend.HouseholdStore()
+	ctx := context.Background()
+
+	ownerID := uuid.New()
+	hh, owner, err := hhStore.CreateHouseholdWithOwner(ctx,
+		household.Household{PrimaryContactIdentityID: ownerID, DisplayName: "Seeded"},
+		household.Member{IdentityID: ownerID, Role: household.RoleGuardian, IsManager: true, IsAccountOwner: true, Status: household.StatusActive})
+	if err != nil {
+		t.Fatalf("create with owner: %v", err)
+	}
+	if hh.PrimaryContactIdentityID != ownerID {
+		t.Errorf("primary contact = %s, want %s", hh.PrimaryContactIdentityID, ownerID)
+	}
+	if owner.HouseholdID != hh.ID || !owner.IsManager || !owner.IsAccountOwner || owner.Role != household.RoleGuardian {
+		t.Errorf("owner = %+v, want guardian manager+owner of %s", owner, hh.ID)
+	}
+
+	members, _ := hhStore.ListMembers(ctx, hh.ID)
+	if len(members) != 1 {
+		t.Errorf("members = %d, want exactly 1", len(members))
+	}
+	gotHH, gotMember, err := hhStore.GetHouseholdForIdentity(ctx, ownerID)
+	if err != nil {
+		t.Fatalf("for identity: %v", err)
+	}
+	if gotHH.ID != hh.ID || gotMember.ID != owner.ID {
+		t.Errorf("for-identity = (%s,%s), want (%s,%s)", gotHH.ID, gotMember.ID, hh.ID, owner.ID)
+	}
+	if n, _ := hhStore.CountManagers(ctx, hh.ID); n != 1 {
+		t.Errorf("managers = %d, want 1", n)
+	}
+}
+
+// TestHouseholdStore_CreateWithOwner_AtomicRollback forces the member insert to
+// fail (an invalid role violates chk_household_member_role) AFTER the household
+// insert in the same transaction; the whole tx must roll back, leaving zero
+// household rows — proving no orphan household is persisted.
+func TestHouseholdStore_CreateWithOwner_AtomicRollback(t *testing.T) {
+	backend := setupTestBackend(t)
+	hhStore := backend.HouseholdStore()
+	ctx := context.Background()
+
+	ownerID := uuid.New()
+	_, _, err := hhStore.CreateHouseholdWithOwner(ctx,
+		household.Household{PrimaryContactIdentityID: ownerID, DisplayName: "ShouldRollBack"},
+		household.Member{IdentityID: ownerID, Role: household.Role("bogus"), IsManager: true, IsAccountOwner: true, Status: household.StatusActive})
+	if err == nil {
+		t.Fatal("expected member insert to fail on the role CHECK constraint")
+	}
+	var count int
+	if err := backend.Pool().QueryRow(ctx, "SELECT count(*) FROM platform_households").Scan(&count); err != nil {
+		t.Fatalf("count households: %v", err)
+	}
+	if count != 0 {
+		t.Errorf("household rows = %d, want 0 — tx did not roll back", count)
+	}
+}
+
+// TestHouseholdService_CreateWithOwner_AuditEmitted proves the provisioning seam
+// writes household.created + member_added audit rows carrying the acting AOID
+// identity (not a platform.users row), through the real logger + DB.
+func TestHouseholdService_CreateWithOwner_AuditEmitted(t *testing.T) {
+	backend := setupTestBackend(t)
+	companyStore := backend.CompanyStore()
+	hhStore := backend.HouseholdStore()
+	auditStore := backend.AuditStore()
+	ctx := context.Background()
+
+	actorIdentityID := uuid.New()
+	ownerID := uuid.New()
+	co, _ := companyStore.CreateCompany(ctx, company.Company{Name: "Prov Fam", Slug: "prov-fam"})
+
+	logger := audit.NewLogger(auditStore)
+	logger.Start()
+	svc := household.NewService(hhStore, logger)
+	ac := household.AuditContext{CompanyID: co.ID, ActorID: actorIdentityID, IPAddress: "10.0.0.2"}
+
+	hh, owner, err := svc.CreateHouseholdWithOwner(ctx, ac, "Provisioned",
+		household.OwnerInput{IdentityID: ownerID, Role: household.RoleGuardian}, json.RawMessage(`{}`))
+	if err != nil {
+		t.Fatalf("create with owner: %v", err)
+	}
+	logger.Stop()
+
+	if owner.HouseholdID != hh.ID {
+		t.Errorf("owner household = %s, want %s", owner.HouseholdID, hh.ID)
+	}
+
+	entries, total, err := auditStore.QueryAuditLogs(ctx, co.ID, 20, 0, nil, nil, nil)
+	if err != nil {
+		t.Fatalf("query audit: %v", err)
+	}
+	if total < 2 {
+		t.Errorf("audit total = %d, want >= 2 (created + member_added)", total)
+	}
+	var created, added bool
+	for _, e := range entries {
+		if e.Resource != "household" {
+			continue
+		}
+		if e.GetActorId() != actorIdentityID.String() {
+			t.Errorf("audit actor_id = %q, want identity %q", e.GetActorId(), actorIdentityID)
+		}
+		switch e.Action {
+		case household.ActionHouseholdCreated:
+			created = true
+		case household.ActionMemberAdded:
+			added = true
+		}
+	}
+	if !created || !added {
+		t.Errorf("audit rows: created=%v added=%v, want both", created, added)
+	}
+}
+
 // TestHouseholdStore_OneAccountOwnerIndex asserts the partial unique index
 // rejects a second active account_owner in the same household.
 func TestHouseholdStore_OneAccountOwnerIndex(t *testing.T) {
