@@ -14,11 +14,18 @@
 //                          account_owner (exactly 1 per household — holds the
 //                                         AOcyber subscription / card)
 //
-// Invariants (enforced across DB constraints + service guards + tests):
-//   - a child can never be a manager or an account_owner;
-//   - the account_owner must be an adult (a non-child member);
-//   - a household has at least one manager;
-//   - a household has exactly one account_owner.
+// Invariants:
+//   - a child can never be a manager or an account_owner (DB CHECK + service);
+//   - the account_owner must be an adult / non-child member (service guard);
+//   - at most one account_owner per household (DB partial unique index).
+//
+// The existence LOWER-BOUND — "exactly one account_owner and at least one
+// manager" — is NOT a DB invariant: the low-level CreateHousehold makes an
+// EMPTY household, so zero owners / zero managers is reachable through it
+// alone. The lower bound is established at creation by CreateHouseholdWithOwner,
+// the provisioning entry point, which inserts the household and its first
+// manager + account_owner atomically in one transaction. Code that trusts
+// "the household's account_owner" must go through that seam.
 //
 // The package is transport-agnostic: it exposes Go domain types and a Service
 // that wraps a Store. Persistence lives in platform/pgstore (PostgreSQL).
