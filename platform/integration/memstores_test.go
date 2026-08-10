@@ -123,6 +123,16 @@ func (s *memHouseholdStore) UpdateMemberRole(_ context.Context, memberID uuid.UU
 	if !ok {
 		return household.Member{}, household.ErrNotFound
 	}
+	// At-most-one account_owner per household (mirrors the pg partial unique
+	// index and the other in-memory twins). Only guard when promoting a member
+	// that is not already the owner.
+	if isAccountOwner && !m.IsAccountOwner {
+		for id, e := range s.members {
+			if id != memberID && e.HouseholdID == m.HouseholdID && e.IsAccountOwner && e.Status != household.StatusRemoved {
+				return household.Member{}, household.ErrAccountOwnerExists
+			}
+		}
+	}
 	m.Role = role
 	m.IsManager = isManager
 	m.IsAccountOwner = isAccountOwner
