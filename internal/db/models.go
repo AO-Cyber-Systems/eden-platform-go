@@ -13,8 +13,10 @@ import (
 )
 
 type AuditLog struct {
-	ID         uuid.UUID       `json:"id"`
-	CompanyID  uuid.UUID       `json:"company_id"`
+	ID uuid.UUID `json:"id"`
+	// Company scope for the event, or NULL for identity-space events that have no company (household / COPPA audit — a household is not a companies(id)). FK-validated against companies(id) when NON-NULL; NULL is allowed and exempt from the FK. See migration 018 and platform/household.
+	CompanyID pgtype.UUID `json:"company_id"`
+	// Logical actor UUID (NOT NULL, no FK). Dual id-space: a platform.users(id) for auth/admin events, or an aoid.identities(id) for household/consent events. Not FK-constrained because AOID identities live in a separate database from eden_platform.
 	ActorID    uuid.UUID       `json:"actor_id"`
 	Action     string          `json:"action"`
 	Resource   string          `json:"resource"`

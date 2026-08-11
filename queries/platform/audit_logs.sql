@@ -1,6 +1,10 @@
 -- name: CreateAuditLog :exec
+-- company_id is nullable (migration 018): identity-space events (household /
+-- COPPA audit) have no companies(id) and pass NULL. The pgstore/devstore
+-- adapters map a zero (all-bits-0) uuid.UUID to NULL here; a real company id is
+-- stored unchanged and is still FK-validated against companies(id).
 INSERT INTO audit_logs (company_id, actor_id, action, resource, resource_id, details, ip_address)
-VALUES ($1, $2, $3, $4, $5, $6, $7);
+VALUES (sqlc.narg(company_id), sqlc.arg(actor_id), sqlc.arg(action), sqlc.arg(resource), sqlc.arg(resource_id), sqlc.arg(details), sqlc.arg(ip_address));
 
 -- name: ListAuditLogs :many
 SELECT * FROM audit_logs

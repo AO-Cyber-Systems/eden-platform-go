@@ -33,7 +33,7 @@ func (s *AuditStore) queries() *db.Queries {
 
 func (s *AuditStore) CreateAuditLog(ctx context.Context, companyID, actorID uuid.UUID, action, resource, resourceID, ipAddress string, details []byte) error {
 	return s.queries().CreateAuditLog(ctx, db.CreateAuditLogParams{
-		CompanyID:  companyID,
+		CompanyID:  auditCompanyID(companyID),
 		ActorID:    actorID,
 		Action:     action,
 		Resource:   resource,

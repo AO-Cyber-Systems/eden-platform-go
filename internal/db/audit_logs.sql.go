@@ -10,13 +10,14 @@ import (
 	"encoding/json"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const countAuditLogs = `-- name: CountAuditLogs :one
 SELECT count(*) FROM audit_logs WHERE company_id = $1
 `
 
-func (q *Queries) CountAuditLogs(ctx context.Context, companyID uuid.UUID) (int64, error) {
+func (q *Queries) CountAuditLogs(ctx context.Context, companyID pgtype.UUID) (int64, error) {
 	row := q.db.QueryRow(ctx, countAuditLogs, companyID)
 	var count int64
 	err := row.Scan(&count)
@@ -28,8 +29,8 @@ SELECT count(*) FROM audit_logs WHERE company_id = $1 AND actor_id = $2
 `
 
 type CountAuditLogsByActorParams struct {
-	CompanyID uuid.UUID `json:"company_id"`
-	ActorID   uuid.UUID `json:"actor_id"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	ActorID   uuid.UUID   `json:"actor_id"`
 }
 
 func (q *Queries) CountAuditLogsByActor(ctx context.Context, arg CountAuditLogsByActorParams) (int64, error) {
@@ -45,7 +46,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type CreateAuditLogParams struct {
-	CompanyID  uuid.UUID       `json:"company_id"`
+	CompanyID  pgtype.UUID     `json:"company_id"`
 	ActorID    uuid.UUID       `json:"actor_id"`
 	Action     string          `json:"action"`
 	Resource   string          `json:"resource"`
@@ -54,6 +55,10 @@ type CreateAuditLogParams struct {
 	IpAddress  string          `json:"ip_address"`
 }
 
+// company_id is nullable (migration 018): identity-space events (household /
+// COPPA audit) have no companies(id) and pass NULL. The pgstore/devstore
+// adapters map a zero (all-bits-0) uuid.UUID to NULL here; a real company id is
+// stored unchanged and is still FK-validated against companies(id).
 func (q *Queries) CreateAuditLog(ctx context.Context, arg CreateAuditLogParams) error {
 	_, err := q.db.Exec(ctx, createAuditLog,
 		arg.CompanyID,
@@ -75,9 +80,9 @@ LIMIT $2 OFFSET $3
 `
 
 type ListAuditLogsParams struct {
-	CompanyID uuid.UUID `json:"company_id"`
-	Limit     int32     `json:"limit"`
-	Offset    int32     `json:"offset"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	Limit     int32       `json:"limit"`
+	Offset    int32       `json:"offset"`
 }
 
 func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error) {
@@ -118,10 +123,10 @@ LIMIT $3 OFFSET $4
 `
 
 type ListAuditLogsByActionParams struct {
-	CompanyID uuid.UUID `json:"company_id"`
-	Action    string    `json:"action"`
-	Limit     int32     `json:"limit"`
-	Offset    int32     `json:"offset"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	Action    string      `json:"action"`
+	Limit     int32       `json:"limit"`
+	Offset    int32       `json:"offset"`
 }
 
 func (q *Queries) ListAuditLogsByAction(ctx context.Context, arg ListAuditLogsByActionParams) ([]AuditLog, error) {
@@ -167,10 +172,10 @@ LIMIT $3 OFFSET $4
 `
 
 type ListAuditLogsByActorParams struct {
-	CompanyID uuid.UUID `json:"company_id"`
-	ActorID   uuid.UUID `json:"actor_id"`
-	Limit     int32     `json:"limit"`
-	Offset    int32     `json:"offset"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	ActorID   uuid.UUID   `json:"actor_id"`
+	Limit     int32       `json:"limit"`
+	Offset    int32       `json:"offset"`
 }
 
 func (q *Queries) ListAuditLogsByActor(ctx context.Context, arg ListAuditLogsByActorParams) ([]AuditLog, error) {
@@ -216,10 +221,10 @@ LIMIT $3 OFFSET $4
 `
 
 type ListAuditLogsByResourceParams struct {
-	CompanyID uuid.UUID `json:"company_id"`
-	Resource  string    `json:"resource"`
-	Limit     int32     `json:"limit"`
-	Offset    int32     `json:"offset"`
+	CompanyID pgtype.UUID `json:"company_id"`
+	Resource  string      `json:"resource"`
+	Limit     int32       `json:"limit"`
+	Offset    int32       `json:"offset"`
 }
 
 func (q *Queries) ListAuditLogsByResource(ctx context.Context, arg ListAuditLogsByResourceParams) ([]AuditLog, error) {
