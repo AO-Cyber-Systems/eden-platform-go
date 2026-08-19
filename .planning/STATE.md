@@ -26,6 +26,21 @@ Post-M9 maintenance                ████░░░░░░ ~40%   (commit
 
 Last activity: 2026-05-21 — issue #20 closed + PR #21/#22/#23 merged. First green main CI in 11 days.
 
+## In Flight
+
+- **platform/identity (issue #49)** — the shared identity-context contract:
+  claim type + configurable version set, minter, key sources, multi-issuer
+  verifier, end-to-end proof and README. Five TRDs, all executed and verified;
+  225 tests green, `go.mod` unchanged. On `feat/platform-identity-context`,
+  **PR not yet opened**.
+  - Found and fixed during verification: the minter's constructor was overriding
+    the JWT library's global ES256/RS256 signing methods process-wide and
+    irreversibly. Now selects the method value directly.
+  - Follow-on: issue #52 (application as first-party issuer) builds on the minter.
+  - Noted, out of scope: `platform/auth/jwt.go` and `platform/auth/entitlements.go`
+    carry private product names and an internal design-doc reference in doc
+    comments, on a public repo's default branch.
+
 ## Just Merged
 
 - **PR #23: `chore: gitignore cmd/* build outputs, .srl, and DevFlow runtime dotfiles`** — merged 2026-05-21 at `39d74ad`. `.gitignore` adds for cmd/* build outputs, `*.srl`, and the two `.planning/` runtime dotfiles. Deletes three stale untracked files. Closes status-review item #4.
