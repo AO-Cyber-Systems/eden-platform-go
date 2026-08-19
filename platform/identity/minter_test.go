@@ -446,20 +446,28 @@ func TestMintEmitsAnEmptyEntitlementArrayRatherThanNull(t *testing.T) {
 	}
 }
 
-func TestMintOmitsTheOptionalCorrelationClaimsWhenAbsent(t *testing.T) {
-	// jti and tok_ref are optional. An absent value stays absent rather than
-	// being stamped as an empty string, which would read like a real handle in
-	// an audit record and correlate every context that has neither.
+func TestMintCarriesNoCorrelationHandlesWhenNoneAreSupplied(t *testing.T) {
+	// Both correlation claims are optional input, but they leave the minter
+	// differently, and the difference is inherited from the frozen wire format
+	// rather than chosen here: jti is omitempty and disappears, tok_ref is not
+	// and is always emitted. Whichever way a claim goes, the minter must not
+	// invent a handle for a context that has none.
 	minter, _ := newTestMinter(t)
 	in := validInput()
 	in.TokenID = ""
 	in.TokenRef = ""
 
 	claims := payload(t, mustMint(t, minter, in))
-	for _, key := range []string{"jti", "tok_ref"} {
-		if value, ok := claims[key]; ok {
-			t.Errorf("%s = %v, want the key to be absent", key, value)
-		}
+
+	if value, ok := claims["jti"]; ok {
+		t.Errorf("jti = %v, want the key to be absent", value)
+	}
+	value, ok := claims["tok_ref"]
+	if !ok {
+		t.Fatal("tok_ref key is absent; the frozen wire format emits it unconditionally")
+	}
+	if value != "" {
+		t.Errorf("tok_ref = %v, want an empty string; a context with no upstream credential has no handle", value)
 	}
 }
 
