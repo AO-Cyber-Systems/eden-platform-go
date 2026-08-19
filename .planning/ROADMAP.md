@@ -81,12 +81,19 @@ maintenance + AO ID hardening (see "Post-M9" section below).
 
 ### In flight — not yet on main
 
+- [x] **platform/identity — application as first-party issuer** — an application
+  authenticates its own users through two narrow seams (credential verification,
+  claims resolution), derives an honest assurance level from the factors actually
+  exercised, mints a context, and publishes its key set. No storage interface
+  required and no second key path: the issuer takes a platform signing key, reads
+  its key id off it, and proves it can sign at start-up. 356 tests,
+  mutation-verified. Tracking issue #52. Branch `feat/platform-identity-issuer`.
+
 - [x] **platform/identity — the shared identity-context contract** — new package:
   the frozen claim type with a configurable accepted-version set, a minter over
   the existing signing seam, static and remote key sources, and a verifier that
   trusts a configured **set** of issuers. 225 tests, mutation-verified. Tracking
-  issue #49; the first-party-issuer follow-on is #52. Branch
-  `feat/platform-identity-context`, **PR not yet opened**. TRDs and verification
+  issue #49; the first-party-issuer follow-on is #52. Merged to main. TRDs and verification
   at `.planning/objectives/platform-identity-context/`.
 
 ### Active work streams (tracked via commit prefixes; canonical plan TBD)
