@@ -17,10 +17,15 @@
 //
 // # What lives here
 //
-// Only the contract: the claim shape, the token type, the version this package
-// emits, the set of versions a consumer accepts, and the semantic checks a JWT
-// parser does not perform. Signing, key resolution and signature verification
-// are the callers' concern and build on top of this package.
+// The contract, and the two ends that speak it. This file holds the claim
+// shape, the token type, the version this package emits, the set of versions a
+// consumer accepts, and the semantic checks a JWT parser does not perform.
+// Minter signs a context; Verifier checks one against a configured set of
+// trusted issuers; KeySource is the seam a verifier resolves signing keys
+// through, with an in-memory and a remote implementation.
+//
+// Where the private key lives, and which issuers a deployment trusts, are
+// deliberately not decided here — both are supplied by the caller.
 package identity
 
 import (
