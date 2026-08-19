@@ -175,13 +175,10 @@ type Minter struct {
 //
 // Signing goes through the platform signing seam, which keeps the private half
 // wherever it lives — an HSM or a hosted key service — rather than requiring it
-// in this process's memory. Registering the seam's signing methods is a
-// process-global, idempotent action that this constructor performs so that a
-// Minter is correct standalone; see the seam's own documentation for what that
-// registration overrides.
+// in this process's memory. Constructing a Minter has no process-global effect:
+// see signingMethodFor for why the seam's methods are used directly rather than
+// registered.
 func NewMinter(signer kmssigner.Signer, keyID, issuer string, opts ...MinterOption) (*Minter, error) {
-	kmssigner.RegisterAll()
-
 	m := &Minter{
 		signer: signer,
 		keyID:  keyID,
@@ -209,14 +206,9 @@ func NewMinter(signer kmssigner.Signer, keyID, issuer string, opts ...MinterOpti
 		return nil, ErrInvalidClock
 	}
 
-	alg := m.signer.SigningAlgorithm()
-	if !supportedAlgorithm(alg) {
-		return nil, fmt.Errorf("%w: signer reports %q, want %q or %q",
-			ErrUnsupportedAlgorithm, alg, es256Alg(), rs256Alg())
-	}
-	method := jwt.GetSigningMethod(alg)
-	if method == nil {
-		return nil, fmt.Errorf("%w: no signing method registered for %q", ErrUnsupportedAlgorithm, alg)
+	method, err := signingMethodFor(m.signer.SigningAlgorithm())
+	if err != nil {
+		return nil, err
 	}
 	m.method = method
 
@@ -323,11 +315,35 @@ func (m *Minter) contextClaims(in MintInput) (*Claims, error) {
 	return claims, nil
 }
 
-// supportedAlgorithm reports whether the signing seam implements alg. The
-// names are read off the seam's own methods rather than written out here, so
-// this cannot drift from what is actually registered.
-func supportedAlgorithm(alg string) bool {
-	return alg == es256Alg() || alg == rs256Alg()
+// signingMethodFor returns the signing seam's method for alg, or an error
+// naming what was offered and what is supported.
+//
+// The method value is constructed here rather than resolved through the JWT
+// library's global registry, and the seam's registration helper is
+// deliberately never called. That helper OVERRIDES the library's own
+// ES256/RS256 methods for the whole process, irreversibly — there is no
+// deregistration. A library that did so during construction would silently
+// change how unrelated code in the same binary signs: anything resolving its
+// method from the registry and passing an in-memory private key would start
+// failing on a key-type mismatch, far from the import that caused it.
+//
+// Passing the method value straight to the token constructor needs no registry
+// entry, so the host process is left exactly as it was found. Verification is
+// unaffected either way — what gets signed is a standard JWS, which the
+// library's own methods verify against a public key.
+//
+// The algorithm names are read off the seam's own methods rather than written
+// out here, so they cannot drift from what the seam actually implements.
+func signingMethodFor(alg string) (jwt.SigningMethod, error) {
+	switch alg {
+	case es256Alg():
+		return &kmssigner.ES256SigningMethod{}, nil
+	case rs256Alg():
+		return &kmssigner.RS256SigningMethod{}, nil
+	default:
+		return nil, fmt.Errorf("%w: signer reports %q, want %q or %q",
+			ErrUnsupportedAlgorithm, alg, es256Alg(), rs256Alg())
+	}
 }
 
 func es256Alg() string { return (&kmssigner.ES256SigningMethod{}).Alg() }
