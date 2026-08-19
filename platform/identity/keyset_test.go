@@ -676,15 +676,16 @@ func TestNewKeySetHandlerRejectsAnUnrenderableKey(t *testing.T) {
 	}
 }
 
-// TestNewKeySetHandlerRejectsANonPositiveCacheLifetime: a zero or negative
-// lifetime asks every consumer to refetch on every request, which is the
+// TestNewKeySetHandlerRejectsAnUnexpressibleCacheLifetime: a lifetime that
+// cannot be stated in whole seconds is one that reaches a consumer as
+// max-age=0, and asking every consumer to refetch on every request is the
 // failure this header exists to prevent.
-func TestNewKeySetHandlerRejectsANonPositiveCacheLifetime(t *testing.T) {
+func TestNewKeySetHandlerRejectsAnUnexpressibleCacheLifetime(t *testing.T) {
 	t.Parallel()
 
 	signer, _ := newPublishedES256(t)
 
-	for _, maxAge := range []time.Duration{0, -time.Second} {
+	for _, maxAge := range []time.Duration{0, -time.Second, 500 * time.Millisecond} {
 		t.Run(maxAge.String(), func(t *testing.T) {
 			t.Parallel()
 
