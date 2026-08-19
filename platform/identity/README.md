@@ -165,3 +165,125 @@ before and after are byte-compatible and the same tokens verify either way.
 The one thing worth checking during adoption is the accepted version set:
 `DefaultVersionSet()` is `{1}`, so a consumer that had been accepting more than
 that must say so explicitly with `WithAcceptedVersions`.
+
+## Acting as an issuer
+
+An application that authenticates its own users can present that result as a
+context, so a boundary or a peer service consumes it exactly as it would one
+from a dedicated identity provider.
+
+You implement two seams. Nothing else is required — in particular **no storage
+interface**. The credential primitives you will build on
+(`platform/auth.PasswordHasher.Verify`, `platform/auth/totp.Validate`,
+`totp.VerifyBackupCode`) are pure functions, so the seams stay free of any
+opinion about where credentials live or how tenancy is modelled.
+
+```go
+// Verify a credential. The credential type is yours.
+type CredentialVerifier[C any] interface {
+    VerifyCredential(ctx context.Context, credential C) (*Authentication, error)
+}
+
+// Resolve what an authenticated subject is entitled to.
+type ClaimsResolver interface {
+    ResolveClaims(ctx context.Context, subject string) (Grant, error)
+}
+```
+
+Report the factors you actually exercised — that is what the assurance claim is
+derived from:
+
+```go
+&identity.Authentication{
+    Subject: "principal-0042",
+    Factors: []identity.Factor{
+        {Kind: identity.FactorKnowledge,  Method: "password"},
+        {Kind: identity.FactorPossession, Method: "totp"},
+    },
+}
+```
+
+Then wire an issuer and publish its key:
+
+```go
+issuer, err := identity.NewIssuer[MyCredential](ctx, signer, "https://app.example/", verifier, resolver)
+if err != nil {
+    return err // includes a failed signing-key health check
+}
+
+keys, err := identity.NewKeySetHandler(signer)
+if err != nil {
+    return err
+}
+mux.Handle("/.well-known/jwks.json", keys)
+
+token, err := issuer.Issue(ctx, credential)
+```
+
+`Issue` verifies the credential, validates the result, derives assurance,
+resolves the grant, and mints — in that order, stopping at the first failure.
+The subject in the context is the one that was **proved**, never the one the
+credential claimed. The resolver is never consulted for an identifier that has
+not authenticated, because resolving entitlements for an unauthenticated
+identifier is a disclosure even when nothing is minted afterwards.
+
+Unlike `Verify`, `Issue` returns specific errors. The trust boundary is
+different: `Verify`'s caller may be relaying to whoever presented the token, so a
+reason would be an oracle, whereas `Issue`'s caller is the application that owns
+the login flow and has to decide what to show its own user.
+
+### The assurance ladder
+
+Assurance is derived from what happened, never supplied by a caller.
+
+| Authentication | Level |
+|---|---|
+| No factors | error — nothing was established, and a level would read as "authenticated weakly" |
+| One distinct **category**, however many methods | AAL1 |
+| Two or more distinct categories | AAL2 |
+| Two or more categories **and** both `HardwareBacked` and `PhishingResistant` asserted | AAL3 |
+
+It counts independent **categories**, not prompts. A password and a security
+question are two prompts and one category: whatever compromises the first tends
+to compromise the second, so the pair stays AAL1. A one-time code and a recovery
+code are both **possession** — the principal holds the seed or the code sheet —
+not knowledge.
+
+The top rung additionally needs a hardware-resident authenticator and resistance
+to verifier impersonation. Neither is visible in a factor's name — a method of
+`"webauthn"` may or may not be hardware-backed — so both are read from what your
+verifier asserted, never guessed. Asserting them without two categories does not
+reach AAL3: they qualify a multi-factor authentication, they do not substitute
+for one.
+
+Everything unknown or ambiguous resolves **downward**. Understating assurance
+costs a user an extra prompt; overstating it silently grants access a policy
+meant to withhold, and leaves an audit record asserting a control that was never
+applied.
+
+### Why the key id is not a parameter
+
+`NewIssuer` takes a signing key from the platform key surface and reads the key
+id off it. There is no key-id parameter, so a caller cannot pin a constant one.
+
+That is deliberate, and it is the signature rather than documentation doing the
+work. A deployment that pins a constant key id and then replaces the key
+material behind it breaks every consumer permanently: a key cache only re-fetches
+on an id it does not recognise, so an id that never changes never misses, and
+every request is refused with nothing to trigger recovery. An id derived from the
+key changes when the key does, producing exactly the miss that heals.
+
+An empty key id is a construction error — it would mint contexts no verifier can
+resolve a key for.
+
+### The start-up signing proof
+
+`NewIssuer` runs the signing key's health check and refuses to construct if it
+fails. That check performs a real sign-and-verify round trip.
+
+It exists because reading a public key and signing with it are separately
+authorized operations on every hosted key service, and a configuration that
+permits the first while denying the second looks perfectly healthy right up to
+the first login attempt. Failing at construction turns that into a start-up
+error an operator sees immediately, rather than an authentication outage a user
+discovers.
