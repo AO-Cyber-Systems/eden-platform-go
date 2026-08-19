@@ -28,6 +28,18 @@ Last activity: 2026-05-21 — issue #20 closed + PR #21/#22/#23 merged. First gr
 
 ## In Flight
 
+- **platform/identity first-party issuer (issue #52)** — the two consumer seams,
+  assurance derivation, the issuer, key-set publication, end-to-end proof and
+  README. Five TRDs, all executed and verified; 356 tests green, `go.mod`
+  unchanged. On `feat/platform-identity-issuer`.
+  - The key id is deliberately not a constructor parameter: it is read off the
+    signing key, so a deployment cannot pin a constant one and strand every
+    consumer behind an unchanging identifier.
+  - Construction runs the signing key's health check, so a key service that
+    permits reading a public key but denies signing fails at start-up rather
+    than at the first login.
+
+
 - **platform/identity (issue #49)** — the shared identity-context contract:
   claim type + configurable version set, minter, key sources, multi-issuer
   verifier, end-to-end proof and README. Five TRDs, all executed and verified;
