@@ -79,6 +79,16 @@ maintenance + AO ID hardening (see "Post-M9" section below).
 - [x] **CI infrastructure repair** — `DATABASE_URL` scheme fix (pgx5://), aoid-smoke assertions refreshed for active-issuer state, sqlc pinned to v1.30.0. First green main CI in 11 days. **Bundled in PR #22.**
 - [x] **.gitignore + working-tree noise cleanup** — `/aoid`, `/eden-platform-dev`, `*.srl`, `.planning/.awareness-cache.json`, `.planning/.skill-active`. **PR #23 merged 2026-05-21.**
 
+### In flight — not yet on main
+
+- [x] **platform/identity — the shared identity-context contract** — new package:
+  the frozen claim type with a configurable accepted-version set, a minter over
+  the existing signing seam, static and remote key sources, and a verifier that
+  trusts a configured **set** of issuers. 225 tests, mutation-verified. Tracking
+  issue #49; the first-party-issuer follow-on is #52. Branch
+  `feat/platform-identity-context`, **PR not yet opened**. TRDs and verification
+  at `.planning/objectives/platform-identity-context/`.
+
 ### Active work streams (tracked via commit prefixes; canonical plan TBD)
 
 These are not yet stood up as portfolio-level objectives. The work lives

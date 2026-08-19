@@ -1,3 +1,8 @@
+---
+org: AO-Cyber-Systems
+github_repo: AO-Cyber-Systems/eden-platform-go
+---
+
 # Project
 
 ## What this is
