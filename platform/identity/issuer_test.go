@@ -729,8 +729,8 @@ func TestIssueCarriesTheResolvedTenantAndEntitlements(t *testing.T) {
 	}
 
 	claims := payload(t, token)
-	if got := claims["tenant"]; got != "northwind" {
-		t.Errorf("tenant claim = %v, want %q", got, "northwind")
+	if got := claims["tnt"]; got != "northwind" {
+		t.Errorf("tnt claim = %v, want %q", got, "northwind")
 	}
 
 	raw, ok := claims["ent"].([]any)
