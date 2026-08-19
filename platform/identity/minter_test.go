@@ -804,3 +804,45 @@ var (
 	_ kmssigner.Signer = (*ecdsaTestSigner)(nil)
 	_ kmssigner.Signer = (*rsaTestSigner)(nil)
 )
+
+// TestNewMinterLeavesTheGlobalSigningRegistryAlone pins that constructing a
+// Minter has no process-global side effect.
+//
+// The signing seam ships a registration helper that OVERRIDES the JWT
+// library's own ES256/RS256 methods for the entire process, irreversibly —
+// the library offers no deregistration. If a constructor here called it, then
+// merely building a Minter would change how UNRELATED code in the same binary
+// signs: a caller that resolves its method through the registry and passes an
+// in-memory private key would begin failing on a key-type mismatch, with
+// nothing at the failure site pointing back to this package. A library must
+// not reconfigure its host's globals as a side effect of construction.
+//
+// The type assertions below are the load-bearing checks. A plain
+// before/after comparison is not enough on its own: tests share a process, so
+// an earlier Minter could already have mutated the registry, leaving "before"
+// equal to "after" and the assertion vacuously green.
+func TestNewMinterLeavesTheGlobalSigningRegistryAlone(t *testing.T) {
+	before := map[string]jwt.SigningMethod{
+		es256Alg(): jwt.GetSigningMethod(es256Alg()),
+		rs256Alg(): jwt.GetSigningMethod(rs256Alg()),
+	}
+
+	newTestMinter(t)
+
+	for alg, want := range before {
+		if got := jwt.GetSigningMethod(alg); got != want {
+			t.Errorf("NewMinter replaced the process-global %s method (%T -> %T)", alg, want, got)
+		}
+	}
+
+	if _, overridden := jwt.GetSigningMethod(es256Alg()).(*kmssigner.ES256SigningMethod); overridden {
+		t.Errorf("the process-global %s method is the signing seam's; every registry-resolved "+
+			"signer in this process now requires a seam-shaped key instead of an in-memory one",
+			es256Alg())
+	}
+	if _, overridden := jwt.GetSigningMethod(rs256Alg()).(*kmssigner.RS256SigningMethod); overridden {
+		t.Errorf("the process-global %s method is the signing seam's; every registry-resolved "+
+			"signer in this process now requires a seam-shaped key instead of an in-memory one",
+			rs256Alg())
+	}
+}
