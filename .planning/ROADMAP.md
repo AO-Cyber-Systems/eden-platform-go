@@ -51,6 +51,7 @@ maintenance + AO ID hardening (see "Post-M9" section below).
 - [x] **Obj 27: platform/{feature-flags,billing-rail}** — entitlements + billing primitives. **PR #7 merged 2026-05-10.**
 - [x] **Obj 28: eden-livekit extraction → platform/livekit** — WebRTC realtime primitive. **PR #5 merged 2026-05-10.**
 - [ ] **Obj 40: platform/telephony** — provider-abstracted SMS/voice. SignalWire is the standard/default provider; Twilio retained as the second adapter proving the seam. Lifted and generalized from `politihub/go/internal/telephony` (1,943 impl + 2,399 test LOC), reconciled against justinforme (SignalWire depth), navigators (suppression) and eden-biz (`telephonycreds`). V1 = transport + per-tenant encrypted config + TCPA/opt-out + webhooks. Deferred: campaign orchestration, send-worker queue, templates, MMS. **Requirements:** R46.
+- [ ] **Obj 41: platform/cms** — block-engine + content lifecycle. Block model lifted from eden-biz (`{ID,Type,Data}`, tolerant parse); publishing lifecycle (scheduled publish + preview tokens) and media pipeline from justinforme (8,772 LOC) / smartWellness (4,288). V1 = engine + lifecycle ONLY; the block CATALOG stays the consumer's. Deferred: builder UI, CF-Pages build/deploy, AI content gen, analytics. Emits `[]Block` — NO dependency on eden-web. **Requirements:** R47. **Related:** unblocks the never-planned Obj 35 (eden-biz `internal/website` cutover).
 
 ---
 
