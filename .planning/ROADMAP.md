@@ -50,6 +50,7 @@ maintenance + AO ID hardening (see "Post-M9" section below).
 - [x] **Obj 25: platform/consent** — append-only COPPA / GDPR-K consent ledger. **PR #11 merged 2026-05-10.**
 - [x] **Obj 27: platform/{feature-flags,billing-rail}** — entitlements + billing primitives. **PR #7 merged 2026-05-10.**
 - [x] **Obj 28: eden-livekit extraction → platform/livekit** — WebRTC realtime primitive. **PR #5 merged 2026-05-10.**
+- [ ] **Obj 40: platform/telephony** — provider-abstracted SMS/voice. SignalWire is the standard/default provider; Twilio retained as the second adapter proving the seam. Lifted and generalized from `politihub/go/internal/telephony` (1,943 impl + 2,399 test LOC), reconciled against justinforme (SignalWire depth), navigators (suppression) and eden-biz (`telephonycreds`). V1 = transport + per-tenant encrypted config + TCPA/opt-out + webhooks. Deferred: campaign orchestration, send-worker queue, templates, MMS. **Requirements:** R46.
 
 ---
 
