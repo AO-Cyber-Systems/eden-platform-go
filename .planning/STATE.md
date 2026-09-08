@@ -22,11 +22,33 @@ W6 AO ID extraction                ██████████ 100%   (Obj 29
 M9 Eden Family launch-ready        ██████████ 100%   (Obj 33)            ◄ M9 reached 2026-05-11
 ─────────────────────────────────────────────────────────────────
 Post-M9 maintenance                ████░░░░░░ ~40%   (commit-prefix work, no formal objective yet)
+Obj 40 platform/telephony          █░░░░░░░░░ ~10%   (TRD 01 of N — seam done, adapters pending)
 ```
 
-Last activity: 2026-05-21 — issue #20 closed + PR #21/#22/#23 merged. First green main CI in 11 days.
+Last activity: 2026-09-08 — Obj 40 TRD 01 (platform/telephony package seam) executed and verified.
 
 ## In Flight
+
+- **Obj 40: platform/telephony (TRD 01 of N complete)** — provider-neutral
+  abstraction over SMS/voice telephony, lifted and renamed from a proven
+  production implementation. TRD 01 shipped the seam: `Provider` interface,
+  `NoopProvider` fail-loud fallback, `Registry` (ProviderType ->
+  ProviderFactory), value types, `Config.SignatureToken()`. Tenant identifier
+  renamed `committeeID` -> `CompanyID` (`uuid.UUID` unchanged — matches
+  `platform/company`'s tenant keying). 10 tests green under `-race`, `go.mod`
+  unchanged (no new dependency this TRD). On `plan/obj-40-platform-telephony`.
+  TRDs at `.planning/objectives/40-platform-telephony/`.
+  - Concrete adapters (Twilio, SignalWire via `twilio-go`) and the
+    config-driven resolver are later TRDs in the same objective — not yet
+    planned/executed.
+  - **TRD correction:** politihub has NO `models_test.go` at all — the TRD's
+    file_tree wrongly described one as `← CREATE (ported)`. `Config`/helper
+    tests actually live inside the source's `registry_test.go`.
+    `platform/telephony/registry_test.go` here is a genuine port (+3 new
+    NoopProvider assertions); `platform/telephony/models_test.go` is
+    NET-NEW coverage, not ported — only `TestConfig_SignatureToken` moved
+    over, `reconstructURL`/`mapStatus` tests are freshly written. See
+    40-01-SUMMARY.md for detail.
 
 - **platform/identity first-party issuer (issue #52)** — the two consumer seams,
   assurance derivation, the issuer, key-set publication, end-to-end proof and
@@ -89,9 +111,9 @@ None tracked locally; portfolio-level pending items live in
 
 ## Session Continuity
 
-- **Last session:** 2026-05-21 — Status review → PR #22 (closes #20) → PR #21 rebase + merge → PR #23 noise cleanup → planning reconstruction (this file + PROJECT.md + ROADMAP.md).
-- **Stopped at:** Planning reconstruction committed.
-- **No resume file** — clean stop. Next `/devflow:status` should now render against the full state.
+- **Last session:** 2026-09-08 — Executed Obj 40 TRD 01 (platform/telephony package seam): 4 atomic commits (93fe135, 5c4cbd1, 0217a35, cdea606), 10 tests green under `-race`, SUMMARY.md written and self-checked, STATE.md/ROADMAP.md updated.
+- **Stopped at:** Completed 40-01-TRD.md. TRD 02 (concrete Twilio/SignalWire adapters) not yet planned.
+- **No resume file** — clean stop between TRDs. Next executor run should plan/execute Obj 40 TRD 02.
 
 ## See also
 

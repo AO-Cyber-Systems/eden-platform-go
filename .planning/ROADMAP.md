@@ -98,6 +98,19 @@ maintenance + AO ID hardening (see "Post-M9" section below).
   issue #49; the first-party-issuer follow-on is #52. Merged to main. TRDs and verification
   at `.planning/objectives/platform-identity-context/`.
 
+- [ ] **Obj 40: platform/telephony** — new package: provider-neutral abstraction
+  over SMS/voice telephony backends (Twilio, SignalWire), lifted and renamed
+  from a proven production implementation. TRD 01 (done) establishes the seam:
+  `Provider` interface, `NoopProvider` fail-loud fallback, `Registry`
+  (ProviderType -> ProviderFactory), value types, `Config.SignatureToken()`.
+  Tenant identifier renamed `committeeID` -> `CompanyID` (`uuid.UUID`
+  unchanged). Zero new dependencies in TRD 01; concrete adapters
+  (`twilio-go`) and the config-driven resolver land in later TRDs. TRDs at
+  `.planning/objectives/40-platform-telephony/`.
+  - [x] TRD 01: package seam (Provider/NoopProvider/Registry/models) — 10
+    tests green under `-race`, no politihub domain vocabulary survives.
+  - [ ] TRD 02+: concrete adapters + resolver (not yet planned/executed).
+
 ### Active work streams (tracked via commit prefixes; canonical plan TBD)
 
 These are not yet stood up as portfolio-level objectives. The work lives
