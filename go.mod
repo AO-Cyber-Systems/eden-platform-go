@@ -35,6 +35,7 @@ require (
 	github.com/prometheus/client_model v0.6.2
 	github.com/russellhaering/goxmldsig v1.4.0
 	github.com/stretchr/testify v1.11.1
+	github.com/twilio/twilio-go v1.30.4
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.9.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.43.0
@@ -98,6 +99,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/go-webauthn/x v0.2.5 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.2 // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/cel-go v0.27.0 // indirect
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
