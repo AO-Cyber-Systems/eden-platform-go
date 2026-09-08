@@ -14,9 +14,10 @@ Beta. Ported and generalized from `politihub/go/internal/telephony`
 (the most complete of the four source implementations), reconciled against
 justinforme, navigators, and eden-biz where they covered a case politihub
 did not (see [`MIGRATION.md`](./MIGRATION.md) for the per-consumer detail).
-13 implementation files / ~2,190 LOC, 11 test files / ~3,100 LOC, 79 tests.
-The source it was lifted from was 1,943 impl + 2,399 test LOC — test
-coverage grew during the port, it did not shrink.
+13 implementation files / ~2,220 LOC, 12 test files / ~3,485 LOC, 93 top-level
+test functions (81 `--- PASS` lines counting subtests). The source it was
+lifted from was 1,943 impl + 2,399 test LOC — test coverage grew during the
+port, it did not shrink.
 
 ## Quick start
 
