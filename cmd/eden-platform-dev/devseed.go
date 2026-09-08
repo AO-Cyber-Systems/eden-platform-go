@@ -13,18 +13,20 @@ import (
 	"github.com/google/uuid"
 )
 
-// Fixed identifiers for the seeded demo tenant. Using fixed IDs (instead of
-// uuid.New()) is what makes seedDevTenant idempotent: every call resolves to
-// the same company/user rows instead of minting duplicates.
+// DevTenantCompanyID is the fixed company id for the seeded demo tenant.
+// Using a fixed id (instead of uuid.New()) is what makes the company half of
+// seedDevTenant idempotent: every call resolves the same company row via
+// CompanyStore.GetCompany instead of minting a duplicate. It intentionally
+// reuses the SAME id that seedSSOForDev and seedWebhookData already seed
+// against in main.go, so the demo company also carries SSO config and a
+// webhook out of the box — one coherent tenant, not three disconnected
+// fixtures.
 //
-// DevTenantCompanyID intentionally reuses the SAME id that seedSSOForDev and
-// seedWebhookData already seed against in main.go, so the demo company also
-// carries SSO config and a webhook out of the box — one coherent tenant, not
-// three disconnected fixtures.
-var (
-	DevTenantCompanyID = uuid.MustParse("20000000-0000-0000-0000-000000000001")
-	DevTenantUserID    = uuid.MustParse("30000000-0000-0000-0000-000000000001")
-)
+// The seeded user has no equivalent fixed-id constant: AuthStore.CreateUser
+// always mints its own uuid.New() id (matching production signup), so user
+// idempotency is keyed on the unique email (DevTenantEmail) instead — see
+// seedDevTenant's GetUserByEmail-before-CreateUser guard below.
+var DevTenantCompanyID = uuid.MustParse("20000000-0000-0000-0000-000000000001")
 
 // Credentials and identity for the seeded demo user/company. This file only
 // compiles under `-tags dev` (see the build tag above), so these values never
