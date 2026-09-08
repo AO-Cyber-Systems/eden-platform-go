@@ -66,6 +66,7 @@ func main() {
 		seedRBACData(backend)
 		seedWebhookData(backend)
 		seedAuditData(backend)
+		seedDevTenant(backend)
 
 		as := backend.AuthStore()
 		cs := backend.CompanyStore()
