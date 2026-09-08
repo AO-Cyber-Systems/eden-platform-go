@@ -196,6 +196,22 @@ None — no external service configuration required. All four deliverables are d
 
 Objective 40 (platform/telephony) is complete: 7/7 TRDs executed and verified. The package is documented, has an end-to-end integration test proving its seams compose, and has a migration playbook naming all four intended consumers plus the four deferred capabilities. No blockers for those consumers to begin their own migration PRs on their own schedules. Package stats at completion (measured directly via `wc -l` and `go test -list`/`-v`): 13 impl files / 2,221 impl LOC, 12 test files / 3,485 test LOC (11 unit + 1 integration), 93 top-level test functions, 81 `--- PASS` lines counting subtests. Source politihub was 1,943 impl + 2,399 test LOC — coverage grew.
 
+## Self-Check: PASSED
+
+- FOUND: platform/telephony/doc.go
+- FOUND: platform/telephony/README.md
+- FOUND: platform/telephony/MIGRATION.md
+- FOUND: platform/telephony/integration_test.go
+- FOUND: .planning/objectives/40-platform-telephony/40-07-SUMMARY.md
+- FOUND commit: e8b7c8c (test integration_test.go)
+- FOUND commit: c9e8ab4 (docs README.md)
+- FOUND commit: 87be961 (docs MIGRATION.md)
+- FOUND commit: 2e7be27 (docs doc.go)
+- FOUND commit: f822e29 (docs README.md stats correction)
+- FOUND commit: abf533c (docs this SUMMARY.md)
+
+All claimed files and commits verified present via `git log --oneline -10` and direct file existence checks. No missing items.
+
 ---
 *Objective: 40-platform-telephony*
 *Completed: 2026-09-07*
