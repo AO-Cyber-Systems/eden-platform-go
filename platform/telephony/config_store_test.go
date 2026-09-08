@@ -20,8 +20,9 @@ import (
 //
 // DATABASE_URL-gated (skipped when unset), matching platform/pgstore's own
 // integration-test convention (see pgstore_test.go / sso_jit_policy_test.go).
-// Slugs and sending numbers are suffixed with a fresh uuid per test so tests
-// can share a persistent database without a truncate-between-tests step.
+// Company slugs (mustCreateCompany) and sending numbers (uniqueNumber) are
+// each freshly generated per call so tests can share a persistent database
+// without a truncate-between-tests step.
 
 func setupConfigStoreTest(t *testing.T) (*pgstore.Backend, *pgstore.AuthStore) {
 	t.Helper()
@@ -49,6 +50,18 @@ func mustCreateCompany(t *testing.T, authStore *pgstore.AuthStore, namePrefix st
 		t.Fatalf("create company %s: %v", slug, err)
 	}
 	return id
+}
+
+// uniqueNumber returns a distinct "sending number" per call, derived from a
+// fresh UUID. A fixed literal would collide with a row a PRIOR run left
+// active in this persistent (non-truncated) test database: migration 016's
+// partial unique index enforces exactly one active row per (provider,
+// sending_number), so two runs both hardcoding "+15550001111" fail the
+// second time around with ErrSendingNumberClaimed -- not because the store
+// is wrong, but because the test fixture wasn't actually unique across runs
+// despite the file-level comment claiming it was.
+func uniqueNumber() string {
+	return "+1555" + uuid.NewString()[:8]
 }
 
 // TestPostgresConfigStore_GetNotConfigured proves a company with no row at
@@ -86,7 +99,7 @@ func TestPostgresConfigStore_UpsertGetRoundTrip_CiphertextAtRest(t *testing.T) {
 	companyID := mustCreateCompany(t, authStore, "cfg-ciphertext")
 	const plainAuth = "AC_super_secret_auth_token"
 	const plainSecret = "whsec_super_secret_webhook_key"
-	number := "+15550001111"
+	number := uniqueNumber()
 
 	cfg := Config{
 		CompanyID:     companyID,
@@ -167,14 +180,14 @@ func TestPostgresConfigStore_UpsertDeactivatesPriorRow(t *testing.T) {
 	companyID := mustCreateCompany(t, authStore, "cfg-supersede")
 	first := Config{
 		CompanyID: companyID, Provider: ProviderTwilio, AccountSID: "AC_first",
-		AuthToken: "tok1", SendingNumber: "+15550002222",
+		AuthToken: "tok1", SendingNumber: uniqueNumber(),
 	}
 	if err := store.Upsert(ctx, first); err != nil {
 		t.Fatalf("first upsert: %v", err)
 	}
 	second := Config{
 		CompanyID: companyID, Provider: ProviderTwilio, AccountSID: "AC_second",
-		AuthToken: "tok2", SendingNumber: "+15550003333",
+		AuthToken: "tok2", SendingNumber: uniqueNumber(),
 	}
 	if err := store.Upsert(ctx, second); err != nil {
 		t.Fatalf("second upsert: %v", err)
@@ -213,8 +226,8 @@ func TestPostgresConfigStore_LookupBySendingNumber(t *testing.T) {
 
 	companyA := mustCreateCompany(t, authStore, "cfg-lookup-a")
 	companyB := mustCreateCompany(t, authStore, "cfg-lookup-b")
-	numberA := "+15550004444"
-	numberB := "+15550005555"
+	numberA := uniqueNumber()
+	numberB := uniqueNumber()
 
 	if err := store.Upsert(ctx, Config{
 		CompanyID: companyA, Provider: ProviderSignalWire, AccountSID: "AC_a",
@@ -253,8 +266,10 @@ func TestPostgresConfigStore_LookupBySendingNumber(t *testing.T) {
 		t.Errorf("LookupBySendingNumber(wrong provider): got %v, want ErrTenantNotConfigured", err)
 	}
 
-	// Unclaimed number -> ErrTenantNotConfigured, no existence leak.
-	if _, err := store.LookupBySendingNumber(ctx, ProviderSignalWire, "+15559998888"); !errors.Is(err, ErrTenantNotConfigured) {
+	// Unclaimed number -> ErrTenantNotConfigured, no existence leak. Freshly
+	// generated and never upserted, so it is guaranteed unclaimed regardless
+	// of what a prior run left active in this persistent test database.
+	if _, err := store.LookupBySendingNumber(ctx, ProviderSignalWire, uniqueNumber()); !errors.Is(err, ErrTenantNotConfigured) {
 		t.Errorf("LookupBySendingNumber(unclaimed): got %v, want ErrTenantNotConfigured", err)
 	}
 }
@@ -277,7 +292,7 @@ func TestPostgresConfigStore_FromNumberConflictIsRejected(t *testing.T) {
 
 	companyA := mustCreateCompany(t, authStore, "cfg-conflict-a")
 	companyB := mustCreateCompany(t, authStore, "cfg-conflict-b")
-	sharedNumber := "+15550006666"
+	sharedNumber := uniqueNumber()
 
 	if err := store.Upsert(ctx, Config{
 		CompanyID: companyA, Provider: ProviderTwilio, AccountSID: "AC_owner",
@@ -343,7 +358,7 @@ func TestPostgresConfigStore_DeactivateAndList(t *testing.T) {
 	store := NewPostgresConfigStore(backend.Pool(), NopEncrypter{})
 
 	companyID := mustCreateCompany(t, authStore, "cfg-deactivate")
-	number := "+15550007777"
+	number := uniqueNumber()
 	if err := store.Upsert(ctx, Config{
 		CompanyID: companyID, Provider: ProviderTwilio, AccountSID: "AC_deact",
 		AuthToken: "secret-tok", WebhookSecret: "secret-whsec", SendingNumber: number,
