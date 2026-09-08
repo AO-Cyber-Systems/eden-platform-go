@@ -4,7 +4,7 @@
 
 - **Name:** eden-platform-go (Go backend platform for the Eden portfolio)
 - **Type:** Library + two binaries (`cmd/eden-platform-dev`, `cmd/aoid`) — child of the `eden-libs/` workspace
-- **Status:** M9 reached; post-M9 maintenance + AO ID hardening
+- **Status:** Ready to plan
 
 ## Current Position
 
