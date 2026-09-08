@@ -151,6 +151,10 @@ func runServer(
 	mux.Handle("/up", (&server.HealthChecker{}).Handler())
 	mux.Handle("/metrics", metrics.MetricsHandler())
 
+	if err := startDevSession(cfg, authService, mux); err != nil {
+		log.Fatalf("dev session: %v", err)
+	}
+
 	handler := server.CORSMiddleware(server.LoggingMiddleware(mux))
 	log.Printf("eden platform dev server listening on %s", cfg.ServerAddr)
 	if err := http.ListenAndServe(cfg.ServerAddr, handler); err != nil {
