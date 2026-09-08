@@ -2,8 +2,8 @@ package telephony
 
 // Ported from politihub/go/internal/telephony/tcpa_test.go (Objective 40
 // TRD 40-05). Every case from the source file is preserved verbatim in
-// intent; only identifiers changed for the VoterLookup -> RecipientLookup /
-// committee -> company rename (see tcpa.go's header comment). New tests
+// intent; only identifiers changed for the domain-neutral rename (see
+// tcpa.go's header comment) and the committee -> company rename. New tests
 // below the ported section cover FuzzyMatchStart and CheckSendAllowed,
 // neither of which exist in the politihub source — see tcpa.go's
 // PhoneOptOutStore.Remove doc comment for the navigators reconciliation
