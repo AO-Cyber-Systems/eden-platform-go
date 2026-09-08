@@ -80,7 +80,7 @@ func TestScanPage_BlocksRoundTripByteStable(t *testing.T) {
 	want := []Block{
 		{
 			ID:   "b1",
-			Type: "hero-banner-from-a-consumer-app", // opaque to this package on purpose
+			Type: "splash-banner-from-a-consumer-app", // opaque to this package on purpose
 			Data: map[string]any{
 				"headline": "Welcome",
 				// unknownFutureField is a key NO version of platform/cms has ever
