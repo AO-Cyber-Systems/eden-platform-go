@@ -22,33 +22,46 @@ W6 AO ID extraction                ██████████ 100%   (Obj 29
 M9 Eden Family launch-ready        ██████████ 100%   (Obj 33)            ◄ M9 reached 2026-05-11
 ─────────────────────────────────────────────────────────────────
 Post-M9 maintenance                ████░░░░░░ ~40%   (commit-prefix work, no formal objective yet)
-Obj 40 platform/telephony          █░░░░░░░░░ ~10%   (TRD 01 of N — seam done, adapters pending)
+Obj 40 platform/telephony          ███░░░░░░░ ~29%   (TRD 02 of 7 — seam + adapters done, resolver/webhooks/config pending)
 ```
 
-Last activity: 2026-09-08 — Obj 40 TRD 01 (platform/telephony package seam) executed and verified.
+Last activity: 2026-09-08 — Obj 40 TRD 02 (Twilio + SignalWire adapters) executed and verified.
 
 ## In Flight
 
-- **Obj 40: platform/telephony (TRD 01 of N complete)** — provider-neutral
+- **Obj 40: platform/telephony (TRD 02 of 7 complete)** — provider-neutral
   abstraction over SMS/voice telephony, lifted and renamed from a proven
   production implementation. TRD 01 shipped the seam: `Provider` interface,
   `NoopProvider` fail-loud fallback, `Registry` (ProviderType ->
   ProviderFactory), value types, `Config.SignatureToken()`. Tenant identifier
   renamed `committeeID` -> `CompanyID` (`uuid.UUID` unchanged — matches
-  `platform/company`'s tenant keying). 10 tests green under `-race`, `go.mod`
-  unchanged (no new dependency this TRD). On `plan/obj-40-platform-telephony`.
+  `platform/company`'s tenant keying). TRD 02 shipped both concrete adapters:
+  `signalwireProvider` (default, wraps `twilio-go` via a host-rewrite shim in
+  `url_rewrite.go`) and `twilioProvider` (second adapter, proving the seam is
+  a real abstraction). `github.com/twilio/twilio-go` added as a new direct
+  dependency, **pinned to the exact version `v1.30.4`** the source was vetted
+  against (go.sum hashes match the source repo byte-for-byte). Both adapters'
+  webhook-signature verification delegates entirely to twilio-go's
+  `RequestValidator` — no HMAC is hand-rolled anywhere in the package. 26
+  tests green under `-race` (10 from TRD 01 + 16 new/ported in TRD 02,
+  including two TRD-required proof tests with no source equivalent: SignalWire
+  resolves as registry default, and a third in-test fake Provider registers
+  without touching registry/resolver code). On `plan/obj-40-platform-telephony`.
   TRDs at `.planning/objectives/40-platform-telephony/`.
-  - Concrete adapters (Twilio, SignalWire via `twilio-go`) and the
-    config-driven resolver are later TRDs in the same objective — not yet
-    planned/executed.
-  - **TRD correction:** politihub has NO `models_test.go` at all — the TRD's
-    file_tree wrongly described one as `← CREATE (ported)`. `Config`/helper
-    tests actually live inside the source's `registry_test.go`.
-    `platform/telephony/registry_test.go` here is a genuine port (+3 new
-    NoopProvider assertions); `platform/telephony/models_test.go` is
-    NET-NEW coverage, not ported — only `TestConfig_SignatureToken` moved
-    over, `reconstructURL`/`mapStatus` tests are freshly written. See
-    40-01-SUMMARY.md for detail.
+  - Config-driven resolver + encrypted per-tenant config storage (TRD 03) and
+    the webhook handler (TRD 04) are later TRDs in the same objective — not
+    yet planned/executed. 5 TRDs remain (03-07).
+  - **TRD 01 correction (carried forward):** politihub has NO `models_test.go`
+    at all — the TRD's file_tree wrongly described one as `← CREATE
+    (ported)`. `Config`/helper tests actually live inside the source's
+    `registry_test.go`. See 40-01-SUMMARY.md for detail.
+  - **TRD 02 note:** `go mod tidy` (no flags) does not run cleanly in this
+    repo — pre-existing, unrelated break in `platform/audit`'s test-only
+    import of `go.opentelemetry.io/otel/sdk/internal/internaltest` (missing
+    from the resolved otel/sdk release). Confirmed pre-existing via a
+    stash-and-retry against the unmodified tree. Worked around with `go get
+    @v1.30.4` + `go mod tidy -e`; not fixed, since it's out of this
+    objective's scope. See 40-02-SUMMARY.md.
 
 - **platform/identity first-party issuer (issue #52)** — the two consumer seams,
   assurance derivation, the issuer, key-set publication, end-to-end proof and
@@ -111,9 +124,9 @@ None tracked locally; portfolio-level pending items live in
 
 ## Session Continuity
 
-- **Last session:** 2026-09-08 — Executed Obj 40 TRD 01 (platform/telephony package seam): 4 atomic commits (93fe135, 5c4cbd1, 0217a35, cdea606), 10 tests green under `-race`, SUMMARY.md written and self-checked, STATE.md/ROADMAP.md updated.
-- **Stopped at:** Completed 40-01-TRD.md. TRD 02 (concrete Twilio/SignalWire adapters) not yet planned.
-- **No resume file** — clean stop between TRDs. Next executor run should plan/execute Obj 40 TRD 02.
+- **Last session:** 2026-09-08 — Executed Obj 40 TRD 02 (Twilio + SignalWire adapters): 5 atomic commits (28f6c73, 2611782, 1c0cbf1, 2b9fb13, f6a3bb0) + docs commit (a639f24), 26 tests green under `-race`, `twilio-go` pinned to `v1.30.4`, SUMMARY.md written and self-checked, STATE.md/ROADMAP.md updated.
+- **Stopped at:** Completed 40-02-TRD.md. TRD 03 (config-driven resolver + encrypted per-tenant config storage) not yet planned/executed — owned by a parallel agent per the objective's file-ownership split (`config_store`/`field_encrypter`*.go, `migrations/platform/`).
+- **No resume file** — clean stop between TRDs. Next executor run should plan/execute Obj 40 TRD 03 (or later TRDs if 03 is already in flight on a parallel worktree).
 
 ## See also
 
