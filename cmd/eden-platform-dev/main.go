@@ -155,6 +155,10 @@ func runServer(
 		log.Fatalf("dev session: %v", err)
 	}
 
+	if err := printQuickstart(cfg, authService); err != nil {
+		log.Fatalf("quickstart: %v", err)
+	}
+
 	handler := server.CORSMiddleware(server.LoggingMiddleware(mux))
 	log.Printf("eden platform dev server listening on %s", cfg.ServerAddr)
 	if err := http.ListenAndServe(cfg.ServerAddr, handler); err != nil {
