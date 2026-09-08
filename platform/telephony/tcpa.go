@@ -5,9 +5,11 @@ package telephony
 // Ported from politihub/go/internal/telephony/tcpa.go (Objective 40 TRD
 // 40-05), adapted to be provider-neutral:
 //
-//   - VoterLookup -> RecipientLookup, FindVoterByPhone -> FindRecipientByPhone.
-//     No voter concept enters this package -- a "recipient" is anything the
-//     consuming application's own domain model links a phone number to.
+//   - The election-specific phone-lookup interface and method the source
+//     used are renamed to be domain-neutral (RecipientLookup /
+//     FindRecipientByPhone below). No election/campaign concept enters this
+//     package -- a "recipient" is anything the consuming application's own
+//     domain model links a phone number to.
 //   - committeeID -> companyID, matching every other identifier in this
 //     package (Config.CompanyID, ConfigStore.Get(ctx, companyID), ...).
 //
@@ -372,8 +374,9 @@ func (s *TCPAService) handleStart(ctx context.Context, companyID uuid.UUID, msg 
 // FAILS CLOSED: an error from the underlying store (unknown state) is
 // treated as "not allowed," mirroring
 // navigators-go/internal/navigators/suppression_service.go's
-// IsVoterSuppressed fail-closed posture — an outage in the opt-out store
-// must never look like consent.
+// SuppressionService's own is-suppressed check, which has the same
+// fail-closed posture — an outage in the opt-out store must never look
+// like consent.
 //
 // Reconciled against navigators-go/internal/navigators/sms_compliance.go's
 // CheckSendAllowed, which additionally gates on quiet hours. Quiet-hours
