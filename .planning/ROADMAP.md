@@ -98,16 +98,26 @@ maintenance + AO ID hardening (see "Post-M9" section below).
 
 - [ ] **Obj 40: platform/telephony** — new package: provider-neutral abstraction
   over SMS/voice telephony backends (Twilio, SignalWire), lifted and renamed
-  from a proven production implementation. TRD 01 (done) establishes the seam:
+  from a proven production implementation. TRD 01 establishes the seam:
   `Provider` interface, `NoopProvider` fail-loud fallback, `Registry`
   (ProviderType -> ProviderFactory), value types, `Config.SignatureToken()`.
   Tenant identifier renamed `committeeID` -> `CompanyID` (`uuid.UUID`
-  unchanged). Zero new dependencies in TRD 01; concrete adapters
-  (`twilio-go`) and the config-driven resolver land in later TRDs. TRDs at
+  unchanged). TRD 02 ships both concrete adapters (SignalWire, the default,
+  and Twilio, proving the seam) wrapping `github.com/twilio/twilio-go`,
+  pinned to the exact version `v1.30.4`; webhook-signature verification for
+  both adapters delegates to twilio-go's own `RequestValidator`, never
+  hand-rolled. The config-driven resolver lands in a later TRD. TRDs at
   `.planning/objectives/40-platform-telephony/`.
   - [x] TRD 01: package seam (Provider/NoopProvider/Registry/models) — 10
     tests green under `-race`, no politihub domain vocabulary survives.
-  - [ ] TRD 02+: concrete adapters + resolver (not yet planned/executed).
+  - [x] TRD 02: Twilio + SignalWire adapters — 26 tests green under `-race`
+    (cumulative), `twilio-go v1.30.4` pinned as a new direct dependency,
+    default-provider and third-provider-extends-the-seam both proven by
+    dedicated tests.
+  - [ ] TRD 03-07: config-driven resolver, encrypted per-tenant config
+    storage, webhook handler, and remaining TRDs (not yet
+    planned/executed; TRD 03 is owned by a parallel agent per this
+    objective's file-ownership split).
 
 ### Active work streams (tracked via commit prefixes; canonical plan TBD)
 
