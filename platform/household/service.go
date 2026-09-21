@@ -242,13 +242,41 @@ func (s *Service) AddMember(ctx context.Context, ac AuditContext, m Member) (Mem
 }
 
 // UpdateMemberRole changes a member's role and capabilities atomically,
-// enforcing the same capability invariants as AddMember.
+// enforcing the same capability invariants as AddMember AND the same
+// lower-bound invariants as RemoveMember: the account_owner cannot be stripped
+// here (transfer it with SetAccountOwner), the last manager cannot be demoted,
+// and a member cannot become a child without a birthdate (the COPPA age test
+// reads it). Without these the role path was a back door around RemoveMember's
+// guards — the sole owner+manager could demote themself to a plain guardian
+// and leave the household with no owner and no manager.
 func (s *Service) UpdateMemberRole(ctx context.Context, ac AuditContext, memberID uuid.UUID, role Role, isManager, isAccountOwner bool, caps json.RawMessage) (Member, error) {
 	if !role.Valid() {
 		return Member{}, fmt.Errorf("%w: %q", ErrInvalidRole, role)
 	}
 	if err := validateCapabilities(role, isManager, isAccountOwner); err != nil {
 		return Member{}, err
+	}
+	current, err := s.store.GetMember(ctx, memberID)
+	if err != nil {
+		return Member{}, fmt.Errorf("get member for role update: %w", err)
+	}
+	if current.Status == StatusRemoved {
+		return Member{}, fmt.Errorf("%w: member is removed", ErrNotFound)
+	}
+	if role == RoleChild && current.Birthdate == nil {
+		return Member{}, ErrChildBirthdateRequired
+	}
+	if current.IsAccountOwner && !isAccountOwner {
+		return Member{}, ErrCannotRemoveAccountOwner
+	}
+	if current.IsManager && !isManager {
+		n, err := s.store.CountManagers(ctx, current.HouseholdID)
+		if err != nil {
+			return Member{}, fmt.Errorf("count managers: %w", err)
+		}
+		if n <= 1 {
+			return Member{}, ErrLastManager
+		}
 	}
 	if len(caps) == 0 {
 		caps = json.RawMessage("{}")

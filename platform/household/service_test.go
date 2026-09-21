@@ -576,3 +576,81 @@ func TestService_EstablishParentOfRecord(t *testing.T) {
 		t.Errorf("parents = %+v, want the one POR %s", parents, por.ID)
 	}
 }
+
+// ---- UpdateMemberRole must enforce the same lower-bound invariants as
+// RemoveMember (review finding on #56): demoting the sole owner / last manager
+// through the role path left the household with no owner and no manager.
+
+func TestService_UpdateMemberRole_RefusesDemotingAccountOwner(t *testing.T) {
+	svc, _, _ := newServiceWithRecorder(t)
+	ac := newAC()
+	ctx := context.Background()
+	h, _ := svc.CreateHousehold(ctx, ac, "Fam", nil)
+	owner := addGuardianOwner(t, svc, ac, h.ID, uuid.New())
+
+	_, err := svc.UpdateMemberRole(ctx, ac, owner.ID, RoleGuardian, true, false, nil)
+	if !errors.Is(err, ErrCannotRemoveAccountOwner) {
+		t.Fatalf("err = %v, want ErrCannotRemoveAccountOwner (owner must be transferred via SetAccountOwner)", err)
+	}
+	got, _ := svc.store.GetMember(ctx, owner.ID)
+	if !got.IsAccountOwner {
+		t.Fatal("account_owner capability was stripped despite the error")
+	}
+}
+
+func TestService_UpdateMemberRole_RefusesDemotingLastManager(t *testing.T) {
+	svc, _, _ := newServiceWithRecorder(t)
+	ac := newAC()
+	ctx := context.Background()
+	h, _ := svc.CreateHousehold(ctx, ac, "Fam", nil)
+	// Owner is NOT a manager; a separate adult is the sole manager.
+	if _, err := svc.AddMember(ctx, ac, Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: RoleAdult, IsAccountOwner: true}); err != nil {
+		t.Fatalf("add owner: %v", err)
+	}
+	mgr, _ := svc.AddMember(ctx, ac, Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: RoleGuardian, IsManager: true})
+
+	_, err := svc.UpdateMemberRole(ctx, ac, mgr.ID, RoleGuardian, false, false, nil)
+	if !errors.Is(err, ErrLastManager) {
+		t.Fatalf("err = %v, want ErrLastManager", err)
+	}
+	if n, _ := svc.store.CountManagers(ctx, h.ID); n != 1 {
+		t.Fatalf("managers = %d after refused demotion, want 1", n)
+	}
+
+	// With a second manager present the demotion is allowed.
+	if _, err := svc.AddMember(ctx, ac, Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: RoleAdult, IsManager: true}); err != nil {
+		t.Fatalf("add second manager: %v", err)
+	}
+	if _, err := svc.UpdateMemberRole(ctx, ac, mgr.ID, RoleGuardian, false, false, nil); err != nil {
+		t.Fatalf("demote non-last manager: %v", err)
+	}
+}
+
+func TestService_UpdateMemberRole_RefusesChildWithoutBirthdate(t *testing.T) {
+	svc, _, _ := newServiceWithRecorder(t)
+	ac := newAC()
+	ctx := context.Background()
+	h, _ := svc.CreateHousehold(ctx, ac, "Fam", nil)
+	addGuardianOwner(t, svc, ac, h.ID, uuid.New())
+	adult, _ := svc.AddMember(ctx, ac, Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: RoleAdult})
+
+	_, err := svc.UpdateMemberRole(ctx, ac, adult.ID, RoleChild, false, false, nil)
+	if !errors.Is(err, ErrChildBirthdateRequired) {
+		t.Fatalf("err = %v, want ErrChildBirthdateRequired (COPPA age test needs a birthdate)", err)
+	}
+}
+
+func TestService_UpdateMemberRole_RemovedMemberIsNotFound(t *testing.T) {
+	svc, _, _ := newServiceWithRecorder(t)
+	ac := newAC()
+	ctx := context.Background()
+	h, _ := svc.CreateHousehold(ctx, ac, "Fam", nil)
+	addGuardianOwner(t, svc, ac, h.ID, uuid.New())
+	adult, _ := svc.AddMember(ctx, ac, Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: RoleAdult})
+	if err := svc.RemoveMember(ctx, ac, adult.ID); err != nil {
+		t.Fatalf("remove: %v", err)
+	}
+	if _, err := svc.UpdateMemberRole(ctx, ac, adult.ID, RoleGuardian, true, false, nil); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("err = %v, want ErrNotFound for a removed member", err)
+	}
+}
