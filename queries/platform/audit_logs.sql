@@ -35,3 +35,17 @@ LIMIT $3 OFFSET $4;
 
 -- name: CountAuditLogsByActor :one
 SELECT count(*) FROM audit_logs WHERE company_id = $1 AND actor_id = $2;
+
+-- name: ListHouseholdAuditLogs :many
+-- Identity-space reader for the household / COPPA trail. Household events are
+-- written with company_id NULL and resource = 'household', so none of the
+-- company-scoped readers above can ever return them. Scoped by resource_id
+-- (the household), so it can never cross households or read a company row.
+SELECT * FROM audit_logs
+WHERE company_id IS NULL AND resource = 'household' AND resource_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: CountHouseholdAuditLogs :one
+SELECT count(*) FROM audit_logs
+WHERE company_id IS NULL AND resource = 'household' AND resource_id = $1;

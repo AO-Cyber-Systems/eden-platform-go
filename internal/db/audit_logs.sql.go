@@ -40,6 +40,18 @@ func (q *Queries) CountAuditLogsByActor(ctx context.Context, arg CountAuditLogsB
 	return count, err
 }
 
+const countHouseholdAuditLogs = `-- name: CountHouseholdAuditLogs :one
+SELECT count(*) FROM audit_logs
+WHERE company_id IS NULL AND resource = 'household' AND resource_id = $1
+`
+
+func (q *Queries) CountHouseholdAuditLogs(ctx context.Context, resourceID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countHouseholdAuditLogs, resourceID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAuditLog = `-- name: CreateAuditLog :exec
 INSERT INTO audit_logs (company_id, actor_id, action, resource, resource_id, details, ip_address)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -234,6 +246,53 @@ func (q *Queries) ListAuditLogsByResource(ctx context.Context, arg ListAuditLogs
 		arg.Limit,
 		arg.Offset,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AuditLog{}
+	for rows.Next() {
+		var i AuditLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.CompanyID,
+			&i.ActorID,
+			&i.Action,
+			&i.Resource,
+			&i.ResourceID,
+			&i.Details,
+			&i.IpAddress,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHouseholdAuditLogs = `-- name: ListHouseholdAuditLogs :many
+SELECT id, company_id, actor_id, action, resource, resource_id, details, ip_address, created_at FROM audit_logs
+WHERE company_id IS NULL AND resource = 'household' AND resource_id = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListHouseholdAuditLogsParams struct {
+	ResourceID string `json:"resource_id"`
+	Limit      int32  `json:"limit"`
+	Offset     int32  `json:"offset"`
+}
+
+// Identity-space reader for the household / COPPA trail. Household events are
+// written with company_id NULL and resource = 'household', so none of the
+// company-scoped readers above can ever return them. Scoped by resource_id
+// (the household), so it can never cross households or read a company row.
+func (q *Queries) ListHouseholdAuditLogs(ctx context.Context, arg ListHouseholdAuditLogsParams) ([]AuditLog, error) {
+	rows, err := q.db.Query(ctx, listHouseholdAuditLogs, arg.ResourceID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

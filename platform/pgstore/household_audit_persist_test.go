@@ -57,37 +57,21 @@ func TestHouseholdService_AuditPersists_NoCompany(t *testing.T) {
 	}
 	logger.Stop() // drains the async buffer
 
-	// Query the identity actor's audit rows directly (QueryAuditLogs is
-	// company-scoped and cannot see NULL-company rows). Assert the rows
-	// persisted with a NULL company_id.
-	rows, err := backend.Pool().Query(ctx,
-		`SELECT company_id, actor_id, action FROM audit_logs WHERE actor_id = $1 ORDER BY action`,
-		actorIdentityID)
+	// Read back through the household-scoped reader (the company-scoped
+	// QueryAuditLogs cannot see NULL-company rows by design).
+	entries, count, err := auditStore.ListHouseholdAuditLogs(ctx, h.ID, 50, 0)
 	if err != nil {
-		t.Fatalf("query audit_logs: %v", err)
+		t.Fatalf("list household audit logs: %v", err)
 	}
-	defer rows.Close()
-
 	seen := map[string]bool{}
-	count := 0
-	for rows.Next() {
-		var companyID pgtype.UUID
-		var actorID uuid.UUID
-		var action string
-		if err := rows.Scan(&companyID, &actorID, &action); err != nil {
-			t.Fatalf("scan: %v", err)
+	for _, e := range entries {
+		if e.CompanyId != "" {
+			t.Errorf("action %q: company_id = %q, want empty (household has no company)", e.Action, e.CompanyId)
 		}
-		count++
-		if companyID.Valid {
-			t.Errorf("action %q: company_id = %x, want NULL (household has no company)", action, companyID.Bytes)
+		if e.ActorId != actorIdentityID.String() {
+			t.Errorf("action %q: actor_id = %s, want identity %s", e.Action, e.ActorId, actorIdentityID)
 		}
-		if actorID != actorIdentityID {
-			t.Errorf("action %q: actor_id = %s, want identity %s", action, actorID, actorIdentityID)
-		}
-		seen[action] = true
-	}
-	if err := rows.Err(); err != nil {
-		t.Fatalf("rows err: %v", err)
+		seen[e.Action] = true
 	}
 
 	if count == 0 {
@@ -180,5 +164,72 @@ func TestAuditLog_CompanyScoped_StillPersists(t *testing.T) {
 	}
 	if entries[0].GetCompanyId() != co.ID.String() {
 		t.Errorf("company_id = %q, want %q", entries[0].GetCompanyId(), co.ID.String())
+	}
+}
+
+// TestAuditStore_ListHouseholdAuditLogs — review finding 5 on #56: NULL-company
+// household rows persisted but every reader was `WHERE company_id = $1`, so a
+// COPPA / GDPR-K consent trail could not be served through any API. This is the
+// household-scoped reader that closes that gap. It must return the household's
+// trail, never another household's, and never a company-scoped row.
+func TestAuditStore_ListHouseholdAuditLogs(t *testing.T) {
+	backend := setupTestBackend(t)
+	truncateAll(t, backend)
+	ctx := context.Background()
+	hhStore := backend.HouseholdStore()
+	auditStore := backend.AuditStore()
+
+	logger := audit.NewLogger(auditStore)
+	logger.Start()
+	svc := household.NewService(hhStore, logger)
+	ac := household.AuditContext{CompanyID: uuid.Nil, ActorID: uuid.New(), IPAddress: "10.0.0.9"}
+
+	hA, err := svc.CreateHousehold(ctx, ac, "A", nil)
+	if err != nil {
+		t.Fatalf("create A: %v", err)
+	}
+	if _, err := svc.AddMember(ctx, ac, household.Member{HouseholdID: hA.ID, IdentityID: uuid.New(), Role: household.RoleGuardian, IsManager: true, IsAccountOwner: true}); err != nil {
+		t.Fatalf("add member A: %v", err)
+	}
+	hB, err := svc.CreateHousehold(ctx, ac, "B", nil)
+	if err != nil {
+		t.Fatalf("create B: %v", err)
+	}
+	logger.Stop()
+
+	entries, total, err := auditStore.ListHouseholdAuditLogs(ctx, hA.ID, 50, 0)
+	if err != nil {
+		t.Fatalf("list household audit: %v", err)
+	}
+	if total != 2 || len(entries) != 2 {
+		t.Fatalf("household A trail: total=%d len=%d, want 2 (created + member_added)", total, len(entries))
+	}
+	actions := map[string]bool{}
+	for _, e := range entries {
+		if e.ResourceId != hA.ID.String() {
+			t.Errorf("entry %s resource_id = %s, want household A %s (cross-household leak)", e.Id, e.ResourceId, hA.ID)
+		}
+		if e.CompanyId != "" {
+			t.Errorf("entry %s company_id = %q, want empty for a household row", e.Id, e.CompanyId)
+		}
+		actions[e.Action] = true
+	}
+	if !actions[household.ActionHouseholdCreated] || !actions[household.ActionMemberAdded] {
+		t.Errorf("actions = %v, want created + member_added", actions)
+	}
+
+	// Household B sees only its own creation.
+	entriesB, totalB, err := auditStore.ListHouseholdAuditLogs(ctx, hB.ID, 50, 0)
+	if err != nil {
+		t.Fatalf("list B: %v", err)
+	}
+	if totalB != 1 || len(entriesB) != 1 || entriesB[0].ResourceId != hB.ID.String() {
+		t.Fatalf("household B trail: total=%d len=%d, want exactly its own created row", totalB, len(entriesB))
+	}
+
+	// Pagination contract.
+	page, total2, err := auditStore.ListHouseholdAuditLogs(ctx, hA.ID, 1, 1)
+	if err != nil || total2 != 2 || len(page) != 1 {
+		t.Fatalf("page(limit=1,offset=1): err=%v total=%d len=%d", err, total2, len(page))
 	}
 }
