@@ -46,21 +46,21 @@ func seedConsentFamily(t *testing.T, be *pgstore.Backend) consentSeed {
 	}
 
 	hh, err := hhStore.CreateHousehold(ctx, household.Household{
-		PrimaryContactUserID: parentUser.ID, DisplayName: "Consent Family",
+		PrimaryContactIdentityID: parentUser.ID, DisplayName: "Consent Family",
 	})
 	if err != nil {
 		t.Fatalf("create household: %v", err)
 	}
 	parent, err := hhStore.AddMember(ctx, household.Member{
-		HouseholdID: hh.ID, UserID: parentUser.ID, Role: household.RoleParentOfRecord,
-		Capabilities: household.DefaultCapabilities(household.RoleParentOfRecord),
+		HouseholdID: hh.ID, IdentityID: parentUser.ID, Role: household.RoleGuardian,
+		IsManager: true, IsAccountOwner: true,
 	})
 	if err != nil {
 		t.Fatalf("add parent: %v", err)
 	}
 	bday := time.Date(2018, 6, 1, 0, 0, 0, 0, time.UTC)
 	child, err := hhStore.AddMember(ctx, household.Member{
-		HouseholdID: hh.ID, UserID: childUser.ID, Role: household.RoleChild, Birthdate: &bday,
+		HouseholdID: hh.ID, IdentityID: childUser.ID, Role: household.RoleChild, Birthdate: &bday,
 	})
 	if err != nil {
 		t.Fatalf("add child: %v", err)

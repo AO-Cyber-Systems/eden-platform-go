@@ -12,12 +12,12 @@ import (
 )
 
 // AuditContext carries the actor / company / IP triple needed for audit
-// emission. Callers populate this from their request context and thread it
-// through to Service mutations.
-//
-// CompanyID is required by the platform audit_logs schema but household
-// itself is company-agnostic — for Eden Family, the household's billable
-// company id is appropriate; for AOFamily-AI a per-tenant company id works.
+// emission. For the re-homed household model ActorID is the acting AOID
+// identity (aoid.identities(id)) — NOT a platform.users(id). This is a true
+// contract as of migration 017, which dropped the audit_logs.actor_id ->
+// users(id) FK so actor_id is a logical actor UUID spanning both id-spaces.
+// Before 017 an identity actor would FK-fail on insert and be silently
+// dropped by the audit logger; see platform/audit/logger.go.
 type AuditContext struct {
 	CompanyID uuid.UUID
 	ActorID   uuid.UUID
@@ -27,14 +27,15 @@ type AuditContext struct {
 // Audit action constants. Stable strings, used as filter values for
 // platform/audit log queries.
 const (
-	ActionHouseholdCreated               = "household.created"
-	ActionHouseholdUpdated               = "household.updated"
-	ActionHouseholdDeleted               = "household.deleted"
-	ActionMemberAdded                    = "household.member_added"
-	ActionMemberRoleChanged              = "household.member_role_changed"
-	ActionMemberRemoved                  = "household.member_removed"
-	ActionParentOfRecordEstablished      = "household.parent_of_record_established"
-	ActionParentOfRecordRevoked          = "household.parent_of_record_revoked"
+	ActionHouseholdCreated          = "household.created"
+	ActionHouseholdUpdated          = "household.updated"
+	ActionHouseholdDeleted          = "household.deleted"
+	ActionMemberAdded               = "household.member_added"
+	ActionMemberRoleChanged         = "household.member_role_changed"
+	ActionMemberRemoved             = "household.member_removed"
+	ActionAccountOwnerTransferred   = "household.account_owner_transferred"
+	ActionParentOfRecordEstablished = "household.parent_of_record_established"
+	ActionParentOfRecordRevoked     = "household.parent_of_record_revoked"
 
 	resourceHousehold = "household"
 )
@@ -43,40 +44,46 @@ const (
 var (
 	// ErrInvalidRole is returned when a Role value is not recognized.
 	ErrInvalidRole = errors.New("household: invalid role")
-	// ErrChildBirthdateRequired indicates a child member was added without
-	// the birthdate needed for COPPA / GDPR-K eligibility checks.
+	// ErrInvalidStatus is returned when a Status value is not recognized.
+	ErrInvalidStatus = errors.New("household: invalid status")
+	// ErrChildBirthdateRequired indicates a child member was added without the
+	// birthdate needed for COPPA / GDPR-K eligibility checks.
 	ErrChildBirthdateRequired = errors.New("household: birthdate required for child member")
-	// ErrParentNotEligible indicates the proposed parent_of_record member
-	// is not in a role that can grant consent.
-	ErrParentNotEligible = errors.New("household: proposed parent is not eligible (must be parent or guardian)")
-	// ErrLastParentOfRecord is returned when revoking would leave a child
-	// with no parent_of_record. Surfaced for the caller to confirm.
-	ErrLastParentOfRecord = errors.New("household: cannot revoke last parent_of_record without replacement")
+	// ErrChildCannotHoldCapability indicates an attempt to make a child a
+	// manager or account_owner.
+	ErrChildCannotHoldCapability = errors.New("household: a child cannot be a manager or account_owner")
+	// ErrAccountOwnerMustBeAdult indicates an attempt to make a child the
+	// account_owner (the account_owner must be an adult / non-child member).
+	ErrAccountOwnerMustBeAdult = errors.New("household: the account_owner must be an adult")
+	// ErrLastManager is returned when removing a member would leave the
+	// household with no manager.
+	ErrLastManager = errors.New("household: cannot remove the last manager")
+	// ErrCannotRemoveAccountOwner is returned when removing the account_owner
+	// without first transferring the capability.
+	ErrCannotRemoveAccountOwner = errors.New("household: cannot remove the account_owner; transfer it first")
+	// ErrParentNotEligible indicates the proposed parent_of_record member is
+	// not in a role that can grant consent.
+	ErrParentNotEligible = errors.New("household: proposed parent is not eligible (must be a guardian)")
 )
 
-// auditEmitter is the minimal slice of *audit.Logger that Service uses.
-// Defining a tiny interface here keeps Service trivially mockable in tests
-// and avoids importing the full Logger machinery for in-memory unit tests.
 type auditEmitter interface {
 	Log(audit.Event)
 }
 
-// noopEmitter is used when no audit logger is supplied. Useful in tests
-// and during early bring-up before the audit pipeline is wired.
 type noopEmitter struct{}
 
 func (noopEmitter) Log(audit.Event) {}
 
-// Service is the public household API. It wraps a Store and emits an
-// audit event for every mutating call.
+// Service is the public household API. It wraps a Store and emits an audit
+// event for every mutating call, and enforces the household invariants that
+// cannot be expressed as DB constraints alone (>=1 manager, transfer-before-
+// remove of the account_owner).
 type Service struct {
 	store   Store
 	auditor auditEmitter
 }
 
-// NewService constructs a Service. If logger is nil, audit emission is a
-// no-op (suitable for unit tests; production callers should always supply
-// a real *audit.Logger).
+// NewService constructs a Service. If logger is nil, audit emission is a no-op.
 func NewService(store Store, logger *audit.Logger) *Service {
 	var em auditEmitter = noopEmitter{}
 	if logger != nil {
@@ -85,48 +92,115 @@ func NewService(store Store, logger *audit.Logger) *Service {
 	return &Service{store: store, auditor: em}
 }
 
-// CreateHousehold creates a new household with the given primary contact
-// user as its first owner-class member. The primary contact is implicitly
-// added with RoleParentOfRecord and DefaultCapabilities; if that's not
-// what the caller wants, it can call UpdateMemberRole afterwards.
+// CreateHousehold creates a new household. The primary contact identity is the
+// acting identity (ac.ActorID). Members (including the required account_owner
+// and >=1 manager) are added via AddMember by the provisioning seam.
 func (s *Service) CreateHousehold(ctx context.Context, ac AuditContext, displayName string, metadata json.RawMessage) (Household, error) {
 	if metadata == nil {
 		metadata = json.RawMessage("{}")
 	}
 	h, err := s.store.CreateHousehold(ctx, Household{
-		PrimaryContactUserID: ac.ActorID,
-		DisplayName:          displayName,
-		Metadata:             metadata,
+		PrimaryContactIdentityID: ac.ActorID,
+		DisplayName:              displayName,
+		Metadata:                 metadata,
 	})
 	if err != nil {
 		return Household{}, fmt.Errorf("create household: %w", err)
 	}
-	s.emit(ac, ActionHouseholdCreated, h.ID, map[string]any{
-		"display_name": displayName,
-	})
+	s.emit(ac, ActionHouseholdCreated, h.ID, map[string]any{"display_name": displayName})
 	return h, nil
 }
 
-// GetHousehold returns the household by id (or ErrNotFound).
-func (s *Service) GetHousehold(ctx context.Context, id uuid.UUID) (Household, error) {
-	return s.store.GetHousehold(ctx, id)
+// OwnerInput describes the first owner of a household created via
+// CreateHouseholdWithOwner. Role must be a non-child role (guardian or adult);
+// the owner is always seeded as a manager + account_owner.
+type OwnerInput struct {
+	IdentityID uuid.UUID
+	Role       Role
+	Birthdate  *time.Time
 }
 
-// UpdateHousehold updates display_name and metadata. Other fields are
-// immutable through this API.
+// CreateHouseholdWithOwner is the provisioning entry point: it atomically
+// creates a household AND its first member — a manager + account_owner — so a
+// household created via the real path always has exactly one account_owner and
+// at least one manager. The empty-household CreateHousehold is retained for
+// internal / test use; anything that trusts "the household's account_owner"
+// must be provisioned through this seam.
+//
+// The owner's role must be non-child; a child is rejected with
+// ErrChildCannotHoldCapability (an account_owner must be an adult). The
+// household's primary_contact_identity_id is set to the owner's identity. The
+// insert is one transaction in the store, so a failure on either statement
+// rolls back and leaves no orphan household.
+func (s *Service) CreateHouseholdWithOwner(ctx context.Context, ac AuditContext, displayName string, owner OwnerInput, metadata json.RawMessage) (*Household, *Member, error) {
+	if !owner.Role.Valid() {
+		return nil, nil, fmt.Errorf("%w: %q", ErrInvalidRole, owner.Role)
+	}
+	// The owner is always manager + account_owner: validateCapabilities rejects
+	// a child (ErrChildCannotHoldCapability) and any non-adult owner role
+	// (ErrAccountOwnerMustBeAdult).
+	if err := validateCapabilities(owner.Role, true, true); err != nil {
+		return nil, nil, err
+	}
+	if metadata == nil {
+		metadata = json.RawMessage("{}")
+	}
+	h := Household{
+		PrimaryContactIdentityID: owner.IdentityID,
+		DisplayName:              displayName,
+		Metadata:                 metadata,
+	}
+	m := Member{
+		IdentityID:     owner.IdentityID,
+		Role:           owner.Role,
+		Status:         StatusActive,
+		IsManager:      true,
+		IsAccountOwner: true,
+		Birthdate:      owner.Birthdate,
+	}
+	createdHH, createdMember, err := s.store.CreateHouseholdWithOwner(ctx, h, m)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create household with owner: %w", err)
+	}
+	s.emit(ac, ActionHouseholdCreated, createdHH.ID, map[string]any{"display_name": displayName})
+	s.emit(ac, ActionMemberAdded, createdHH.ID, map[string]any{
+		"member_id":        createdMember.ID.String(),
+		"identity_id":      createdMember.IdentityID.String(),
+		"role":             string(createdMember.Role),
+		"is_manager":       createdMember.IsManager,
+		"is_account_owner": createdMember.IsAccountOwner,
+	})
+	return &createdHH, &createdMember, nil
+}
+
+// GetHouseholdByID returns the household by id (or ErrNotFound).
+func (s *Service) GetHouseholdByID(ctx context.Context, id uuid.UUID) (Household, error) {
+	return s.store.GetHouseholdByID(ctx, id)
+}
+
+// GetHouseholdForIdentity returns the household an identity belongs to, plus
+// that identity's membership (role + capabilities). This is the clean read
+// path provisioning and AOID consume.
+func (s *Service) GetHouseholdForIdentity(ctx context.Context, identityID uuid.UUID) (Household, Member, error) {
+	return s.store.GetHouseholdForIdentity(ctx, identityID)
+}
+
+// ListHouseholdsForIdentity returns all active households an identity belongs to.
+func (s *Service) ListHouseholdsForIdentity(ctx context.Context, identityID uuid.UUID) ([]Household, error) {
+	return s.store.ListHouseholdsForIdentity(ctx, identityID)
+}
+
+// UpdateHousehold updates display_name and metadata.
 func (s *Service) UpdateHousehold(ctx context.Context, ac AuditContext, h Household) (Household, error) {
 	updated, err := s.store.UpdateHousehold(ctx, h)
 	if err != nil {
 		return Household{}, fmt.Errorf("update household: %w", err)
 	}
-	s.emit(ac, ActionHouseholdUpdated, updated.ID, map[string]any{
-		"display_name": updated.DisplayName,
-	})
+	s.emit(ac, ActionHouseholdUpdated, updated.ID, map[string]any{"display_name": updated.DisplayName})
 	return updated, nil
 }
 
-// DeleteHousehold cascades through household_members and parent_of_record
-// via FK. Use with care; intended for test cleanup or hard-delete flows.
+// DeleteHousehold cascades through members and parent_of_record via FK.
 func (s *Service) DeleteHousehold(ctx context.Context, ac AuditContext, id uuid.UUID) error {
 	if err := s.store.DeleteHousehold(ctx, id); err != nil {
 		return fmt.Errorf("delete household: %w", err)
@@ -135,8 +209,8 @@ func (s *Service) DeleteHousehold(ctx context.Context, ac AuditContext, id uuid.
 	return nil
 }
 
-// AddMember adds a new member to a household. For RoleChild, birthdate is
-// required (COPPA / GDPR-K compliance gate).
+// AddMember adds a new member to a household, enforcing the capability
+// invariants. For RoleChild, birthdate is required.
 func (s *Service) AddMember(ctx context.Context, ac AuditContext, m Member) (Member, error) {
 	if !m.Role.Valid() {
 		return Member{}, fmt.Errorf("%w: %q", ErrInvalidRole, m.Role)
@@ -148,26 +222,66 @@ func (s *Service) AddMember(ctx context.Context, ac AuditContext, m Member) (Mem
 		m.Status = StatusActive
 	}
 	if !m.Status.Valid() {
-		return Member{}, fmt.Errorf("household: invalid status %q", m.Status)
+		return Member{}, fmt.Errorf("%w: %q", ErrInvalidStatus, m.Status)
+	}
+	if err := validateCapabilities(m.Role, m.IsManager, m.IsAccountOwner); err != nil {
+		return Member{}, err
 	}
 	added, err := s.store.AddMember(ctx, m)
 	if err != nil {
 		return Member{}, fmt.Errorf("add member: %w", err)
 	}
 	s.emit(ac, ActionMemberAdded, added.HouseholdID, map[string]any{
-		"member_id": added.ID.String(),
-		"user_id":   added.UserID.String(),
-		"role":      string(added.Role),
+		"member_id":        added.ID.String(),
+		"identity_id":      added.IdentityID.String(),
+		"role":             string(added.Role),
+		"is_manager":       added.IsManager,
+		"is_account_owner": added.IsAccountOwner,
 	})
 	return added, nil
 }
 
-// UpdateMemberRole changes a member's role and capabilities atomically.
-func (s *Service) UpdateMemberRole(ctx context.Context, ac AuditContext, memberID uuid.UUID, role Role, caps Capabilities) (Member, error) {
+// UpdateMemberRole changes a member's role and capabilities atomically,
+// enforcing the same capability invariants as AddMember AND the same
+// lower-bound invariants as RemoveMember: the account_owner cannot be stripped
+// here (transfer it with SetAccountOwner), the last manager cannot be demoted,
+// and a member cannot become a child without a birthdate (the COPPA age test
+// reads it). Without these the role path was a back door around RemoveMember's
+// guards — the sole owner+manager could demote themself to a plain guardian
+// and leave the household with no owner and no manager.
+func (s *Service) UpdateMemberRole(ctx context.Context, ac AuditContext, memberID uuid.UUID, role Role, isManager, isAccountOwner bool, caps json.RawMessage) (Member, error) {
 	if !role.Valid() {
 		return Member{}, fmt.Errorf("%w: %q", ErrInvalidRole, role)
 	}
-	updated, err := s.store.UpdateMemberRole(ctx, memberID, role, caps)
+	if err := validateCapabilities(role, isManager, isAccountOwner); err != nil {
+		return Member{}, err
+	}
+	current, err := s.store.GetMember(ctx, memberID)
+	if err != nil {
+		return Member{}, fmt.Errorf("get member for role update: %w", err)
+	}
+	if current.Status == StatusRemoved {
+		return Member{}, fmt.Errorf("%w: member is removed", ErrNotFound)
+	}
+	if role == RoleChild && current.Birthdate == nil {
+		return Member{}, ErrChildBirthdateRequired
+	}
+	if current.IsAccountOwner && !isAccountOwner {
+		return Member{}, ErrCannotRemoveAccountOwner
+	}
+	if current.IsManager && !isManager {
+		n, err := s.store.CountManagers(ctx, current.HouseholdID)
+		if err != nil {
+			return Member{}, fmt.Errorf("count managers: %w", err)
+		}
+		if n <= 1 {
+			return Member{}, ErrLastManager
+		}
+	}
+	if len(caps) == 0 {
+		caps = json.RawMessage("{}")
+	}
+	updated, err := s.store.UpdateMemberRole(ctx, memberID, role, isManager, isAccountOwner, caps)
 	if err != nil {
 		return Member{}, fmt.Errorf("update member role: %w", err)
 	}
@@ -178,35 +292,70 @@ func (s *Service) UpdateMemberRole(ctx context.Context, ac AuditContext, memberI
 	return updated, nil
 }
 
-// RemoveMember soft-deletes a member (sets status='removed').
+// SetAccountOwner transfers the account_owner capability to newOwnerMemberID.
+// The new owner must be an active, non-child member of householdID. The
+// demote-then-promote is atomic in the store.
+func (s *Service) SetAccountOwner(ctx context.Context, ac AuditContext, householdID, newOwnerMemberID uuid.UUID) (Member, error) {
+	target, err := s.store.GetMember(ctx, newOwnerMemberID)
+	if err != nil {
+		return Member{}, fmt.Errorf("get new owner: %w", err)
+	}
+	if target.HouseholdID != householdID {
+		return Member{}, ErrNotFound
+	}
+	if target.Status == StatusRemoved {
+		return Member{}, fmt.Errorf("%w: member is removed", ErrNotFound)
+	}
+	if !target.Role.CanBeAccountOwner() {
+		return Member{}, ErrAccountOwnerMustBeAdult
+	}
+	owner, err := s.store.SetAccountOwner(ctx, householdID, newOwnerMemberID)
+	if err != nil {
+		return Member{}, fmt.Errorf("set account owner: %w", err)
+	}
+	s.emit(ac, ActionAccountOwnerTransferred, householdID, map[string]any{
+		"new_owner_member_id": newOwnerMemberID.String(),
+	})
+	return owner, nil
+}
+
+// RemoveMember soft-deletes a member (status='removed'), guarding the
+// household invariants: the account_owner cannot be removed without first
+// transferring the capability, and the last manager cannot be removed.
 func (s *Service) RemoveMember(ctx context.Context, ac AuditContext, memberID uuid.UUID) error {
 	m, err := s.store.GetMember(ctx, memberID)
 	if err != nil {
 		return fmt.Errorf("get member for removal: %w", err)
 	}
+	if m.IsAccountOwner {
+		return ErrCannotRemoveAccountOwner
+	}
+	if m.IsManager {
+		n, err := s.store.CountManagers(ctx, m.HouseholdID)
+		if err != nil {
+			return fmt.Errorf("count managers: %w", err)
+		}
+		if n <= 1 {
+			return ErrLastManager
+		}
+	}
 	if err := s.store.RemoveMember(ctx, memberID); err != nil {
 		return fmt.Errorf("remove member: %w", err)
 	}
 	s.emit(ac, ActionMemberRemoved, m.HouseholdID, map[string]any{
-		"member_id": memberID.String(),
-		"user_id":   m.UserID.String(),
+		"member_id":   memberID.String(),
+		"identity_id": m.IdentityID.String(),
 	})
 	return nil
 }
 
-// ListMembers returns active (non-removed) members of a household,
-// oldest-added first.
+// ListMembers returns active (non-removed) members of a household, oldest first.
 func (s *Service) ListMembers(ctx context.Context, householdID uuid.UUID) ([]Member, error) {
 	return s.store.ListMembers(ctx, householdID)
 }
 
-// ListHouseholdsForUser returns all active households a user belongs to.
-func (s *Service) ListHouseholdsForUser(ctx context.Context, userID uuid.UUID) ([]Household, error) {
-	return s.store.ListHouseholdsForUser(ctx, userID)
-}
-
-// EstablishParentOfRecord links a parent member to a child member. The
-// parent must be Role=parent or Role=guardian.
+// EstablishParentOfRecord links a parent/guardian member to a child member.
+// The parent must be eligible to grant consent (a guardian).
 func (s *Service) EstablishParentOfRecord(ctx context.Context, ac AuditContext, childMemberID, parentMemberID uuid.UUID) (ParentOfRecord, error) {
 	parent, err := s.store.GetMember(ctx, parentMemberID)
 	if err != nil {
@@ -224,20 +373,14 @@ func (s *Service) EstablishParentOfRecord(ctx context.Context, ac AuditContext, 
 		return ParentOfRecord{}, fmt.Errorf("establish parent_of_record: %w", err)
 	}
 	s.emit(ac, ActionParentOfRecordEstablished, child.HouseholdID, map[string]any{
-		"child_member_id":  childMemberID.String(),
-		"parent_member_id": parentMemberID.String(),
+		"child_member_id":     childMemberID.String(),
+		"parent_member_id":    parentMemberID.String(),
 		"parent_of_record_id": por.ID.String(),
 	})
 	return por, nil
 }
 
 // RevokeParentOfRecord soft-deletes a parent_of_record link.
-//
-// The "last parent" safety invariant is intentionally NOT enforced here
-// because the store does not expose a GetParentOfRecord by-id query.
-// Callers that want the invariant should call ListParentsOfRecord first
-// and reject revocation themselves; ErrLastParentOfRecord is exported as
-// a typed error those callers can return.
 func (s *Service) RevokeParentOfRecord(ctx context.Context, ac AuditContext, porID uuid.UUID) error {
 	if err := s.store.RevokeParentOfRecord(ctx, porID); err != nil {
 		return fmt.Errorf("revoke parent_of_record: %w", err)
@@ -258,6 +401,18 @@ func (s *Service) ListChildrenForParent(ctx context.Context, parentMemberID uuid
 	return s.store.ListChildrenForParent(ctx, parentMemberID)
 }
 
+// validateCapabilities enforces the child-never-capability and
+// account_owner-must-be-adult invariants (also backed by DB CHECKs).
+func validateCapabilities(role Role, isManager, isAccountOwner bool) error {
+	if role.IsChild() && (isManager || isAccountOwner) {
+		return ErrChildCannotHoldCapability
+	}
+	if isAccountOwner && !role.CanBeAccountOwner() {
+		return ErrAccountOwnerMustBeAdult
+	}
+	return nil
+}
+
 func (s *Service) emit(ac AuditContext, action string, resourceID uuid.UUID, details map[string]any) {
 	if details == nil {
 		details = map[string]any{}
@@ -276,6 +431,3 @@ func (s *Service) emit(ac AuditContext, action string, resourceID uuid.UUID, det
 		IPAddress:  ac.IPAddress,
 	})
 }
-
-// Compile-time assertion that time is imported (used by Member.Birthdate).
-var _ = time.Time{}

@@ -1,18 +1,34 @@
-// Package household provides the family / parent-of-record / child-account
-// model that backs AOFamily-AI today and Eden Family at launch.
+// Package household provides the Eden Family household model: a first-class
+// "household" (a family) whose members are keyed on a logical AOID identity.
 //
-// The package is deliberately transport-agnostic: it exposes Go domain types
-// and a Service that wraps a Store. Persistence implementations live in
-// platform/pgstore (PostgreSQL) and platform/devstore (in-memory dev backend).
+// Re-homing (Eden Family ADR, Option B): membership keys on a logical
+// identity_id = aoid.identities(id), validated at provisioning time. It is NOT
+// an enforced cross-DB foreign key — platform (eden_platform) and AOID (aoid)
+// live in separate databases. platform_households.primary_contact_identity_id
+// is likewise a logical identity reference.
 //
-// Key concepts:
-//   - Household: a billable / governable group keyed on a primary contact user
-//   - Member: an individual associated with a household, with a role and status
-//   - ParentOfRecord: the legally-responsible parent for a child member
-//     (COPPA / GDPR Article 8). A child may have multiple parents-of-record
-//     across split households.
+// Two axes describe a member:
 //
-// All mutations route through Service to guarantee an audit trail.
+//   - Role (relationship): guardian | adult | child
+//   - Capabilities:        manager       (0..n per household, >=1 required)
+//                          account_owner (exactly 1 per household — holds the
+//                                         AOcyber subscription / card)
+//
+// Invariants:
+//   - a child can never be a manager or an account_owner (DB CHECK + service);
+//   - the account_owner must be an adult / non-child member (service guard);
+//   - at most one account_owner per household (DB partial unique index).
+//
+// The existence LOWER-BOUND — "exactly one account_owner and at least one
+// manager" — is NOT a DB invariant: the low-level CreateHousehold makes an
+// EMPTY household, so zero owners / zero managers is reachable through it
+// alone. The lower bound is established at creation by CreateHouseholdWithOwner,
+// the provisioning entry point, which inserts the household and its first
+// manager + account_owner atomically in one transaction. Code that trusts
+// "the household's account_owner" must go through that seam.
+//
+// The package is transport-agnostic: it exposes Go domain types and a Service
+// that wraps a Store. Persistence lives in platform/pgstore (PostgreSQL).
 package household
 
 import (
@@ -22,41 +38,54 @@ import (
 	"github.com/google/uuid"
 )
 
-// Role enumerates the relationship a member has within a household.
-//
-// COPPA / GDPR-K logic keys off RoleChild + a member birthdate < 13 years.
-// Only RoleParentOfRecord and RoleGuardian are eligible to grant consent
-// for a child member.
+// Role enumerates the relationship a member has within a household. It is the
+// relationship axis only; billing / management authority is the capability
+// axis (IsManager, IsAccountOwner).
 type Role string
 
 const (
-	// RoleParentOfRecord is the legally responsible parent.
-	RoleParentOfRecord Role = "parent"
-	// RoleChild is a minor; birthdate is required.
-	RoleChild Role = "child"
-	// RoleGuardian is a non-parent legal guardian; eligible to grant consent.
+	// RoleGuardian is a legally-responsible adult (parent / legal guardian).
+	// Guardians are the members eligible to grant COPPA / GDPR-K consent.
 	RoleGuardian Role = "guardian"
-	// RoleAdultNonParent is an adult member who is not a parent-of-record
-	// (e.g., shared family-plan with extended family).
-	RoleAdultNonParent Role = "adult_non_parent"
-	// RoleOther is a catch-all for relationships that don't fit the model.
-	RoleOther Role = "other"
+	// RoleAdult is an adult member who is not a legal guardian of a child in
+	// the household (e.g. extended family on a shared family plan).
+	RoleAdult Role = "adult"
+	// RoleChild is a minor; birthdate is required. A child can hold no
+	// capability.
+	RoleChild Role = "child"
 )
 
 // Valid reports whether r is a known role.
 func (r Role) Valid() bool {
 	switch r {
-	case RoleParentOfRecord, RoleChild, RoleGuardian, RoleAdultNonParent, RoleOther:
+	case RoleGuardian, RoleAdult, RoleChild:
 		return true
 	}
 	return false
 }
 
+// IsChild reports whether r is the child role.
+func (r Role) IsChild() bool { return r == RoleChild }
+
 // CanGrantConsent reports whether a member with this role may grant
-// COPPA/GDPR-K consent on behalf of a child member.
-func (r Role) CanGrantConsent() bool {
-	return r == RoleParentOfRecord || r == RoleGuardian
-}
+// COPPA / GDPR-K consent on behalf of a child member.
+//
+// NOTE (Phase 0 decision — flagged for the ADR owner): under the re-homed
+// role model only guardians grant consent. The old model's "parent" role maps
+// to guardian. Whether a non-guardian adult who is a parent_of_record should
+// also be eligible is intentionally deferred to the consent-eligibility
+// design (Phase 0.3 / consent package owner).
+func (r Role) CanGrantConsent() bool { return r == RoleGuardian }
+
+// CanBeAccountOwner reports whether a member with this role may hold the
+// account_owner capability. Per the ADR the account_owner "must be an adult";
+// this is read as "must not be a child" (guardian and adult both qualify).
+// Flagged: if the ADR means strictly role == adult, tighten this predicate.
+func (r Role) CanBeAccountOwner() bool { return r != RoleChild }
+
+// CanBeManager reports whether a member with this role may hold the manager
+// capability. A child can never be a manager.
+func (r Role) CanBeManager() bool { return r != RoleChild }
 
 // Status is the lifecycle state of a household member.
 type Status string
@@ -79,70 +108,38 @@ func (s Status) Valid() bool {
 	return false
 }
 
-// Capabilities is a forward-compatible bag of per-member permissions that
-// are independent of role. Persisted as JSONB.
-//
-// A new capability can be added without a migration; consumers reading older
-// rows will see the zero value (false) for unknown fields.
-type Capabilities struct {
-	CanInviteMembers bool `json:"can_invite_members,omitempty"`
-	CanManageBilling bool `json:"can_manage_billing,omitempty"`
-	CanGrantConsent  bool `json:"can_grant_consent,omitempty"`
-	CanViewAuditLog  bool `json:"can_view_audit_log,omitempty"`
-}
-
-// DefaultCapabilities returns the recommended capability set for a role.
-// Callers may override before calling AddMember.
-func DefaultCapabilities(r Role) Capabilities {
-	switch r {
-	case RoleParentOfRecord:
-		return Capabilities{
-			CanInviteMembers: true,
-			CanManageBilling: true,
-			CanGrantConsent:  true,
-			CanViewAuditLog:  true,
-		}
-	case RoleGuardian:
-		return Capabilities{
-			CanInviteMembers: true,
-			CanGrantConsent:  true,
-			CanViewAuditLog:  true,
-		}
-	case RoleAdultNonParent:
-		return Capabilities{
-			CanInviteMembers: false,
-		}
-	case RoleChild, RoleOther:
-		return Capabilities{}
-	}
-	return Capabilities{}
-}
-
-// Household represents a family / billable group.
+// Household represents a family / billable group. primary_contact_identity_id
+// is a logical AOID identity reference (see package doc).
 type Household struct {
-	ID                   uuid.UUID
-	PrimaryContactUserID uuid.UUID
-	DisplayName          string
-	Metadata             json.RawMessage
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	ID                       uuid.UUID
+	PrimaryContactIdentityID uuid.UUID
+	DisplayName              string
+	Metadata                 json.RawMessage
+	CreatedAt                time.Time
+	UpdatedAt                time.Time
 }
 
-// Member is a person associated with a household.
+// Member is a person associated with a household, keyed on a logical AOID
+// identity. IsManager / IsAccountOwner are the enforced capability axis;
+// Capabilities is a forward-compatible JSONB bag for future, non-enforced
+// per-member flags.
 type Member struct {
-	ID           uuid.UUID
-	HouseholdID  uuid.UUID
-	UserID       uuid.UUID
-	Role         Role
-	Status       Status
-	Birthdate    *time.Time
-	Capabilities Capabilities
-	AddedAt      time.Time
-	RemovedAt    *time.Time
+	ID             uuid.UUID
+	HouseholdID    uuid.UUID
+	IdentityID     uuid.UUID
+	Role           Role
+	Status         Status
+	IsManager      bool
+	IsAccountOwner bool
+	Birthdate      *time.Time
+	Capabilities   json.RawMessage
+	AddedAt        time.Time
+	RemovedAt      *time.Time
 }
 
-// ParentOfRecord links a child member to a legally-responsible parent
-// member. Used by platform/consent to determine consent eligibility.
+// ParentOfRecord links a child member to a legally-responsible parent /
+// guardian member. Used by platform/consent to determine consent eligibility.
+// A child may have multiple parents-of-record across split households.
 type ParentOfRecord struct {
 	ID             uuid.UUID
 	ChildMemberID  uuid.UUID

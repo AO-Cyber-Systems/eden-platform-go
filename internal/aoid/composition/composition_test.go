@@ -61,16 +61,18 @@ func TestBuildInMemory_HouseholdAndConsentRoundTrip(t *testing.T) {
 	}
 
 	parent, err := svcs.Household.AddMember(ctx, ac, household.Member{
-		HouseholdID: hh.ID,
-		UserID:      parentUserID,
-		Role:        household.RoleParentOfRecord,
-		Status:      household.StatusActive,
+		HouseholdID:    hh.ID,
+		IdentityID:     parentUserID,
+		Role:           household.RoleGuardian,
+		Status:         household.StatusActive,
+		IsManager:      true,
+		IsAccountOwner: true,
 	})
 	if err != nil {
 		t.Fatalf("AddMember parent: %v", err)
 	}
 
-	got, err := svcs.Household.GetHousehold(ctx, hh.ID)
+	got, err := svcs.Household.GetHouseholdByID(ctx, hh.ID)
 	if err != nil {
 		t.Fatalf("GetHousehold: %v", err)
 	}

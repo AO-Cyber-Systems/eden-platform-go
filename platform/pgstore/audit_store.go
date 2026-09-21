@@ -33,7 +33,7 @@ func (s *AuditStore) queries() *db.Queries {
 
 func (s *AuditStore) CreateAuditLog(ctx context.Context, companyID, actorID uuid.UUID, action, resource, resourceID, ipAddress string, details []byte) error {
 	return s.queries().CreateAuditLog(ctx, db.CreateAuditLogParams{
-		CompanyID:  companyID,
+		CompanyID:  auditCompanyID(companyID),
 		ActorID:    actorID,
 		Action:     action,
 		Resource:   resource,
@@ -120,6 +120,43 @@ func (s *AuditStore) QueryAuditLogs(ctx context.Context, companyID uuid.UUID, li
 	}
 
 	return entries, total, nil
+}
+
+// ListHouseholdAuditLogs returns the identity-space audit trail for ONE
+// household (company_id NULL, resource 'household', resource_id = householdID),
+// newest first, plus the total for pagination. This is the reader for the
+// COPPA / GDPR-K consent trail: household events are written with no company
+// scope, so QueryAuditLogs (WHERE company_id = $1) can never return them.
+// Scoped by household id, so it cannot cross households or reach a company row.
+func (s *AuditStore) ListHouseholdAuditLogs(ctx context.Context, householdID uuid.UUID, limit, offset int) ([]*platformv1.AuditLogEntry, int, error) {
+	q := s.queries()
+	total, err := q.CountHouseholdAuditLogs(ctx, householdID.String())
+	if err != nil {
+		return nil, 0, fmt.Errorf("count household audit logs: %w", err)
+	}
+	rows, err := q.ListHouseholdAuditLogs(ctx, db.ListHouseholdAuditLogsParams{
+		ResourceID: householdID.String(),
+		Limit:      int32(limit),
+		Offset:     int32(offset),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("list household audit logs: %w", err)
+	}
+	entries := make([]*platformv1.AuditLogEntry, 0, len(rows))
+	for _, r := range rows {
+		entries = append(entries, &platformv1.AuditLogEntry{
+			Id:          r.ID.String(),
+			CompanyId:   "", // identity-space row: no company by construction
+			ActorId:     r.ActorID.String(),
+			Action:      r.Action,
+			Resource:    r.Resource,
+			ResourceId:  r.ResourceID,
+			DetailsJson: string(r.Details),
+			IpAddress:   r.IpAddress,
+			CreatedAt:   r.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	return entries, int(total), nil
 }
 
 // Ensure unused imports don't cause issues.

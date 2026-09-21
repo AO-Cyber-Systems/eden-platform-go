@@ -2,6 +2,8 @@ package household
 
 import (
 	"context"
+	"encoding/json"
+	"sort"
 	"sync"
 	"time"
 
@@ -9,10 +11,9 @@ import (
 )
 
 // memStore is an in-memory Store implementation used by service unit tests.
-//
-// It is intentionally simple: maps + a mutex. Production code uses
-// pgstore.HouseholdStore; this exists to keep household_test.go fast and
-// dependency-free.
+// It mirrors the invariant-relevant behaviour of pgstore.HouseholdStore
+// (at-most-one account_owner, household-scoped lookups) so service guards are
+// exercised without a database.
 type memStore struct {
 	mu          sync.Mutex
 	households  map[uuid.UUID]Household
@@ -28,6 +29,8 @@ func newMemStore() *memStore {
 	}
 }
 
+var _ Store = (*memStore)(nil)
+
 func (s *memStore) CreateHousehold(_ context.Context, h Household) (Household, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -39,7 +42,39 @@ func (s *memStore) CreateHousehold(_ context.Context, h Household) (Household, e
 	return h, nil
 }
 
-func (s *memStore) GetHousehold(_ context.Context, id uuid.UUID) (Household, error) {
+func (s *memStore) CreateHouseholdWithOwner(_ context.Context, h Household, owner Member) (Household, Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now().UTC()
+	h.ID = uuid.New()
+	h.CreatedAt = now
+	h.UpdatedAt = now
+	owner.ID = uuid.New()
+	owner.HouseholdID = h.ID
+	owner.AddedAt = now
+	if owner.Status == "" {
+		owner.Status = StatusActive
+	}
+	if len(owner.Capabilities) == 0 {
+		owner.Capabilities = json.RawMessage("{}")
+	}
+	// Mirrors the pg single-tx insert: household + owner commit together, or
+	// neither is persisted. A fresh household can never collide with an existing
+	// account_owner; the guard documents the invariant and keeps partial state
+	// from ever being written.
+	if owner.IsAccountOwner {
+		for _, e := range s.members {
+			if e.HouseholdID == h.ID && e.IsAccountOwner && e.Status != StatusRemoved {
+				return Household{}, Member{}, ErrAccountOwnerExists
+			}
+		}
+	}
+	s.households[h.ID] = h
+	s.members[owner.ID] = owner
+	return h, owner, nil
+}
+
+func (s *memStore) GetHouseholdByID(_ context.Context, id uuid.UUID) (Household, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	h, ok := s.households[id]
@@ -78,8 +113,18 @@ func (s *memStore) DeleteHousehold(_ context.Context, id uuid.UUID) error {
 func (s *memStore) AddMember(_ context.Context, m Member) (Member, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if m.IsAccountOwner {
+		for _, e := range s.members {
+			if e.HouseholdID == m.HouseholdID && e.IsAccountOwner && e.Status != StatusRemoved {
+				return Member{}, ErrAccountOwnerExists
+			}
+		}
+	}
 	m.ID = uuid.New()
 	m.AddedAt = time.Now().UTC()
+	if len(m.Capabilities) == 0 {
+		m.Capabilities = json.RawMessage("{}")
+	}
 	s.members[m.ID] = m
 	return m, nil
 }
@@ -94,15 +139,37 @@ func (s *memStore) GetMember(_ context.Context, id uuid.UUID) (Member, error) {
 	return m, nil
 }
 
-func (s *memStore) UpdateMemberRole(_ context.Context, memberID uuid.UUID, role Role, caps Capabilities) (Member, error) {
+func (s *memStore) GetMemberByIdentity(_ context.Context, householdID, identityID uuid.UUID) (Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, m := range s.members {
+		if m.HouseholdID == householdID && m.IdentityID == identityID && m.Status != StatusRemoved {
+			return m, nil
+		}
+	}
+	return Member{}, ErrNotFound
+}
+
+func (s *memStore) UpdateMemberRole(_ context.Context, memberID uuid.UUID, role Role, isManager, isAccountOwner bool, caps []byte) (Member, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	m, ok := s.members[memberID]
 	if !ok {
 		return Member{}, ErrNotFound
 	}
+	if isAccountOwner && !m.IsAccountOwner {
+		for id, e := range s.members {
+			if id != memberID && e.HouseholdID == m.HouseholdID && e.IsAccountOwner && e.Status != StatusRemoved {
+				return Member{}, ErrAccountOwnerExists
+			}
+		}
+	}
 	m.Role = role
-	m.Capabilities = caps
+	m.IsManager = isManager
+	m.IsAccountOwner = isAccountOwner
+	if len(caps) > 0 {
+		m.Capabilities = json.RawMessage(caps)
+	}
 	s.members[memberID] = m
 	return m, nil
 }
@@ -130,16 +197,51 @@ func (s *memStore) ListMembers(_ context.Context, householdID uuid.UUID) ([]Memb
 			out = append(out, m)
 		}
 	}
+	sort.Slice(out, func(i, j int) bool { return out[i].AddedAt.Before(out[j].AddedAt) })
 	return out, nil
 }
 
-func (s *memStore) ListHouseholdsForUser(_ context.Context, userID uuid.UUID) ([]Household, error) {
+func (s *memStore) CountManagers(_ context.Context, householdID uuid.UUID) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	n := 0
+	for _, m := range s.members {
+		if m.HouseholdID == householdID && m.IsManager && m.Status != StatusRemoved {
+			n++
+		}
+	}
+	return n, nil
+}
+
+func (s *memStore) GetHouseholdForIdentity(_ context.Context, identityID uuid.UUID) (Household, Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var found *Member
+	for _, m := range s.members {
+		mm := m
+		if mm.IdentityID == identityID && mm.Status != StatusRemoved {
+			if found == nil || mm.AddedAt.Before(found.AddedAt) {
+				found = &mm
+			}
+		}
+	}
+	if found == nil {
+		return Household{}, Member{}, ErrNotFound
+	}
+	h, ok := s.households[found.HouseholdID]
+	if !ok {
+		return Household{}, Member{}, ErrNotFound
+	}
+	return h, *found, nil
+}
+
+func (s *memStore) ListHouseholdsForIdentity(_ context.Context, identityID uuid.UUID) ([]Household, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	seen := map[uuid.UUID]bool{}
 	var out []Household
 	for _, m := range s.members {
-		if m.UserID == userID && m.Status != StatusRemoved && !seen[m.HouseholdID] {
+		if m.IdentityID == identityID && m.Status != StatusRemoved && !seen[m.HouseholdID] {
 			if h, ok := s.households[m.HouseholdID]; ok {
 				out = append(out, h)
 				seen[m.HouseholdID] = true
@@ -147,6 +249,24 @@ func (s *memStore) ListHouseholdsForUser(_ context.Context, userID uuid.UUID) ([
 		}
 	}
 	return out, nil
+}
+
+func (s *memStore) SetAccountOwner(_ context.Context, householdID, newOwnerMemberID uuid.UUID) (Member, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	target, ok := s.members[newOwnerMemberID]
+	if !ok || target.HouseholdID != householdID || target.Status == StatusRemoved {
+		return Member{}, ErrNotFound
+	}
+	for id, m := range s.members {
+		if m.HouseholdID == householdID && m.IsAccountOwner {
+			m.IsAccountOwner = false
+			s.members[id] = m
+		}
+	}
+	target.IsAccountOwner = true
+	s.members[newOwnerMemberID] = target
+	return target, nil
 }
 
 func (s *memStore) EstablishParentOfRecord(_ context.Context, childMemberID, parentMemberID uuid.UUID) (ParentOfRecord, error) {
@@ -198,4 +318,3 @@ func (s *memStore) ListChildrenForParent(_ context.Context, parentMemberID uuid.
 	}
 	return out, nil
 }
-

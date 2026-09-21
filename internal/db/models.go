@@ -13,8 +13,10 @@ import (
 )
 
 type AuditLog struct {
-	ID         uuid.UUID       `json:"id"`
-	CompanyID  uuid.UUID       `json:"company_id"`
+	ID uuid.UUID `json:"id"`
+	// Company scope for the event, or NULL for identity-space events that have no company (household / COPPA audit — a household is not a companies(id)). FK-validated against companies(id) when NON-NULL; NULL is allowed and exempt from the FK. See migration 018 and platform/household.
+	CompanyID pgtype.UUID `json:"company_id"`
+	// Logical actor UUID (NOT NULL, no FK). Dual id-space: a platform.users(id) for auth/admin events, or an aoid.identities(id) for household/consent events. Not FK-constrained because AOID identities live in a separate database from eden_platform.
 	ActorID    uuid.UUID       `json:"actor_id"`
 	Action     string          `json:"action"`
 	Resource   string          `json:"resource"`
@@ -108,24 +110,26 @@ type Permission struct {
 }
 
 type PlatformHousehold struct {
-	ID                   uuid.UUID       `json:"id"`
-	PrimaryContactUserID uuid.UUID       `json:"primary_contact_user_id"`
-	DisplayName          string          `json:"display_name"`
-	Metadata             json.RawMessage `json:"metadata"`
-	CreatedAt            time.Time       `json:"created_at"`
-	UpdatedAt            time.Time       `json:"updated_at"`
+	ID                       uuid.UUID       `json:"id"`
+	PrimaryContactIdentityID uuid.UUID       `json:"primary_contact_identity_id"`
+	DisplayName              string          `json:"display_name"`
+	Metadata                 json.RawMessage `json:"metadata"`
+	CreatedAt                time.Time       `json:"created_at"`
+	UpdatedAt                time.Time       `json:"updated_at"`
 }
 
 type PlatformHouseholdMember struct {
-	ID           uuid.UUID          `json:"id"`
-	HouseholdID  uuid.UUID          `json:"household_id"`
-	UserID       uuid.UUID          `json:"user_id"`
-	Role         string             `json:"role"`
-	Status       string             `json:"status"`
-	Birthdate    pgtype.Date        `json:"birthdate"`
-	Capabilities json.RawMessage    `json:"capabilities"`
-	AddedAt      time.Time          `json:"added_at"`
-	RemovedAt    pgtype.Timestamptz `json:"removed_at"`
+	ID             uuid.UUID          `json:"id"`
+	HouseholdID    uuid.UUID          `json:"household_id"`
+	IdentityID     uuid.UUID          `json:"identity_id"`
+	Role           string             `json:"role"`
+	Status         string             `json:"status"`
+	Birthdate      pgtype.Date        `json:"birthdate"`
+	Capabilities   json.RawMessage    `json:"capabilities"`
+	AddedAt        time.Time          `json:"added_at"`
+	RemovedAt      pgtype.Timestamptz `json:"removed_at"`
+	IsManager      bool               `json:"is_manager"`
+	IsAccountOwner bool               `json:"is_account_owner"`
 }
 
 type PlatformParentOfRecord struct {
