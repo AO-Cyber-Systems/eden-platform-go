@@ -215,6 +215,29 @@ func (q *Queries) GetHouseholdMember(ctx context.Context, id uuid.UUID) (Platfor
 	return i, err
 }
 
+const getHouseholdMemberForUpdate = `-- name: GetHouseholdMemberForUpdate :one
+SELECT id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner FROM platform_household_members WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) GetHouseholdMemberForUpdate(ctx context.Context, id uuid.UUID) (PlatformHouseholdMember, error) {
+	row := q.db.QueryRow(ctx, getHouseholdMemberForUpdate, id)
+	var i PlatformHouseholdMember
+	err := row.Scan(
+		&i.ID,
+		&i.HouseholdID,
+		&i.IdentityID,
+		&i.Role,
+		&i.Status,
+		&i.Birthdate,
+		&i.Capabilities,
+		&i.AddedAt,
+		&i.RemovedAt,
+		&i.IsManager,
+		&i.IsAccountOwner,
+	)
+	return i, err
+}
+
 const getMemberByHouseholdAndIdentity = `-- name: GetMemberByHouseholdAndIdentity :one
 SELECT id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner FROM platform_household_members
 WHERE household_id = $1 AND identity_id = $2 AND status <> 'removed'
@@ -378,6 +401,20 @@ func (q *Queries) ListParentsOfRecord(ctx context.Context, childMemberID uuid.UU
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockHousehold = `-- name: LockHousehold :one
+SELECT id FROM platform_households WHERE id = $1 FOR UPDATE
+`
+
+// Serialises every invariant-bearing mutation on one household (remove /
+// demote a manager, transfer the account_owner). Callers take this inside the
+// same transaction as their read-check-write so two concurrent removals of the
+// only two managers cannot both observe count=2.
+func (q *Queries) LockHousehold(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, lockHousehold, id)
+	err := row.Scan(&id)
+	return id, err
 }
 
 const removeHouseholdMember = `-- name: RemoveHouseholdMember :exec

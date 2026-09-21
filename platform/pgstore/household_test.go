@@ -427,3 +427,131 @@ func TestHouseholdService_EndToEnd_AuditEmitted(t *testing.T) {
 		}
 	}
 }
+
+// ---- Review findings 2 + 3 on #56: the lower-bound guards must hold at the
+// STORE layer, under a per-household lock, or two concurrent callers (each
+// having passed the service's read-then-act check) drive the household to zero
+// managers / raw 23505 on a concurrent owner transfer.
+
+// TestHouseholdStore_RemoveMember_GuardsLastManagerInStore: a direct store
+// call (no service pre-check) on the sole manager must be refused.
+func TestHouseholdStore_RemoveMember_GuardsLastManagerInStore(t *testing.T) {
+	backend := setupTestBackend(t)
+	hhStore := backend.HouseholdStore()
+	ctx := context.Background()
+
+	h, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactIdentityID: uuid.New(), DisplayName: "Guard"})
+	_, _ = hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleAdult, IsAccountOwner: true})
+	mgr, _ := hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleGuardian, IsManager: true})
+
+	if err := hhStore.RemoveMember(ctx, mgr.ID); !errors.Is(err, household.ErrLastManager) {
+		t.Fatalf("store RemoveMember(last manager) err = %v, want ErrLastManager", err)
+	}
+	if _, err := hhStore.UpdateMemberRole(ctx, mgr.ID, household.RoleGuardian, false, false, nil); !errors.Is(err, household.ErrLastManager) {
+		t.Fatalf("store UpdateMemberRole(demote last manager) err = %v, want ErrLastManager", err)
+	}
+	owner, _ := hhStore.GetMemberByIdentity(ctx, h.ID, mustOwnerIdentity(t, hhStore, h.ID))
+	if err := hhStore.RemoveMember(ctx, owner.ID); !errors.Is(err, household.ErrCannotRemoveAccountOwner) {
+		t.Fatalf("store RemoveMember(account owner) err = %v, want ErrCannotRemoveAccountOwner", err)
+	}
+	if n, _ := hhStore.CountManagers(ctx, h.ID); n != 1 {
+		t.Fatalf("managers = %d, want 1 (nothing should have changed)", n)
+	}
+}
+
+func mustOwnerIdentity(t *testing.T, s household.Store, hh uuid.UUID) uuid.UUID {
+	t.Helper()
+	members, err := s.ListMembers(context.Background(), hh)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	for _, m := range members {
+		if m.IsAccountOwner {
+			return m.IdentityID
+		}
+	}
+	t.Fatal("no account owner")
+	return uuid.Nil
+}
+
+// TestHouseholdStore_ConcurrentRemoveLastTwoManagers: two goroutines each
+// remove one of the only two managers at the same time. Exactly one may
+// succeed; the household must never reach zero managers.
+func TestHouseholdStore_ConcurrentRemoveLastTwoManagers(t *testing.T) {
+	backend := setupTestBackend(t)
+	hhStore := backend.HouseholdStore()
+	ctx := context.Background()
+
+	for round := 0; round < 20; round++ {
+		h, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactIdentityID: uuid.New(), DisplayName: "Race"})
+		_, _ = hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleAdult, IsAccountOwner: true})
+		m1, _ := hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleGuardian, IsManager: true})
+		m2, _ := hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleAdult, IsManager: true})
+
+		errs := make(chan error, 2)
+		start := make(chan struct{})
+		for _, id := range []uuid.UUID{m1.ID, m2.ID} {
+			go func(id uuid.UUID) {
+				<-start
+				errs <- hhStore.RemoveMember(ctx, id)
+			}(id)
+		}
+		close(start)
+		var ok, refused int
+		for i := 0; i < 2; i++ {
+			switch err := <-errs; {
+			case err == nil:
+				ok++
+			case errors.Is(err, household.ErrLastManager):
+				refused++
+			default:
+				t.Fatalf("round %d: unexpected err %v", round, err)
+			}
+		}
+		n, _ := hhStore.CountManagers(ctx, h.ID)
+		if n < 1 || ok != 1 || refused != 1 {
+			t.Fatalf("round %d: managers=%d ok=%d refused=%d — invariant broken", round, n, ok, refused)
+		}
+	}
+}
+
+// TestHouseholdStore_ConcurrentSetAccountOwner: two concurrent transfers must
+// serialize — one owner at the end, and never a raw 23505 surfaced.
+func TestHouseholdStore_ConcurrentSetAccountOwner(t *testing.T) {
+	backend := setupTestBackend(t)
+	hhStore := backend.HouseholdStore()
+	ctx := context.Background()
+
+	for round := 0; round < 20; round++ {
+		h, _ := hhStore.CreateHousehold(ctx, household.Household{PrimaryContactIdentityID: uuid.New(), DisplayName: "Xfer"})
+		_, _ = hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleGuardian, IsManager: true, IsAccountOwner: true})
+		a, _ := hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleAdult, IsManager: true})
+		b, _ := hhStore.AddMember(ctx, household.Member{HouseholdID: h.ID, IdentityID: uuid.New(), Role: household.RoleAdult, IsManager: true})
+
+		errs := make(chan error, 2)
+		start := make(chan struct{})
+		for _, id := range []uuid.UUID{a.ID, b.ID} {
+			go func(id uuid.UUID) {
+				<-start
+				_, err := hhStore.SetAccountOwner(ctx, h.ID, id)
+				errs <- err
+			}(id)
+		}
+		close(start)
+		for i := 0; i < 2; i++ {
+			if err := <-errs; err != nil && !errors.Is(err, household.ErrAccountOwnerExists) {
+				t.Fatalf("round %d: transfer surfaced %v (raw constraint error leaked)", round, err)
+			}
+		}
+		members, _ := hhStore.ListMembers(ctx, h.ID)
+		owners := 0
+		for _, m := range members {
+			if m.IsAccountOwner {
+				owners++
+			}
+		}
+		if owners != 1 {
+			t.Fatalf("round %d: owners = %d, want exactly 1", round, owners)
+		}
+	}
+}

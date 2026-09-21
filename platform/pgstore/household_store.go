@@ -215,11 +215,73 @@ func (s *HouseholdStore) GetMemberByIdentity(ctx context.Context, householdID, i
 	return dbMemberToDomain(row)
 }
 
+// guardMutation runs the household lower-bound checks for a pending mutation
+// of member `cur` inside tx, AFTER the household row is locked, so the check
+// and the write are one serialised unit per household. It mirrors the
+// service-layer pre-checks; those give fast, friendly failures, this is the
+// one that actually holds under concurrency.
+func guardMutation(ctx context.Context, q *db.Queries, cur db.PlatformHouseholdMember, stripsOwner, stripsManager bool) error {
+	if cur.Status == string(household.StatusRemoved) {
+		return household.ErrNotFound
+	}
+	if stripsOwner && cur.IsAccountOwner {
+		return household.ErrCannotRemoveAccountOwner
+	}
+	if stripsManager && cur.IsManager {
+		n, err := q.CountHouseholdManagers(ctx, cur.HouseholdID)
+		if err != nil {
+			return fmt.Errorf("count household managers: %w", err)
+		}
+		if n <= 1 {
+			return household.ErrLastManager
+		}
+	}
+	return nil
+}
+
+// lockMember locks the member's household row, then the member row, and
+// returns the current member state. Lock order (household -> member) is fixed
+// so concurrent callers on the same household never deadlock.
+func lockMember(ctx context.Context, q *db.Queries, memberID uuid.UUID) (db.PlatformHouseholdMember, error) {
+	peek, err := q.GetHouseholdMember(ctx, memberID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.PlatformHouseholdMember{}, household.ErrNotFound
+		}
+		return db.PlatformHouseholdMember{}, fmt.Errorf("get household member: %w", err)
+	}
+	if _, err := q.LockHousehold(ctx, peek.HouseholdID); err != nil {
+		return db.PlatformHouseholdMember{}, fmt.Errorf("lock household: %w", err)
+	}
+	cur, err := q.GetHouseholdMemberForUpdate(ctx, memberID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return db.PlatformHouseholdMember{}, household.ErrNotFound
+		}
+		return db.PlatformHouseholdMember{}, fmt.Errorf("lock household member: %w", err)
+	}
+	return cur, nil
+}
+
 func (s *HouseholdStore) UpdateMemberRole(ctx context.Context, memberID uuid.UUID, role household.Role, isManager, isAccountOwner bool, caps []byte) (household.Member, error) {
 	if len(caps) == 0 {
 		caps = json.RawMessage("{}")
 	}
-	row, err := s.queries().UpdateHouseholdMemberRole(ctx, db.UpdateHouseholdMemberRoleParams{
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return household.Member{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	q := db.New(tx)
+
+	cur, err := lockMember(ctx, q, memberID)
+	if err != nil {
+		return household.Member{}, err
+	}
+	if err := guardMutation(ctx, q, cur, !isAccountOwner, !isManager); err != nil {
+		return household.Member{}, err
+	}
+	row, err := q.UpdateHouseholdMemberRole(ctx, db.UpdateHouseholdMemberRoleParams{
 		ID:             memberID,
 		Role:           string(role),
 		IsManager:      isManager,
@@ -235,12 +297,32 @@ func (s *HouseholdStore) UpdateMemberRole(ctx context.Context, memberID uuid.UUI
 		}
 		return household.Member{}, fmt.Errorf("update household member role: %w", err)
 	}
+	if err := tx.Commit(ctx); err != nil {
+		return household.Member{}, fmt.Errorf("commit tx: %w", err)
+	}
 	return dbMemberToDomain(row)
 }
 
 func (s *HouseholdStore) RemoveMember(ctx context.Context, memberID uuid.UUID) error {
-	if err := s.queries().RemoveHouseholdMember(ctx, memberID); err != nil {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	q := db.New(tx)
+
+	cur, err := lockMember(ctx, q, memberID)
+	if err != nil {
+		return err
+	}
+	if err := guardMutation(ctx, q, cur, true, true); err != nil {
+		return err
+	}
+	if err := q.RemoveHouseholdMember(ctx, memberID); err != nil {
 		return fmt.Errorf("remove household member: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit tx: %w", err)
 	}
 	return nil
 }
@@ -314,6 +396,15 @@ func (s *HouseholdStore) SetAccountOwner(ctx context.Context, householdID, newOw
 	defer tx.Rollback(ctx)
 
 	q := db.New(tx)
+	// Serialise transfers per household: without the lock two READ COMMITTED
+	// transfers can each clear a snapshot that predates the other's promote and
+	// then collide on the one-owner partial unique index.
+	if _, err := q.LockHousehold(ctx, householdID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return household.Member{}, household.ErrNotFound
+		}
+		return household.Member{}, fmt.Errorf("lock household: %w", err)
+	}
 	if err := q.ClearHouseholdAccountOwner(ctx, householdID); err != nil {
 		return household.Member{}, fmt.Errorf("clear account owner: %w", err)
 	}
@@ -324,6 +415,9 @@ func (s *HouseholdStore) SetAccountOwner(ctx context.Context, householdID, newOw
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return household.Member{}, household.ErrNotFound
+		}
+		if isAccountOwnerConflict(err) {
+			return household.Member{}, household.ErrAccountOwnerExists
 		}
 		return household.Member{}, fmt.Errorf("set account owner: %w", err)
 	}

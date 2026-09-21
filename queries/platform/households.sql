@@ -46,6 +46,16 @@ SELECT * FROM platform_household_members
 WHERE household_id = $1 AND status <> 'removed'
 ORDER BY added_at ASC;
 
+-- name: LockHousehold :one
+-- Serialises every invariant-bearing mutation on one household (remove /
+-- demote a manager, transfer the account_owner). Callers take this inside the
+-- same transaction as their read-check-write so two concurrent removals of the
+-- only two managers cannot both observe count=2.
+SELECT id FROM platform_households WHERE id = $1 FOR UPDATE;
+
+-- name: GetHouseholdMemberForUpdate :one
+SELECT * FROM platform_household_members WHERE id = $1 FOR UPDATE;
+
 -- name: CountHouseholdManagers :one
 SELECT count(*) FROM platform_household_members
 WHERE household_id = $1 AND is_manager AND status <> 'removed';
