@@ -359,8 +359,9 @@ ORDER BY created_at ASC, company_id ASC
 // Deterministic order: oldest membership ("home" company) first, with a stable
 // company_id tiebreak. GetCompanyMembershipByUser takes [0], so without a defined
 // order a multi-company user resolved into an ARBITRARY company that could flip
-// between logins. Ordering here fixes that for every consumer + both the linked-sub
-// fast path and the invite-attach path.
+// between logins. Consumers in this repo: pgstore.AuthStore.GetCompanyMembershipByUser
+// (takes [0]) and membership.Resolver.ListAccessibleCompanies. Downstream
+// login paths that read the membership through those inherit the order.
 func (q *Queries) ListUserCompanyIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	rows, err := q.db.Query(ctx, listUserCompanyIDs, userID)
 	if err != nil {
