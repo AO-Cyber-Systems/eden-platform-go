@@ -1,5 +1,13 @@
--- Down: revert 016, restoring the 012 user-keyed shape. Safe because the
--- tables are dormant (no rows).
+-- Down: revert 016, restoring the 012 user-keyed shape.
+--
+-- CAVEAT: this migration is what makes the household tables NON-dormant. Once
+-- any household or member row exists, identity_id / primary_contact_identity_id
+-- hold aoid.identities(id) values, NOT platform.users(id) — so the two
+-- ADD CONSTRAINT ... REFERENCES users(id) statements below will fail their
+-- validation scan. That is inherent to reverting this change: the down
+-- migration restores the prior, stricter schema and can only succeed on an
+-- empty (or users-keyed) table. Delete or remap every household row before
+-- running this down. Same shape as the 017 / 018 CAVEATs.
 
 ALTER INDEX idx_platform_household_members_identity
     RENAME TO idx_platform_household_members_user;
