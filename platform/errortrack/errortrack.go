@@ -234,20 +234,20 @@ func BeforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 //
 // It also requires hint.Context to carry a *http.Request specifically under
 // sentry.RequestContextKey -- the documented way (see the sentry-go/http
-// package's README) to detect that an event came from sentryhttp's recover
-// path specifically. sentryhttp's recoverWithSentry sets this key before
+// package's README) to detect that an event came from an HTTP handler's
+// recover path. sentryhttp's recoverWithSentry sets this key before
 // calling hub.RecoverWithContext, and client.RecoverWithContext copies that
 // context onto the hint; errortrack.Recover, by contrast, calls hub.Recover
 // (no context), so hint.Context is nil for a plain-goroutine crash even when
 // the recovered value is also http.ErrAbortHandler -- that case is a real
 // process-level crash and must still be reported. The type assertion (not
-// just the key's presence) matters too: this only matches the specific
-// net/http-based sentryhttp integration this package uses. A different
-// framework's Sentry integration that stores its own request type under the
-// same context key (fasthttp's sentry-go integration, for example, stores a
-// *fasthttp.RequestCtx there, not a *http.Request) would correctly fall
-// through and keep the event, since it isn't the case this function is
-// built to handle.
+// just the key's presence) matters too: it matches any net/http-based Sentry
+// integration that stores the *http.Request under that key -- sentryhttp,
+// which this package uses, and the other net/http-style sentry-go
+// integrations that follow the same convention. A framework whose
+// integration stores a different request type under the same key
+// (fasthttp's, for example, stores a *fasthttp.RequestCtx) does not match,
+// and its events are kept.
 func isHTTPRecoveredAbort(hint *sentry.EventHint) bool {
 	if hint == nil || hint.RecoveredException != http.ErrAbortHandler {
 		return false
