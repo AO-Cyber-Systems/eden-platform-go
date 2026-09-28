@@ -136,14 +136,15 @@ func Recover(ctx context.Context) {
 //	)
 //
 // Repanic is true so the surrounding LoggingMiddleware (and net/http's own
-// recovery) still observe the panic after Sentry has captured it.
+// recovery) still observe every panic. That repanic is unconditional -- it
+// does not depend on whether Sentry actually captured or sent the event.
 //
 // A panic(http.ErrAbortHandler) -- net/http's own sentinel for a handler that
 // deliberately aborted the response, which net/http itself does not log --
-// is still recovered and re-panicked here exactly like any other panic, so
-// it still reaches net/http unchanged. It is not reported to Sentry: see
-// BeforeSend, which drops it based on hint.Context carrying this middleware's
-// *http.Request.
+// is recovered and re-panicked here exactly like any other panic, so it
+// still reaches net/http and any outer middleware unchanged. It is simply
+// not reported to Sentry: see BeforeSend, which drops it based on
+// hint.Context carrying this middleware's *http.Request.
 func HTTPMiddleware(h http.Handler) http.Handler {
 	return sentryhttp.New(sentryhttp.Options{
 		Repanic:         true,
@@ -223,12 +224,15 @@ func BeforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 // isHTTPRecoveredAbort reports whether hint represents a panic that
 // sentryhttp recovered from an HTTP handler (HTTPMiddleware or
 // HTTPMiddlewareForHub) where the recovered value was http.ErrAbortHandler.
+// As a side effect, it emits one slog.Warn for each abort it identifies, so
+// the drop stays observable in logs even though it is no longer reported to
+// Sentry.
 //
 // It checks hint.RecoveredException, never hint.OriginalException, so an
 // explicit errortrack.CaptureException(ctx, http.ErrAbortHandler) call is
 // always honored -- only a *recovered panic* is in scope here.
 //
-// It also requires hint.Context to carry sentryhttp's *http.Request via
+// It also requires hint.Context to carry a *http.Request specifically under
 // sentry.RequestContextKey -- the documented way (see the sentry-go/http
 // package's README) to detect that an event came from sentryhttp's recover
 // path specifically. sentryhttp's recoverWithSentry sets this key before
@@ -236,7 +240,14 @@ func BeforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 // context onto the hint; errortrack.Recover, by contrast, calls hub.Recover
 // (no context), so hint.Context is nil for a plain-goroutine crash even when
 // the recovered value is also http.ErrAbortHandler -- that case is a real
-// process-level crash and must still be reported.
+// process-level crash and must still be reported. The type assertion (not
+// just the key's presence) matters too: this only matches the specific
+// net/http-based sentryhttp integration this package uses. A different
+// framework's Sentry integration that stores its own request type under the
+// same context key (fasthttp's sentry-go integration, for example, stores a
+// *fasthttp.RequestCtx there, not a *http.Request) would correctly fall
+// through and keep the event, since it isn't the case this function is
+// built to handle.
 func isHTTPRecoveredAbort(hint *sentry.EventHint) bool {
 	if hint == nil || hint.RecoveredException != http.ErrAbortHandler {
 		return false
@@ -244,8 +255,18 @@ func isHTTPRecoveredAbort(hint *sentry.EventHint) bool {
 	if hint.Context == nil {
 		return false
 	}
-	_, ok := hint.Context.Value(sentry.RequestContextKey).(*http.Request)
-	return ok
+	req, ok := hint.Context.Value(sentry.RequestContextKey).(*http.Request)
+	if !ok {
+		return false
+	}
+
+	// Deliberately limited to method + path: no headers, no query string
+	// (which routinely carries tokens or other sensitive values), no body.
+	slog.Warn("errortrack: dropped a deliberate http.ErrAbortHandler response abort (not reported to Sentry)",
+		"method", req.Method,
+		"path", req.URL.Path,
+	)
+	return true
 }
 
 // sensitiveHeaders enumerates header names whose values are stripped before
