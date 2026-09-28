@@ -3,6 +3,7 @@ package errortrack_test
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
@@ -351,3 +352,237 @@ func (c *countingHandler) Handle(_ context.Context, r slog.Record) error {
 }
 func (c *countingHandler) WithAttrs(_ []slog.Attr) slog.Handler { return c }
 func (c *countingHandler) WithGroup(_ string) slog.Handler      { return c }
+
+// serveAndRecover sends a GET /test request through wrapped, bound to hub via
+// request context, and reports whatever value (if any) escaped ServeHTTP as
+// a panic.
+func serveAndRecover(t *testing.T, hub *sentry.Hub, wrapped http.Handler) (rr *httptest.ResponseRecorder, recovered interface{}) {
+	t.Helper()
+	rr = httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	ctx := sentry.SetHubOnContext(req.Context(), hub)
+	req = req.WithContext(ctx)
+
+	func() {
+		defer func() { recovered = recover() }()
+		wrapped.ServeHTTP(rr, req)
+	}()
+	return rr, recovered
+}
+
+// Test (a): HTTPMiddleware must not report http.ErrAbortHandler -- net/http's
+// own sentinel for a handler that deliberately aborted the response, which
+// net/http itself does not log -- but the panic must still propagate so
+// net/http (or an outer middleware) observes it exactly as if errortrack
+// were not installed (Repanic: true, unchanged).
+func TestErrortrack_HTTPMiddleware_ErrAbortHandler_no_event_but_repanics(t *testing.T) {
+	hub, transport := newTestHub(t)
+
+	abortHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic(http.ErrAbortHandler)
+	})
+
+	_, recovered := serveAndRecover(t, hub, errortrack.HTTPMiddleware(abortHandler))
+
+	if recovered != http.ErrAbortHandler {
+		t.Fatalf("panic did not propagate as http.ErrAbortHandler through HTTPMiddleware; got %v", recovered)
+	}
+
+	hub.Flush(time.Second)
+	if events := transport.Events(); len(events) != 0 {
+		t.Fatalf("expected 0 events for http.ErrAbortHandler panic, got %d: %+v", len(events), events)
+	}
+}
+
+// Test (b): HTTPMiddleware's existing behavior for any other panic is
+// unchanged -- it is reported and still re-panics -- AND, critically, the
+// event's stack trace is untouched: the top (innermost) frame of the
+// exception is the handler's own panic site, not anything from errortrack.
+// This pins the regression a prior recover-and-repanic wrapper design
+// introduced (recovering and re-panicking discards the original panic's
+// stack and starts a new one at the repanic call site, corrupting Sentry's
+// culprit/fingerprint for every existing issue).
+func TestErrortrack_HTTPMiddleware_other_panic_preserves_stacktrace(t *testing.T) {
+	hub, transport := newTestHub(t)
+
+	otherHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic(errors.New("unexpected failure"))
+	})
+
+	_, recovered := serveAndRecover(t, hub, errortrack.HTTPMiddleware(otherHandler))
+	if recovered == nil {
+		t.Fatal("expected panic to propagate for a non-ErrAbortHandler panic (Repanic: true)")
+	}
+
+	hub.Flush(time.Second)
+	events := transport.Events()
+	if len(events) != 1 {
+		t.Fatalf("expected exactly 1 event captured for non-ErrAbortHandler panic, got %d", len(events))
+	}
+
+	ev := events[0]
+	if len(ev.Exception) == 0 {
+		t.Fatal("captured event has no Exception entries")
+	}
+	exc := ev.Exception[len(ev.Exception)-1]
+	if !strings.Contains(exc.Value, "unexpected failure") {
+		t.Errorf("captured exception did not reference 'unexpected failure'; got %q", exc.Value)
+	}
+	if exc.Stacktrace == nil || len(exc.Stacktrace.Frames) == 0 {
+		t.Fatal("captured exception has no stacktrace frames")
+	}
+
+	frames := exc.Stacktrace.Frames
+	top := frames[len(frames)-1]
+	if !strings.Contains(top.Module, "errortrack_test") {
+		t.Errorf("expected the crash's top in-app frame to be the handler's own panic site (errortrack_test package), got module=%q function=%q", top.Module, top.Function)
+	}
+	for _, fr := range frames {
+		if fr.Module == "github.com/aocybersystems/eden-platform-go/platform/errortrack" {
+			t.Errorf("stacktrace contains an errortrack-package frame (function=%q); the panic's original stack must be untouched", fr.Function)
+		}
+	}
+}
+
+// Test (c): errortrack.Recover -- the non-HTTP (goroutine) crash-reporting
+// path -- is untouched. A panic(http.ErrAbortHandler) there is a real crash
+// (there is no HTTP response to abort, and no request attached to the
+// event), and must still be reported.
+func TestErrortrack_Recover_still_reports_ErrAbortHandler(t *testing.T) {
+	hub, transport := newTestHub(t)
+	ctx := sentry.SetHubOnContext(context.Background(), hub)
+
+	func() {
+		defer func() { recover() }()
+		defer errortrack.Recover(ctx)
+		panic(http.ErrAbortHandler)
+	}()
+
+	hub.Flush(time.Second)
+	events := transport.Events()
+	if len(events) == 0 {
+		t.Fatal("expected errortrack.Recover to report a plain-goroutine http.ErrAbortHandler panic, got 0 events")
+	}
+}
+
+// Test (d): an explicit errortrack.CaptureException(ctx, http.ErrAbortHandler)
+// call is honored, not silently dropped -- BeforeSend only special-cases a
+// *recovered* panic from an HTTP request, never an explicit capture.
+func TestErrortrack_CaptureException_still_reports_ErrAbortHandler(t *testing.T) {
+	hub, transport := newTestHub(t)
+	ctx := sentry.SetHubOnContext(context.Background(), hub)
+
+	errortrack.CaptureException(ctx, http.ErrAbortHandler)
+
+	hub.Flush(time.Second)
+	events := transport.Events()
+	if len(events) == 0 {
+		t.Fatal("expected errortrack.CaptureException(ctx, http.ErrAbortHandler) to report, got 0 events")
+	}
+}
+
+// Test (e): end-to-end over a real net/http server. The client must observe
+// an incomplete/aborted response -- never a clean one -- and no event must
+// be captured.
+func TestErrortrack_HTTPMiddleware_real_server_aborts_connection_no_event(t *testing.T) {
+	hub, transport := newTestHub(t)
+
+	abortHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("partial"))
+		panic(http.ErrAbortHandler)
+	})
+
+	withHub := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := sentry.SetHubOnContext(r.Context(), hub)
+		errortrack.HTTPMiddleware(abortHandler).ServeHTTP(w, r.WithContext(ctx))
+	})
+
+	server := httptest.NewServer(withHub)
+	defer server.Close()
+
+	resp, err := http.Get(server.URL)
+	if err != nil {
+		// Connection was aborted before headers completed -- also a valid
+		// abort signal.
+		hub.Flush(time.Second)
+		if events := transport.Events(); len(events) != 0 {
+			t.Fatalf("expected 0 events for http.ErrAbortHandler through a real server, got %d: %+v", len(events), events)
+		}
+		return
+	}
+	defer resp.Body.Close()
+	if _, readErr := io.ReadAll(resp.Body); readErr == nil {
+		t.Fatal("expected an incomplete/aborted response body, got a complete one with no error")
+	}
+
+	hub.Flush(time.Second)
+	if events := transport.Events(); len(events) != 0 {
+		t.Fatalf("expected 0 events for http.ErrAbortHandler through a real server, got %d: %+v", len(events), events)
+	}
+}
+
+// Test (f): HTTPMiddlewareForHub (Repanic: false) keeps its documented
+// "never re-panic" behavior unchanged for both http.ErrAbortHandler and any
+// other panic. For http.ErrAbortHandler specifically, ServeHTTP must still
+// return normally with zero events (there is nothing left to re-throw, since
+// this variant never re-panics in the first place). For any other panic, it
+// keeps reporting exactly as before.
+func TestErrortrack_HTTPMiddlewareForHub_ErrAbortHandler_no_event_no_propagation(t *testing.T) {
+	hub, transport := newTestHub(t)
+
+	abortHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic(http.ErrAbortHandler)
+	})
+
+	_, recovered := serveAndRecover(t, hub, errortrack.HTTPMiddlewareForHub(hub, abortHandler))
+	if recovered != nil {
+		t.Fatalf("expected no propagation through HTTPMiddlewareForHub (Repanic: false, documented behavior); got %v", recovered)
+	}
+
+	hub.Flush(time.Second)
+	if events := transport.Events(); len(events) != 0 {
+		t.Fatalf("expected 0 events for http.ErrAbortHandler panic, got %d: %+v", len(events), events)
+	}
+}
+
+func TestErrortrack_HTTPMiddlewareForHub_other_panic_still_reports(t *testing.T) {
+	hub, transport := newTestHub(t)
+
+	otherHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic(errors.New("unexpected failure"))
+	})
+
+	_, recovered := serveAndRecover(t, hub, errortrack.HTTPMiddlewareForHub(hub, otherHandler))
+	if recovered != nil {
+		t.Fatalf("expected no propagation through HTTPMiddlewareForHub (Repanic: false); got %v", recovered)
+	}
+
+	hub.Flush(time.Second)
+	events := transport.Events()
+	if len(events) == 0 {
+		t.Fatal("expected >=1 event captured for non-ErrAbortHandler panic, got 0")
+	}
+}
+
+// Test (g): nested HTTPMiddleware(HTTPMiddleware(h)) -- a plausible
+// accidental double-wrap -- must still drop http.ErrAbortHandler at every
+// layer and still let the panic propagate all the way out.
+func TestErrortrack_HTTPMiddleware_nested_ErrAbortHandler_no_event_but_repanics(t *testing.T) {
+	hub, transport := newTestHub(t)
+
+	abortHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic(http.ErrAbortHandler)
+	})
+
+	nested := errortrack.HTTPMiddleware(errortrack.HTTPMiddleware(abortHandler))
+
+	_, recovered := serveAndRecover(t, hub, nested)
+	if recovered != http.ErrAbortHandler {
+		t.Fatalf("panic did not propagate as http.ErrAbortHandler through nested HTTPMiddleware; got %v", recovered)
+	}
+
+	hub.Flush(time.Second)
+	if events := transport.Events(); len(events) != 0 {
+		t.Fatalf("expected 0 events for http.ErrAbortHandler panic through nested HTTPMiddleware, got %d: %+v", len(events), events)
+	}
+}
