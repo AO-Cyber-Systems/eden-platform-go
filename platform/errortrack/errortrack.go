@@ -123,7 +123,9 @@ func Recover(ctx context.Context) {
 }
 
 // HTTPMiddleware wraps an http.Handler with sentryhttp's panic recovery and
-// scope-per-request behavior.
+// scope-per-request behavior. sentryhttp recovers every panic from the
+// wrapped handler regardless of the Repanic option -- Repanic only controls
+// whether sentryhttp re-panics after it has captured the event.
 //
 // Insertion ordering in biz-api:
 //
@@ -134,7 +136,14 @@ func Recover(ctx context.Context) {
 //	)
 //
 // Repanic is true so the surrounding LoggingMiddleware (and net/http's own
-// recovery if any) still observe the panic after Sentry has captured it.
+// recovery) still observe the panic after Sentry has captured it.
+//
+// A panic(http.ErrAbortHandler) -- net/http's own sentinel for a handler that
+// deliberately aborted the response, which net/http itself does not log --
+// is still recovered and re-panicked here exactly like any other panic, so
+// it still reaches net/http unchanged. It is not reported to Sentry: see
+// BeforeSend, which drops it based on hint.Context carrying this middleware's
+// *http.Request.
 func HTTPMiddleware(h http.Handler) http.Handler {
 	return sentryhttp.New(sentryhttp.Options{
 		Repanic:         true,
@@ -145,9 +154,11 @@ func HTTPMiddleware(h http.Handler) http.Handler {
 
 // HTTPMiddlewareForHub is a test helper variant that binds the wrapper to a
 // specific *sentry.Hub via request context (instead of CurrentHub). Production
-// code should use HTTPMiddleware. Repanic is false in this variant so
-// httptest.Recorder can observe the 500 response without test framework
-// interference.
+// code should use HTTPMiddleware. Repanic is false in this variant, so
+// sentryhttp never re-panics after recovering: ServeHTTP simply returns, and
+// the response is whatever the handler itself wrote (or the zero value, if
+// the handler panicked before writing anything) -- sentryhttp does not write
+// a 500 on the caller's behalf.
 func HTTPMiddlewareForHub(hub *sentry.Hub, h http.Handler) http.Handler {
 	wrapped := sentryhttp.New(sentryhttp.Options{
 		Repanic:         false,
@@ -161,7 +172,20 @@ func HTTPMiddlewareForHub(hub *sentry.Hub, h http.Handler) http.Handler {
 }
 
 // BeforeSend is the package's PII scrubber. Exported so tests can call it
-// directly without booting a full sentry client. Stripped fields:
+// directly without booting a full sentry client.
+//
+// It first drops one specific case: a panic recovered by sentryhttp (from
+// HTTPMiddleware or HTTPMiddlewareForHub) whose value is http.ErrAbortHandler
+// -- net/http's own sentinel for a handler that deliberately aborted the
+// response, which net/http itself does not log (see the http.ErrAbortHandler
+// doc comment). isHTTPRecoveredAbort identifies that case precisely: it
+// requires BOTH that the recovered value is that exact sentinel AND that the
+// hint carries sentryhttp's *http.Request, so a plain-goroutine crash via
+// errortrack.Recover (a real crash, always reported) and an explicit
+// errortrack.CaptureException(ctx, http.ErrAbortHandler) call (an intentional
+// report, always honored) are both unaffected.
+//
+// For everything else, it scrubs:
 //
 //   - Headers: Authorization, Cookie, Stripe-Signature, X-Api-Key
 //     (case-sensitive; sentry-go canonicalizes header keys to Title-Case).
@@ -172,8 +196,12 @@ func HTTPMiddlewareForHub(hub *sentry.Hub, h http.Handler) http.Handler {
 // Other fields (User.ID, User.Username, query strings, breadcrumbs) are NOT
 // stripped — those are retained for debugging. Callers that want to scrub
 // query strings or breadcrumbs should layer additional scrubbers on top.
-func BeforeSend(event *sentry.Event, _ *sentry.EventHint) *sentry.Event {
+func BeforeSend(event *sentry.Event, hint *sentry.EventHint) *sentry.Event {
 	if event == nil {
+		return nil
+	}
+
+	if isHTTPRecoveredAbort(hint) {
 		return nil
 	}
 
@@ -190,6 +218,34 @@ func BeforeSend(event *sentry.Event, _ *sentry.EventHint) *sentry.Event {
 	event.User.IPAddress = ""
 
 	return event
+}
+
+// isHTTPRecoveredAbort reports whether hint represents a panic that
+// sentryhttp recovered from an HTTP handler (HTTPMiddleware or
+// HTTPMiddlewareForHub) where the recovered value was http.ErrAbortHandler.
+//
+// It checks hint.RecoveredException, never hint.OriginalException, so an
+// explicit errortrack.CaptureException(ctx, http.ErrAbortHandler) call is
+// always honored -- only a *recovered panic* is in scope here.
+//
+// It also requires hint.Context to carry sentryhttp's *http.Request via
+// sentry.RequestContextKey -- the documented way (see the sentry-go/http
+// package's README) to detect that an event came from sentryhttp's recover
+// path specifically. sentryhttp's recoverWithSentry sets this key before
+// calling hub.RecoverWithContext, and client.RecoverWithContext copies that
+// context onto the hint; errortrack.Recover, by contrast, calls hub.Recover
+// (no context), so hint.Context is nil for a plain-goroutine crash even when
+// the recovered value is also http.ErrAbortHandler -- that case is a real
+// process-level crash and must still be reported.
+func isHTTPRecoveredAbort(hint *sentry.EventHint) bool {
+	if hint == nil || hint.RecoveredException != http.ErrAbortHandler {
+		return false
+	}
+	if hint.Context == nil {
+		return false
+	}
+	_, ok := hint.Context.Value(sentry.RequestContextKey).(*http.Request)
+	return ok
 }
 
 // sensitiveHeaders enumerates header names whose values are stripped before
