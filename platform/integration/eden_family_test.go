@@ -63,10 +63,11 @@ func signupFamily(t *testing.T, h *edenFamilyHarness) signupResult {
 	}
 
 	primaryMember, err := h.Household.AddMember(ctx, hhAC, household.Member{
-		HouseholdID:  hh.ID,
-		UserID:       primary,
-		Role:         household.RoleParentOfRecord,
-		Capabilities: household.DefaultCapabilities(household.RoleParentOfRecord),
+		HouseholdID:    hh.ID,
+		IdentityID:     primary,
+		Role:           household.RoleGuardian,
+		IsManager:      true,
+		IsAccountOwner: true,
 	})
 	if err != nil {
 		t.Fatalf("AddMember primary: %v", err)
@@ -74,10 +75,10 @@ func signupFamily(t *testing.T, h *edenFamilyHarness) signupResult {
 
 	coParent := uuid.New()
 	coParentMember, err := h.Household.AddMember(ctx, hhAC, household.Member{
-		HouseholdID:  hh.ID,
-		UserID:       coParent,
-		Role:         household.RoleParentOfRecord,
-		Capabilities: household.DefaultCapabilities(household.RoleParentOfRecord),
+		HouseholdID: hh.ID,
+		IdentityID:  coParent,
+		Role:        household.RoleGuardian,
+		IsManager:   true,
 	})
 	if err != nil {
 		t.Fatalf("AddMember coParent: %v", err)
@@ -85,11 +86,10 @@ func signupFamily(t *testing.T, h *edenFamilyHarness) signupResult {
 
 	childUser := uuid.New()
 	childMember, err := h.Household.AddMember(ctx, hhAC, household.Member{
-		HouseholdID:  hh.ID,
-		UserID:       childUser,
-		Role:         household.RoleChild,
-		Birthdate:    childBirthdate(8),
-		Capabilities: household.DefaultCapabilities(household.RoleChild),
+		HouseholdID: hh.ID,
+		IdentityID:  childUser,
+		Role:        household.RoleChild,
+		Birthdate:   childBirthdate(8),
 	})
 	if err != nil {
 		t.Fatalf("AddMember child: %v", err)
@@ -691,13 +691,12 @@ func TestEdenFamily_NegativeChildAccountRequiresEligibleParent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateHousehold: %v", err)
 	}
-	// "Cousin" is RoleAdultNonParent — not eligible for POR.
+	// "Cousin" is a non-guardian adult — not eligible to grant consent / POR.
 	cousinUserID := uuid.New()
 	cousin, err := h.Household.AddMember(ctx, hhAC, household.Member{
-		HouseholdID:  hh.ID,
-		UserID:       cousinUserID,
-		Role:         household.RoleAdultNonParent,
-		Capabilities: household.DefaultCapabilities(household.RoleAdultNonParent),
+		HouseholdID: hh.ID,
+		IdentityID:  cousinUserID,
+		Role:        household.RoleAdult,
 	})
 	if err != nil {
 		t.Fatalf("AddMember cousin: %v", err)
@@ -705,7 +704,7 @@ func TestEdenFamily_NegativeChildAccountRequiresEligibleParent(t *testing.T) {
 	childUserID := uuid.New()
 	child, err := h.Household.AddMember(ctx, hhAC, household.Member{
 		HouseholdID: hh.ID,
-		UserID:      childUserID,
+		IdentityID:  childUserID,
 		Role:        household.RoleChild,
 		Birthdate:   childBirthdate(7),
 	})
@@ -720,7 +719,7 @@ func TestEdenFamily_NegativeChildAccountRequiresEligibleParent(t *testing.T) {
 	// Adding a child without a birthdate must also fail (COPPA gate).
 	if _, err := h.Household.AddMember(ctx, hhAC, household.Member{
 		HouseholdID: hh.ID,
-		UserID:      uuid.New(),
+		IdentityID:  uuid.New(),
 		Role:        household.RoleChild,
 	}); !errors.Is(err, household.ErrChildBirthdateRequired) {
 		t.Errorf("AddMember child no-birthdate: got %v, want ErrChildBirthdateRequired", err)

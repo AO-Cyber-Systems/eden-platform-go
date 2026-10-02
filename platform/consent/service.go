@@ -66,7 +66,8 @@ func NewService(store Store, logger *audit.Logger) *Service {
 }
 
 // Grant inserts a new consent grant entry. The caller is responsible for
-// verifying that the consenter member is eligible (Role parent | guardian);
+// verifying that the consenter member is eligible — under the re-homed role
+// model only guardians may grant consent (the "parent" role no longer exists);
 // see platform/household.Role.CanGrantConsent.
 func (s *Service) Grant(ctx context.Context, ac AuditContext, req GrantRequest) (Entry, error) {
 	if req.Purpose == "" {

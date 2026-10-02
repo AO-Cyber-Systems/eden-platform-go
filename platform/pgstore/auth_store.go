@@ -416,7 +416,7 @@ func (s *AuthStore) DeleteUserIdentity(ctx context.Context, id uuid.UUID) error 
 
 func (s *AuthStore) CreateAuditLog(ctx context.Context, companyID, actorID uuid.UUID, action, resource, resourceID, ipAddress string, details []byte) error {
 	return s.queries().CreateAuditLog(ctx, db.CreateAuditLogParams{
-		CompanyID:  companyID,
+		CompanyID:  auditCompanyID(companyID),
 		ActorID:    actorID,
 		Action:     action,
 		Resource:   resource,
@@ -515,4 +515,18 @@ func uuidToPgtype(u *uuid.UUID) pgtype.UUID {
 		return pgtype.UUID{}
 	}
 	return pgtype.UUID{Bytes: *u, Valid: true}
+}
+
+// auditCompanyID maps an audit event's company scope onto the nullable
+// audit_logs.company_id column (migration 018). A zero (uuid.Nil) company means
+// "no company" — an identity-space event (household / COPPA audit) that has no
+// companies(id) — and is stored as SQL NULL, exempt from the company FK. Any
+// real company id is stored unchanged and stays FK-validated against
+// companies(id). Centralizing the zero->NULL mapping here keeps the shared
+// audit.AuditStore interface a plain uuid.UUID for every caller.
+func auditCompanyID(companyID uuid.UUID) pgtype.UUID {
+	if companyID == uuid.Nil {
+		return pgtype.UUID{Valid: false}
+	}
+	return pgtype.UUID{Bytes: companyID, Valid: true}
 }

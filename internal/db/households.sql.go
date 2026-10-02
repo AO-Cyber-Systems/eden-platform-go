@@ -14,62 +14,96 @@ import (
 )
 
 const addHouseholdMember = `-- name: AddHouseholdMember :one
-INSERT INTO platform_household_members (household_id, user_id, role, status, birthdate, capabilities)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at
+INSERT INTO platform_household_members (
+    household_id, identity_id, role, status, birthdate,
+    is_manager, is_account_owner, capabilities
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner
 `
 
 type AddHouseholdMemberParams struct {
-	HouseholdID  uuid.UUID       `json:"household_id"`
-	UserID       uuid.UUID       `json:"user_id"`
-	Role         string          `json:"role"`
-	Status       string          `json:"status"`
-	Birthdate    pgtype.Date     `json:"birthdate"`
-	Capabilities json.RawMessage `json:"capabilities"`
+	HouseholdID    uuid.UUID       `json:"household_id"`
+	IdentityID     uuid.UUID       `json:"identity_id"`
+	Role           string          `json:"role"`
+	Status         string          `json:"status"`
+	Birthdate      pgtype.Date     `json:"birthdate"`
+	IsManager      bool            `json:"is_manager"`
+	IsAccountOwner bool            `json:"is_account_owner"`
+	Capabilities   json.RawMessage `json:"capabilities"`
 }
 
 func (q *Queries) AddHouseholdMember(ctx context.Context, arg AddHouseholdMemberParams) (PlatformHouseholdMember, error) {
 	row := q.db.QueryRow(ctx, addHouseholdMember,
 		arg.HouseholdID,
-		arg.UserID,
+		arg.IdentityID,
 		arg.Role,
 		arg.Status,
 		arg.Birthdate,
+		arg.IsManager,
+		arg.IsAccountOwner,
 		arg.Capabilities,
 	)
 	var i PlatformHouseholdMember
 	err := row.Scan(
 		&i.ID,
 		&i.HouseholdID,
-		&i.UserID,
+		&i.IdentityID,
 		&i.Role,
 		&i.Status,
 		&i.Birthdate,
 		&i.Capabilities,
 		&i.AddedAt,
 		&i.RemovedAt,
+		&i.IsManager,
+		&i.IsAccountOwner,
 	)
 	return i, err
 }
 
+const clearHouseholdAccountOwner = `-- name: ClearHouseholdAccountOwner :exec
+UPDATE platform_household_members
+SET is_account_owner = false
+WHERE household_id = $1 AND is_account_owner AND status <> 'removed'
+`
+
+// Step 1 of an account_owner transfer: demote the current owner. Scoped to the
+// household so a transfer can never touch another household's rows.
+func (q *Queries) ClearHouseholdAccountOwner(ctx context.Context, householdID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, clearHouseholdAccountOwner, householdID)
+	return err
+}
+
+const countHouseholdManagers = `-- name: CountHouseholdManagers :one
+SELECT count(*) FROM platform_household_members
+WHERE household_id = $1 AND is_manager AND status <> 'removed'
+`
+
+func (q *Queries) CountHouseholdManagers(ctx context.Context, householdID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countHouseholdManagers, householdID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createHousehold = `-- name: CreateHousehold :one
-INSERT INTO platform_households (primary_contact_user_id, display_name, metadata)
+INSERT INTO platform_households (primary_contact_identity_id, display_name, metadata)
 VALUES ($1, $2, $3)
-RETURNING id, primary_contact_user_id, display_name, metadata, created_at, updated_at
+RETURNING id, primary_contact_identity_id, display_name, metadata, created_at, updated_at
 `
 
 type CreateHouseholdParams struct {
-	PrimaryContactUserID uuid.UUID       `json:"primary_contact_user_id"`
-	DisplayName          string          `json:"display_name"`
-	Metadata             json.RawMessage `json:"metadata"`
+	PrimaryContactIdentityID uuid.UUID       `json:"primary_contact_identity_id"`
+	DisplayName              string          `json:"display_name"`
+	Metadata                 json.RawMessage `json:"metadata"`
 }
 
 func (q *Queries) CreateHousehold(ctx context.Context, arg CreateHouseholdParams) (PlatformHousehold, error) {
-	row := q.db.QueryRow(ctx, createHousehold, arg.PrimaryContactUserID, arg.DisplayName, arg.Metadata)
+	row := q.db.QueryRow(ctx, createHousehold, arg.PrimaryContactIdentityID, arg.DisplayName, arg.Metadata)
 	var i PlatformHousehold
 	err := row.Scan(
 		&i.ID,
-		&i.PrimaryContactUserID,
+		&i.PrimaryContactIdentityID,
 		&i.DisplayName,
 		&i.Metadata,
 		&i.CreatedAt,
@@ -111,16 +145,45 @@ func (q *Queries) EstablishParentOfRecord(ctx context.Context, arg EstablishPare
 	return i, err
 }
 
-const getHousehold = `-- name: GetHousehold :one
-SELECT id, primary_contact_user_id, display_name, metadata, created_at, updated_at FROM platform_households WHERE id = $1
+const getActiveMembershipForIdentity = `-- name: GetActiveMembershipForIdentity :one
+SELECT id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner FROM platform_household_members
+WHERE identity_id = $1 AND status <> 'removed'
+ORDER BY added_at ASC
+LIMIT 1
 `
 
-func (q *Queries) GetHousehold(ctx context.Context, id uuid.UUID) (PlatformHousehold, error) {
-	row := q.db.QueryRow(ctx, getHousehold, id)
+// Clean read path: the first (oldest) active membership for an identity. Phase
+// 0 assumes one household per identity; ordering keeps the choice deterministic
+// if that ever changes.
+func (q *Queries) GetActiveMembershipForIdentity(ctx context.Context, identityID uuid.UUID) (PlatformHouseholdMember, error) {
+	row := q.db.QueryRow(ctx, getActiveMembershipForIdentity, identityID)
+	var i PlatformHouseholdMember
+	err := row.Scan(
+		&i.ID,
+		&i.HouseholdID,
+		&i.IdentityID,
+		&i.Role,
+		&i.Status,
+		&i.Birthdate,
+		&i.Capabilities,
+		&i.AddedAt,
+		&i.RemovedAt,
+		&i.IsManager,
+		&i.IsAccountOwner,
+	)
+	return i, err
+}
+
+const getHouseholdByID = `-- name: GetHouseholdByID :one
+SELECT id, primary_contact_identity_id, display_name, metadata, created_at, updated_at FROM platform_households WHERE id = $1
+`
+
+func (q *Queries) GetHouseholdByID(ctx context.Context, id uuid.UUID) (PlatformHousehold, error) {
+	row := q.db.QueryRow(ctx, getHouseholdByID, id)
 	var i PlatformHousehold
 	err := row.Scan(
 		&i.ID,
-		&i.PrimaryContactUserID,
+		&i.PrimaryContactIdentityID,
 		&i.DisplayName,
 		&i.Metadata,
 		&i.CreatedAt,
@@ -130,7 +193,7 @@ func (q *Queries) GetHousehold(ctx context.Context, id uuid.UUID) (PlatformHouse
 }
 
 const getHouseholdMember = `-- name: GetHouseholdMember :one
-SELECT id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at FROM platform_household_members WHERE id = $1
+SELECT id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner FROM platform_household_members WHERE id = $1
 `
 
 func (q *Queries) GetHouseholdMember(ctx context.Context, id uuid.UUID) (PlatformHouseholdMember, error) {
@@ -139,13 +202,67 @@ func (q *Queries) GetHouseholdMember(ctx context.Context, id uuid.UUID) (Platfor
 	err := row.Scan(
 		&i.ID,
 		&i.HouseholdID,
-		&i.UserID,
+		&i.IdentityID,
 		&i.Role,
 		&i.Status,
 		&i.Birthdate,
 		&i.Capabilities,
 		&i.AddedAt,
 		&i.RemovedAt,
+		&i.IsManager,
+		&i.IsAccountOwner,
+	)
+	return i, err
+}
+
+const getHouseholdMemberForUpdate = `-- name: GetHouseholdMemberForUpdate :one
+SELECT id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner FROM platform_household_members WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) GetHouseholdMemberForUpdate(ctx context.Context, id uuid.UUID) (PlatformHouseholdMember, error) {
+	row := q.db.QueryRow(ctx, getHouseholdMemberForUpdate, id)
+	var i PlatformHouseholdMember
+	err := row.Scan(
+		&i.ID,
+		&i.HouseholdID,
+		&i.IdentityID,
+		&i.Role,
+		&i.Status,
+		&i.Birthdate,
+		&i.Capabilities,
+		&i.AddedAt,
+		&i.RemovedAt,
+		&i.IsManager,
+		&i.IsAccountOwner,
+	)
+	return i, err
+}
+
+const getMemberByHouseholdAndIdentity = `-- name: GetMemberByHouseholdAndIdentity :one
+SELECT id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner FROM platform_household_members
+WHERE household_id = $1 AND identity_id = $2 AND status <> 'removed'
+`
+
+type GetMemberByHouseholdAndIdentityParams struct {
+	HouseholdID uuid.UUID `json:"household_id"`
+	IdentityID  uuid.UUID `json:"identity_id"`
+}
+
+func (q *Queries) GetMemberByHouseholdAndIdentity(ctx context.Context, arg GetMemberByHouseholdAndIdentityParams) (PlatformHouseholdMember, error) {
+	row := q.db.QueryRow(ctx, getMemberByHouseholdAndIdentity, arg.HouseholdID, arg.IdentityID)
+	var i PlatformHouseholdMember
+	err := row.Scan(
+		&i.ID,
+		&i.HouseholdID,
+		&i.IdentityID,
+		&i.Role,
+		&i.Status,
+		&i.Birthdate,
+		&i.Capabilities,
+		&i.AddedAt,
+		&i.RemovedAt,
+		&i.IsManager,
+		&i.IsAccountOwner,
 	)
 	return i, err
 }
@@ -183,8 +300,8 @@ func (q *Queries) ListChildrenForParent(ctx context.Context, parentMemberID uuid
 }
 
 const listHouseholdMembers = `-- name: ListHouseholdMembers :many
-SELECT id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at FROM platform_household_members
-WHERE household_id = $1 AND status != 'removed'
+SELECT id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner FROM platform_household_members
+WHERE household_id = $1 AND status <> 'removed'
 ORDER BY added_at ASC
 `
 
@@ -200,13 +317,15 @@ func (q *Queries) ListHouseholdMembers(ctx context.Context, householdID uuid.UUI
 		if err := rows.Scan(
 			&i.ID,
 			&i.HouseholdID,
-			&i.UserID,
+			&i.IdentityID,
 			&i.Role,
 			&i.Status,
 			&i.Birthdate,
 			&i.Capabilities,
 			&i.AddedAt,
 			&i.RemovedAt,
+			&i.IsManager,
+			&i.IsAccountOwner,
 		); err != nil {
 			return nil, err
 		}
@@ -218,15 +337,15 @@ func (q *Queries) ListHouseholdMembers(ctx context.Context, householdID uuid.UUI
 	return items, nil
 }
 
-const listHouseholdsForUser = `-- name: ListHouseholdsForUser :many
-SELECT h.id, h.primary_contact_user_id, h.display_name, h.metadata, h.created_at, h.updated_at FROM platform_households h
+const listHouseholdsForIdentity = `-- name: ListHouseholdsForIdentity :many
+SELECT h.id, h.primary_contact_identity_id, h.display_name, h.metadata, h.created_at, h.updated_at FROM platform_households h
 JOIN platform_household_members m ON m.household_id = h.id
-WHERE m.user_id = $1 AND m.status != 'removed'
+WHERE m.identity_id = $1 AND m.status <> 'removed'
 ORDER BY h.created_at DESC
 `
 
-func (q *Queries) ListHouseholdsForUser(ctx context.Context, userID uuid.UUID) ([]PlatformHousehold, error) {
-	rows, err := q.db.Query(ctx, listHouseholdsForUser, userID)
+func (q *Queries) ListHouseholdsForIdentity(ctx context.Context, identityID uuid.UUID) ([]PlatformHousehold, error) {
+	rows, err := q.db.Query(ctx, listHouseholdsForIdentity, identityID)
 	if err != nil {
 		return nil, err
 	}
@@ -236,7 +355,7 @@ func (q *Queries) ListHouseholdsForUser(ctx context.Context, userID uuid.UUID) (
 		var i PlatformHousehold
 		if err := rows.Scan(
 			&i.ID,
-			&i.PrimaryContactUserID,
+			&i.PrimaryContactIdentityID,
 			&i.DisplayName,
 			&i.Metadata,
 			&i.CreatedAt,
@@ -284,6 +403,20 @@ func (q *Queries) ListParentsOfRecord(ctx context.Context, childMemberID uuid.UU
 	return items, nil
 }
 
+const lockHousehold = `-- name: LockHousehold :one
+SELECT id FROM platform_households WHERE id = $1 FOR UPDATE
+`
+
+// Serialises every invariant-bearing mutation on one household (remove /
+// demote a manager, transfer the account_owner). Callers take this inside the
+// same transaction as their read-check-write so two concurrent removals of the
+// only two managers cannot both observe count=2.
+func (q *Queries) LockHousehold(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, lockHousehold, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
 const removeHouseholdMember = `-- name: RemoveHouseholdMember :exec
 UPDATE platform_household_members
 SET status = 'removed', removed_at = now()
@@ -306,11 +439,44 @@ func (q *Queries) RevokeParentOfRecord(ctx context.Context, id uuid.UUID) error 
 	return err
 }
 
+const setHouseholdAccountOwner = `-- name: SetHouseholdAccountOwner :one
+UPDATE platform_household_members
+SET is_account_owner = true
+WHERE id = $2 AND household_id = $1 AND status <> 'removed'
+RETURNING id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner
+`
+
+type SetHouseholdAccountOwnerParams struct {
+	HouseholdID uuid.UUID `json:"household_id"`
+	ID          uuid.UUID `json:"id"`
+}
+
+// Step 2 of an account_owner transfer: promote the named member. Household-
+// scoped: the member id must belong to $1 or no row is updated.
+func (q *Queries) SetHouseholdAccountOwner(ctx context.Context, arg SetHouseholdAccountOwnerParams) (PlatformHouseholdMember, error) {
+	row := q.db.QueryRow(ctx, setHouseholdAccountOwner, arg.HouseholdID, arg.ID)
+	var i PlatformHouseholdMember
+	err := row.Scan(
+		&i.ID,
+		&i.HouseholdID,
+		&i.IdentityID,
+		&i.Role,
+		&i.Status,
+		&i.Birthdate,
+		&i.Capabilities,
+		&i.AddedAt,
+		&i.RemovedAt,
+		&i.IsManager,
+		&i.IsAccountOwner,
+	)
+	return i, err
+}
+
 const updateHousehold = `-- name: UpdateHousehold :one
 UPDATE platform_households
 SET display_name = $2, metadata = $3, updated_at = now()
 WHERE id = $1
-RETURNING id, primary_contact_user_id, display_name, metadata, created_at, updated_at
+RETURNING id, primary_contact_identity_id, display_name, metadata, created_at, updated_at
 `
 
 type UpdateHouseholdParams struct {
@@ -324,7 +490,7 @@ func (q *Queries) UpdateHousehold(ctx context.Context, arg UpdateHouseholdParams
 	var i PlatformHousehold
 	err := row.Scan(
 		&i.ID,
-		&i.PrimaryContactUserID,
+		&i.PrimaryContactIdentityID,
 		&i.DisplayName,
 		&i.Metadata,
 		&i.CreatedAt,
@@ -335,30 +501,40 @@ func (q *Queries) UpdateHousehold(ctx context.Context, arg UpdateHouseholdParams
 
 const updateHouseholdMemberRole = `-- name: UpdateHouseholdMemberRole :one
 UPDATE platform_household_members
-SET role = $2, capabilities = $3
+SET role = $2, is_manager = $3, is_account_owner = $4, capabilities = $5
 WHERE id = $1
-RETURNING id, household_id, user_id, role, status, birthdate, capabilities, added_at, removed_at
+RETURNING id, household_id, identity_id, role, status, birthdate, capabilities, added_at, removed_at, is_manager, is_account_owner
 `
 
 type UpdateHouseholdMemberRoleParams struct {
-	ID           uuid.UUID       `json:"id"`
-	Role         string          `json:"role"`
-	Capabilities json.RawMessage `json:"capabilities"`
+	ID             uuid.UUID       `json:"id"`
+	Role           string          `json:"role"`
+	IsManager      bool            `json:"is_manager"`
+	IsAccountOwner bool            `json:"is_account_owner"`
+	Capabilities   json.RawMessage `json:"capabilities"`
 }
 
 func (q *Queries) UpdateHouseholdMemberRole(ctx context.Context, arg UpdateHouseholdMemberRoleParams) (PlatformHouseholdMember, error) {
-	row := q.db.QueryRow(ctx, updateHouseholdMemberRole, arg.ID, arg.Role, arg.Capabilities)
+	row := q.db.QueryRow(ctx, updateHouseholdMemberRole,
+		arg.ID,
+		arg.Role,
+		arg.IsManager,
+		arg.IsAccountOwner,
+		arg.Capabilities,
+	)
 	var i PlatformHouseholdMember
 	err := row.Scan(
 		&i.ID,
 		&i.HouseholdID,
-		&i.UserID,
+		&i.IdentityID,
 		&i.Role,
 		&i.Status,
 		&i.Birthdate,
 		&i.Capabilities,
 		&i.AddedAt,
 		&i.RemovedAt,
+		&i.IsManager,
+		&i.IsAccountOwner,
 	)
 	return i, err
 }

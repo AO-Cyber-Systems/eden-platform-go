@@ -1,6 +1,6 @@
 module github.com/aocybersystems/eden-platform-go
 
-go 1.26.1
+go 1.27.1
 
 require (
 	connectrpc.com/connect v1.19.1
