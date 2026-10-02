@@ -87,6 +87,7 @@ None tracked locally; portfolio-level pending items live in
 |---|-------------|------|--------|-----------|
 | 1 | Rename platform household tables to platform_households (issue #20) | 2026-05-21 | ee3ad0c | [1-rename-platform-household-tables-to-plat](./quick/1-rename-platform-household-tables-to-plat/) |
 | 2 | test: memstore membership resolves the oldest company, like pgstore | 2026-10-02 | ed01402 | eden-platform-pr38-wt |
+| 3 | fix: memstore membership keeps creation order, matching pgstore | 2026-10-02 | 657886d | eden-platform-pr38-wt |
 
 ## Session Continuity
 
