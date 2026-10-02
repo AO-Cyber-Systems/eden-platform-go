@@ -279,13 +279,13 @@ func (s *AuthStore) GetCompanyMembershipByUser(ctx context.Context, userID uuid.
 	s.backend.mu.RLock()
 	defer s.backend.mu.RUnlock()
 	state := s.stateRef()
-	memberships := append([]auth.Membership(nil), state.memberships[userID]...)
+	memberships := state.memberships[userID]
 	if len(memberships) == 0 {
 		return auth.Membership{}, fmt.Errorf("membership not found")
 	}
-	sort.Slice(memberships, func(i, j int) bool {
-		return memberships[i].CompanyID.String() < memberships[j].CompanyID.String()
-	})
+	// Oldest membership ("home" company) first, matching pgstore's
+	// ListUserCompanyIDs ORDER BY created_at ASC. CreateCompanyMembership only
+	// ever appends, so slice order IS creation order.
 	return memberships[0], nil
 }
 
