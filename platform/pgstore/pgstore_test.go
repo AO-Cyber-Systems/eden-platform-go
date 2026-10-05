@@ -576,3 +576,53 @@ func TestWebhookStore_Deliveries(t *testing.T) {
 		t.Errorf("delivery count = %d, want 1", len(deliveries))
 	}
 }
+
+// TestAuthStore_GetCompanyMembershipByUser_OldestFirst pins the fix in #38:
+// a multi-company user must resolve to the OLDEST membership (the "home"
+// company), stable across calls. The fixture is arranged so that EVERY other
+// plausible order gives the wrong answer: the home membership is inserted
+// SECOND (so physical/no-ORDER-BY order returns the other one) and home is the
+// company with the LARGER id (so a company_id tiebreak alone returns the other
+// one). Only created_at ASC picks home — which is the fix.
+func TestAuthStore_GetCompanyMembershipByUser_OldestFirst(t *testing.T) {
+	backend := setupTestBackend(t)
+	authStore := backend.AuthStore()
+	companyStore := backend.CompanyStore()
+	ctx := context.Background()
+
+	user, err := authStore.CreateUser(ctx, "multi@example.com", "hash", "Multi")
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	c1, _ := companyStore.CreateCompany(ctx, company.Company{Name: "Co 1", Slug: "co-1"})
+	c2, _ := companyStore.CreateCompany(ctx, company.Company{Name: "Co 2", Slug: "co-2"})
+	home, later := c1, c2
+	if c2.ID.String() > c1.ID.String() {
+		home, later = c2, c1 // home = larger id, so company_id ASC would NOT pick it
+	}
+	ownerRoleID := uuid.MustParse("10000000-0000-0000-0000-000000000001")
+
+	// Physically insert the NON-home membership first.
+	if err := authStore.CreateCompanyMembership(ctx, later.ID, user.ID, ownerRoleID); err != nil {
+		t.Fatalf("later membership: %v", err)
+	}
+	if err := authStore.CreateCompanyMembership(ctx, home.ID, user.ID, ownerRoleID); err != nil {
+		t.Fatalf("home membership: %v", err)
+	}
+	// ...but make home the OLDER membership.
+	if _, err := backend.Pool().Exec(ctx,
+		`UPDATE company_memberships SET created_at = created_at - interval '1 day' WHERE user_id = $1 AND company_id = $2`,
+		user.ID, home.ID); err != nil {
+		t.Fatalf("backdate home membership: %v", err)
+	}
+
+	for i := 0; i < 5; i++ {
+		m, err := authStore.GetCompanyMembershipByUser(ctx, user.ID)
+		if err != nil {
+			t.Fatalf("get membership: %v", err)
+		}
+		if m.CompanyID != home.ID {
+			t.Fatalf("call %d: resolved company = %s, want oldest/home %s (other = %s)", i, m.CompanyID, home.ID, later.ID)
+		}
+	}
+}
