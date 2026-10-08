@@ -64,4 +64,18 @@ message ApiKeyValidationServiceValidateApiKeyResponse {
   //   "invalid_format" — raw_key doesn't start with "aoid_" or is too short
   // Empty when valid=true.
   string reason = 6;
+
+  // Global identity id of the key's owning account — the same value a
+  // human access token for that person carries as `sub`. Only set when
+  // valid=true. Empty only for legacy accounts not linked to an
+  // identity; callers then fall back to account_id. Relying parties key
+  // user rows and memberships on this, so a key and a browser session
+  // of the same person resolve to the same subject.
+  string identity_id = 7;
+
+  // Slug of the owning tenant — the same value a human access token
+  // carries as `tnt`, and the tenant schema name relying parties use.
+  // Only set when valid=true. tenant_id (the UUID) is kept for the
+  // caller-side consistency check.
+  string tenant_slug = 8;
 }

@@ -57,6 +57,12 @@ func runForTest(t *testing.T, cfg *config.Config, opts ...func(*Server)) string 
 	}
 
 	t.Cleanup(func() {
+		// Close the client's pooled connections first. The transport can
+		// dial a spare connection that never carries a request; the server
+		// sees it as StateNew, which http.Server.Shutdown only treats as
+		// idle once it is 5s old, so it outlives the 1s ShutdownTimeout and
+		// Shutdown returns context.DeadlineExceeded (a -race-sensitive flake).
+		http.DefaultClient.CloseIdleConnections()
 		cancel()
 		select {
 		case err := <-done:
