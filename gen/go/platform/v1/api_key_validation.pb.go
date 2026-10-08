@@ -97,7 +97,19 @@ type ApiKeyValidationServiceValidateApiKeyResponse struct {
 	//	"invalid_format" — raw_key doesn't start with "aoid_" or is too short
 	//
 	// Empty when valid=true.
-	Reason        string `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	Reason string `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	// Global identity id of the key's owning account — the same value a
+	// human access token for that person carries as `sub`. Only set when
+	// valid=true. Empty only for legacy accounts not linked to an
+	// identity; callers then fall back to account_id. Relying parties key
+	// user rows and memberships on this, so a key and a browser session
+	// of the same person resolve to the same subject.
+	IdentityId string `protobuf:"bytes,7,opt,name=identity_id,json=identityId,proto3" json:"identity_id,omitempty"`
+	// Slug of the owning tenant — the same value a human access token
+	// carries as `tnt`, and the tenant schema name relying parties use.
+	// Only set when valid=true. tenant_id (the UUID) is kept for the
+	// caller-side consistency check.
+	TenantSlug    string `protobuf:"bytes,8,opt,name=tenant_slug,json=tenantSlug,proto3" json:"tenant_slug,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -174,6 +186,20 @@ func (x *ApiKeyValidationServiceValidateApiKeyResponse) GetReason() string {
 	return ""
 }
 
+func (x *ApiKeyValidationServiceValidateApiKeyResponse) GetIdentityId() string {
+	if x != nil {
+		return x.IdentityId
+	}
+	return ""
+}
+
+func (x *ApiKeyValidationServiceValidateApiKeyResponse) GetTenantSlug() string {
+	if x != nil {
+		return x.TenantSlug
+	}
+	return ""
+}
+
 var File_platform_v1_api_key_validation_proto protoreflect.FileDescriptor
 
 const file_platform_v1_api_key_validation_proto_rawDesc = "" +
@@ -181,7 +207,7 @@ const file_platform_v1_api_key_validation_proto_rawDesc = "" +
 	"$platform/v1/api_key_validation.proto\x12\vplatform.v1\"d\n" +
 	",ApiKeyValidationServiceValidateApiKeyRequest\x12\x1b\n" +
 	"\ttenant_id\x18\x01 \x01(\tR\btenantId\x12\x17\n" +
-	"\araw_key\x18\x02 \x01(\tR\x06rawKey\"\xcf\x01\n" +
+	"\araw_key\x18\x02 \x01(\tR\x06rawKey\"\x91\x02\n" +
 	"-ApiKeyValidationServiceValidateApiKeyResponse\x12\x14\n" +
 	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x1c\n" +
 	"\n" +
@@ -190,7 +216,11 @@ const file_platform_v1_api_key_validation_proto_rawDesc = "" +
 	"account_id\x18\x03 \x01(\tR\taccountId\x12\x1b\n" +
 	"\ttenant_id\x18\x04 \x01(\tR\btenantId\x12\x16\n" +
 	"\x06scopes\x18\x05 \x03(\tR\x06scopes\x12\x16\n" +
-	"\x06reason\x18\x06 \x01(\tR\x06reason2\xa3\x01\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\x12\x1f\n" +
+	"\videntity_id\x18\a \x01(\tR\n" +
+	"identityId\x12\x1f\n" +
+	"\vtenant_slug\x18\b \x01(\tR\n" +
+	"tenantSlug2\xa3\x01\n" +
 	"\x17ApiKeyValidationService\x12\x87\x01\n" +
 	"\x0eValidateApiKey\x129.platform.v1.ApiKeyValidationServiceValidateApiKeyRequest\x1a:.platform.v1.ApiKeyValidationServiceValidateApiKeyResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
