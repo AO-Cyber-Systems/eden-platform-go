@@ -4,7 +4,7 @@ package platform.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+option go_package = "go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1";
 
 // AuthnService provides end-user authentication primitives — password,
 // TOTP, WebAuthn (registration + login + passwordless discoverable login),

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"time"
 
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/company"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/company"
 )
 
 func authDataFromDomain(response *auth.AuthResponse) *platformv1.AuthData {

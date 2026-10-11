@@ -18,7 +18,7 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
-	experiencev1 "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1"
+	experiencev1 "go.aocyber.ai/eden-platform-go/gen/go/experience/v1"
 )
 
 // newSpec hand-builds a minimal ExperienceSpec literal. The 140-02 factory does

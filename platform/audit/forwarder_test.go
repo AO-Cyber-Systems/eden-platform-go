@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
 )
 
 // memSink is a synchronous in-memory Sink for forwarder tests.

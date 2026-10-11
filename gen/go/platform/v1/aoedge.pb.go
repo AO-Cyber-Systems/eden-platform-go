@@ -718,7 +718,7 @@ const file_platform_v1_aoedge_proto_rawDesc = "" +
 	"\fGetBuildInfo\x12 .platform.v1.GetBuildInfoRequest\x1a!.platform.v1.GetBuildInfoResponse\x12M\n" +
 	"\n" +
 	"ListRoutes\x12\x1e.platform.v1.ListRoutesRequest\x1a\x1f.platform.v1.ListRoutesResponse\x12_\n" +
-	"\x10GetBackendHealth\x12$.platform.v1.GetBackendHealthRequest\x1a%.platform.v1.GetBackendHealthResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x10GetBackendHealth\x12$.platform.v1.GetBackendHealthRequest\x1a%.platform.v1.GetBackendHealthResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_aoedge_proto_rawDescOnce sync.Once

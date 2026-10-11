@@ -3,7 +3,7 @@ package platformv1_test
 import (
 	"testing"
 
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"

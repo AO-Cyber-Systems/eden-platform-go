@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	edenplatform "github.com/aocybersystems/eden-platform-go"
-	"github.com/aocybersystems/eden-platform-go/platform/company"
-	"github.com/aocybersystems/eden-platform-go/platform/pgstore"
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	"github.com/google/uuid"
+	edenplatform "go.aocyber.ai/eden-platform-go"
+	"go.aocyber.ai/eden-platform-go/platform/company"
+	"go.aocyber.ai/eden-platform-go/platform/pgstore"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
 )
 
 func setupTestBackend(t *testing.T) *pgstore.Backend {

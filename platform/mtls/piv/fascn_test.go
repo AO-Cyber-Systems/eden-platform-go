@@ -25,7 +25,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/mtls/piv"
+	"go.aocyber.ai/eden-platform-go/platform/mtls/piv"
 )
 
 // fascnFixtureHex is the literal hex string written into the FASC-N

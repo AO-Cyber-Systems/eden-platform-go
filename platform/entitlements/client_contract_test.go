@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/entitlements"
+	"go.aocyber.ai/eden-platform-go/platform/entitlements"
 )
 
 const testToken = "svc-tok-contract"

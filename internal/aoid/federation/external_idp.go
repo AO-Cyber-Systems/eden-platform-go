@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	platsaml "github.com/aocybersystems/eden-platform-go/platform/auth/saml"
 	"github.com/google/uuid"
+	platsaml "go.aocyber.ai/eden-platform-go/platform/auth/saml"
 )
 
 // Errors specific to inbound (external-IdP) federation flows.

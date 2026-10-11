@@ -5,7 +5,7 @@ package platform.v1;
 import "platform/v1/federation_types.proto";
 import "platform/v1/oauth_admin.proto";
 
-option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+option go_package = "go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1";
 
 // FederationAdminService manages AOID's federation surface (Obj 6):
 // inbound external IdPs (SAML / OIDC), attribute mappings, per-tenant

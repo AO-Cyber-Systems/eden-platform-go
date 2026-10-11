@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth/jwks"
+	"go.aocyber.ai/eden-platform-go/platform/auth/jwks"
 )
 
 // Published key set defaults and constants.

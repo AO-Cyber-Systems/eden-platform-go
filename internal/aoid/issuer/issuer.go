@@ -22,9 +22,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/clients"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/clients"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 // Config controls Issuer behavior. Fields are populated from

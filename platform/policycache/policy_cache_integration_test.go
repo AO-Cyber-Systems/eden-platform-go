@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aocybersystems/eden-platform-go/platform/policycache"
+	"go.aocyber.ai/eden-platform-go/platform/policycache"
 )
 
 func TestPolicyCache_NotifyTriggers_RefreshOne(t *testing.T) {

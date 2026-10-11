@@ -301,7 +301,7 @@ const file_platform_v1_recovery_proto_rawDesc = "" +
 	"return_url\x18\x04 \x01(\tR\treturnUrl2\xae\x02\n" +
 	"\x13SelfRecoveryService\x12\x82\x01\n" +
 	"\x0fRequestRecovery\x126.platform.v1.SelfRecoveryServiceRequestRecoveryRequest\x1a7.platform.v1.SelfRecoveryServiceRequestRecoveryResponse\x12\x91\x01\n" +
-	"\x14ConsumeRecoveryToken\x12;.platform.v1.SelfRecoveryServiceConsumeRecoveryTokenRequest\x1a<.platform.v1.SelfRecoveryServiceConsumeRecoveryTokenResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x14ConsumeRecoveryToken\x12;.platform.v1.SelfRecoveryServiceConsumeRecoveryTokenRequest\x1a<.platform.v1.SelfRecoveryServiceConsumeRecoveryTokenResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_recovery_proto_rawDescOnce sync.Once

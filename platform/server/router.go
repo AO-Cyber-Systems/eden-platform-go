@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	connect "connectrpc.com/connect"
-	platformv1connect "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1/platformv1connect"
+	platformv1connect "go.aocyber.ai/eden-platform-go/gen/go/platform/v1/platformv1connect"
 )
 
 type PlatformHandlers struct {

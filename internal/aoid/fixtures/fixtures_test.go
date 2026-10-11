@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/composition"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
-	"github.com/aocybersystems/eden-platform-go/platform/consent"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/composition"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/config"
+	"go.aocyber.ai/eden-platform-go/platform/consent"
 )
 
 func TestSeed_PopulatesHouseholdParentChildAndConsent(t *testing.T) {

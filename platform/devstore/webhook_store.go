@@ -6,8 +6,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/webhook"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/webhook"
 )
 
 var _ webhook.WebhookStore = (*WebhookStore)(nil)

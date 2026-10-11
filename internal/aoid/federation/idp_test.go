@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth/saml/idp"
+	"go.aocyber.ai/eden-platform-go/platform/auth/saml/idp"
 	"github.com/google/uuid"
 )
 

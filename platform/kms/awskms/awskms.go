@@ -25,8 +25,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
-	"github.com/aocybersystems/eden-platform-go/platform/kms/signature"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms/signature"
 	sawskms "go.step.sm/crypto/kms/awskms"
 	"go.step.sm/crypto/kms/apiv1"
 )

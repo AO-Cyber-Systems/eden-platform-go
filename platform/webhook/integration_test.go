@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/devstore"
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
-	"github.com/aocybersystems/eden-platform-go/platform/webhook"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/devstore"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
+	"go.aocyber.ai/eden-platform-go/platform/webhook"
 )
 
 // TestRBACAuditWebhook_Integration drives the canonical chain end-to-end:

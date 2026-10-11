@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/config"
 )
 
 func TestBuildDoc_RequiredFields(t *testing.T) {

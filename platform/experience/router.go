@@ -14,9 +14,9 @@ import (
 	"strings"
 
 	connect "connectrpc.com/connect"
-	experiencev1connect "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1/experiencev1connect"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/server"
+	experiencev1connect "go.aocyber.ai/eden-platform-go/gen/go/experience/v1/experiencev1connect"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/server"
 )
 
 // orgScopePrefix is the JWT scope-claim prefix carrying the aocore ORG scope.

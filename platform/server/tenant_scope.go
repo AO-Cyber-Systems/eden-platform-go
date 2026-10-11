@@ -6,8 +6,8 @@ import (
 	"fmt"
 
 	"connectrpc.com/connect"
-	"github.com/aocybersystems/eden-platform-go/platform/adminauth"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/adminauth"
 )
 
 // TenantExtractor pulls the target tenant_id out of a Connect-RPC request.

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth/kmssigner"
 	"github.com/golang-jwt/jwt/v5"
+	"go.aocyber.ai/eden-platform-go/platform/auth/kmssigner"
 )
 
 // DefaultTTL is the lifetime a Minter stamps onto a context unless the caller

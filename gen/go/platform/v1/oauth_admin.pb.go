@@ -1191,7 +1191,7 @@ const file_platform_v1_oauth_admin_proto_rawDesc = "" +
 	"\vListClients\x120.platform.v1.OAuthAdminServiceListClientsRequest\x1a1.platform.v1.OAuthAdminServiceListClientsResponse\x12\x87\x01\n" +
 	"\x12RotateClientSecret\x127.platform.v1.OAuthAdminServiceRotateClientSecretRequest\x1a8.platform.v1.OAuthAdminServiceRotateClientSecretResponse\x12{\n" +
 	"\x0eAddRedirectURI\x123.platform.v1.OAuthAdminServiceAddRedirectURIRequest\x1a4.platform.v1.OAuthAdminServiceAddRedirectURIResponse\x12\x84\x01\n" +
-	"\x11RemoveRedirectURI\x126.platform.v1.OAuthAdminServiceRemoveRedirectURIRequest\x1a7.platform.v1.OAuthAdminServiceRemoveRedirectURIResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x11RemoveRedirectURI\x126.platform.v1.OAuthAdminServiceRemoveRedirectURIRequest\x1a7.platform.v1.OAuthAdminServiceRemoveRedirectURIResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_oauth_admin_proto_rawDescOnce sync.Once

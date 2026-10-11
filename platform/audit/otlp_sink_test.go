@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
 )
 
 // otlpReceiver is a minimal httptest server that captures POST bodies. The

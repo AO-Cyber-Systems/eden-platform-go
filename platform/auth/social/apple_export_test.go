@@ -8,7 +8,7 @@ package social_test
 import (
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth/social"
+	"go.aocyber.ai/eden-platform-go/platform/auth/social"
 )
 
 // TestGenerateAppleClientSecret_ExternalCallable verifies that

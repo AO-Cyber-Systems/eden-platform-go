@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 // stateTTL bounds how long a social-login state JWT is valid (CSRF + PKCE

@@ -17,7 +17,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/fipsmode"
+	"go.aocyber.ai/eden-platform-go/platform/fipsmode"
 )
 
 func TestNewPolicyHasher_NonFIPSReturnsArgon2id(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/household"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/household"
 )
 
 // inMemoryHouseholdStore is a thread-safe map-backed household.Store for

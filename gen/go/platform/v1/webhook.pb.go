@@ -639,7 +639,7 @@ const file_platform_v1_webhook_proto_rawDesc = "" +
 	"\x0fRegisterWebhook\x12#.platform.v1.RegisterWebhookRequest\x1a$.platform.v1.RegisterWebhookResponse\x12S\n" +
 	"\fListWebhooks\x12 .platform.v1.ListWebhooksRequest\x1a!.platform.v1.ListWebhooksResponse\x12V\n" +
 	"\rDeleteWebhook\x12!.platform.v1.DeleteWebhookRequest\x1a\".platform.v1.DeleteWebhookResponse\x12Y\n" +
-	"\x0eListDeliveries\x12\".platform.v1.ListDeliveriesRequest\x1a#.platform.v1.ListDeliveriesResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x0eListDeliveries\x12\".platform.v1.ListDeliveriesRequest\x1a#.platform.v1.ListDeliveriesResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_webhook_proto_rawDescOnce sync.Once

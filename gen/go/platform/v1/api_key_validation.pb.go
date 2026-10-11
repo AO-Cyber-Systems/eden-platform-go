@@ -222,7 +222,7 @@ const file_platform_v1_api_key_validation_proto_rawDesc = "" +
 	"\vtenant_slug\x18\b \x01(\tR\n" +
 	"tenantSlug2\xa3\x01\n" +
 	"\x17ApiKeyValidationService\x12\x87\x01\n" +
-	"\x0eValidateApiKey\x129.platform.v1.ApiKeyValidationServiceValidateApiKeyRequest\x1a:.platform.v1.ApiKeyValidationServiceValidateApiKeyResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x0eValidateApiKey\x129.platform.v1.ApiKeyValidationServiceValidateApiKeyRequest\x1a:.platform.v1.ApiKeyValidationServiceValidateApiKeyResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_api_key_validation_proto_rawDescOnce sync.Once

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/aocybersystems/eden-platform-go/platform/errortrack"
+	"go.aocyber.ai/eden-platform-go/platform/errortrack"
 )
 
 // Config configures Setup. All fields are optional; sensible defaults are

@@ -483,7 +483,7 @@ const file_platform_v1_bridge_proto_rawDesc = "" +
 	"\rBridgeService\x12S\n" +
 	"\fListAdapters\x12 .platform.v1.ListAdaptersRequest\x1a!.platform.v1.ListAdaptersResponse\x12Y\n" +
 	"\x0eDispatchAction\x12\".platform.v1.DispatchActionRequest\x1a#.platform.v1.DispatchActionResponse\x12P\n" +
-	"\vListActions\x12\x1f.platform.v1.ListActionsRequest\x1a .platform.v1.ListActionsResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\vListActions\x12\x1f.platform.v1.ListActionsRequest\x1a .platform.v1.ListActionsResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_bridge_proto_rawDescOnce sync.Once

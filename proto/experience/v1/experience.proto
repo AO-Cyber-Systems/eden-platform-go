@@ -8,7 +8,7 @@ syntax = "proto3";
 // axes (must-have #1, the most irreversible decision).
 package experience.v1;
 
-option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1";
+option go_package = "go.aocyber.ai/eden-platform-go/gen/go/experience/v1;experiencev1";
 
 // AppDefinition: build-time definition feeding BOTH the runtime resolver AND
 // the per-company native build pipeline (layered output).

@@ -15,9 +15,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/composition"
-	"github.com/aocybersystems/eden-platform-go/platform/consent"
-	"github.com/aocybersystems/eden-platform-go/platform/household"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/composition"
+	"go.aocyber.ai/eden-platform-go/platform/consent"
+	"go.aocyber.ai/eden-platform-go/platform/household"
 	"github.com/google/uuid"
 )
 

@@ -7,7 +7,7 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/aocybersystems/eden-platform-go/platform/livekit"
+	"go.aocyber.ai/eden-platform-go/platform/livekit"
 )
 
 // roomsStub returns deterministic RoomInfo for runnable example output.

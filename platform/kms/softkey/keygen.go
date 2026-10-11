@@ -13,8 +13,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth/jwks"
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/auth/jwks"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 )
 
 // GenerateAndWrap is the helper AOID's aoidkey CLI calls to mint a fresh

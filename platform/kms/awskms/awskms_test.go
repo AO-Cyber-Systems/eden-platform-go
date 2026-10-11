@@ -12,9 +12,9 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
-	"github.com/aocybersystems/eden-platform-go/platform/kms/signature"
 	"github.com/stretchr/testify/require"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms/signature"
 )
 
 // fakeSigner is a hand-rolled crypto.Signer used in tests so we don't need

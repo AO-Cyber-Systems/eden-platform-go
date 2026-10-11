@@ -20,7 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 )
 
 // -------- Fixtures --------

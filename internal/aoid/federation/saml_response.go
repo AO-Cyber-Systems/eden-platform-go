@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	platsaml "github.com/aocybersystems/eden-platform-go/platform/auth/saml"
+	platsaml "go.aocyber.ai/eden-platform-go/platform/auth/saml"
 )
 
 // ValidateSAMLResponse decodes a base64-encoded SAML response, extracts

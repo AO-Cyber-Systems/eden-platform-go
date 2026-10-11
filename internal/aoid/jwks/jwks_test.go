@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 func writeSeed(t *testing.T, dir, name string) string {

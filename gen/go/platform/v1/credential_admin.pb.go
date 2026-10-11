@@ -1608,7 +1608,7 @@ const file_platform_v1_credential_admin_proto_rawDesc = "" +
 	"\vListApiKeys\x125.platform.v1.CredentialAdminServiceListApiKeysRequest\x1a6.platform.v1.CredentialAdminServiceListApiKeysResponse\x12v\n" +
 	"\tGetApiKey\x123.platform.v1.CredentialAdminServiceGetApiKeyRequest\x1a4.platform.v1.CredentialAdminServiceGetApiKeyResponse\x12\x7f\n" +
 	"\fRevokeApiKey\x126.platform.v1.CredentialAdminServiceRevokeApiKeyRequest\x1a7.platform.v1.CredentialAdminServiceRevokeApiKeyResponse\x12\x7f\n" +
-	"\fRotateApiKey\x126.platform.v1.CredentialAdminServiceRotateApiKeyRequest\x1a7.platform.v1.CredentialAdminServiceRotateApiKeyResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\fRotateApiKey\x126.platform.v1.CredentialAdminServiceRotateApiKeyRequest\x1a7.platform.v1.CredentialAdminServiceRotateApiKeyResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_credential_admin_proto_rawDescOnce sync.Once

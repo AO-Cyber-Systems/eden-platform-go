@@ -494,7 +494,7 @@ const file_platform_v1_audit_proto_rawDesc = "" +
 	"\bevent_id\x18\x02 \x01(\tR\aeventId2\xd6\x01\n" +
 	"\fAuditService\x12V\n" +
 	"\rListAuditLogs\x12!.platform.v1.ListAuditLogsRequest\x1a\".platform.v1.ListAuditLogsResponse\x12n\n" +
-	"\x15IngestBreakGlassEvent\x12).platform.v1.IngestBreakGlassEventRequest\x1a*.platform.v1.IngestBreakGlassEventResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x15IngestBreakGlassEvent\x12).platform.v1.IngestBreakGlassEventRequest\x1a*.platform.v1.IngestBreakGlassEventResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_audit_proto_rawDescOnce sync.Once

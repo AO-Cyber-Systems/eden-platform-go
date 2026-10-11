@@ -1,4 +1,4 @@
-module github.com/aocybersystems/eden-platform-go
+module go.aocyber.ai/eden-platform-go
 
 go 1.27.1
 

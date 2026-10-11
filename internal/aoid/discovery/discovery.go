@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/config"
 )
 
 // ServiceStatusScaffold is the value of the non-standard service_status

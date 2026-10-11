@@ -652,7 +652,7 @@ const file_platform_v1_registry_proto_rawDesc = "" +
 	"\n" +
 	"GetWidgets\x12\x1e.platform.v1.GetWidgetsRequest\x1a\x1f.platform.v1.GetWidgetsResponse\x12\\\n" +
 	"\x0fGetSearchScopes\x12#.platform.v1.GetSearchScopesRequest\x1a$.platform.v1.GetSearchScopesResponse\x12Y\n" +
-	"\x0eGetBadgeCounts\x12\".platform.v1.GetBadgeCountsRequest\x1a#.platform.v1.GetBadgeCountsResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x0eGetBadgeCounts\x12\".platform.v1.GetBadgeCountsRequest\x1a#.platform.v1.GetBadgeCountsResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_registry_proto_rawDescOnce sync.Once

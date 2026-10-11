@@ -40,7 +40,7 @@ import (
 	"errors"
 	"fmt"
 
-	experiencev1 "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1"
+	experiencev1 "go.aocyber.ai/eden-platform-go/gen/go/experience/v1"
 )
 
 // ErrDispatchDenied is the SINGLE non-leaking outcome of a tool->adapter binding

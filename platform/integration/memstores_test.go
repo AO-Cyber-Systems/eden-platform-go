@@ -6,10 +6,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
-	"github.com/aocybersystems/eden-platform-go/platform/consent"
-	"github.com/aocybersystems/eden-platform-go/platform/household"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/consent"
+	"go.aocyber.ai/eden-platform-go/platform/household"
 )
 
 // memHouseholdStore is a thread-safe in-memory household.Store mirroring the

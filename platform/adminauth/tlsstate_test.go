@@ -12,8 +12,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/adminauth"
 	"github.com/stretchr/testify/require"
+	"go.aocyber.ai/eden-platform-go/platform/adminauth"
 )
 
 func TestWithTLSConnectionState_StashesTLSStateWhenPresent(t *testing.T) {

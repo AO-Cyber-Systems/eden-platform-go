@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 )
 
 // These tests are about ORDER as much as outcome.

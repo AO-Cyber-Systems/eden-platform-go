@@ -29,7 +29,7 @@ import (
 
 	"github.com/ThalesGroup/crypto11"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 )
 
 func init() {

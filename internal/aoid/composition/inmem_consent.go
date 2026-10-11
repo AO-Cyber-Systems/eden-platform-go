@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/consent"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/consent"
 )
 
 // inMemoryConsentStore mirrors the platform/consent test memStore for

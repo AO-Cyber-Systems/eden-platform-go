@@ -8,7 +8,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 )
 
 // azkvCipherAPI is the narrow Azure Key Vault azkeys.Client subset used by

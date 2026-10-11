@@ -1102,7 +1102,7 @@ const file_platform_v1_rbac_proto_rawDesc = "" +
 	"\x0fListPermissions\x12#.platform.v1.ListPermissionsRequest\x1a$.platform.v1.ListPermissionsResponse\x12e\n" +
 	"\x12GetUserPermissions\x12&.platform.v1.GetUserPermissionsRequest\x1a'.platform.v1.GetUserPermissionsResponse\x12\\\n" +
 	"\x0fCheckPermission\x12#.platform.v1.CheckPermissionRequest\x1a$.platform.v1.CheckPermissionResponse\x12b\n" +
-	"\x11ResolveMembership\x12%.platform.v1.ResolveMembershipRequest\x1a&.platform.v1.ResolveMembershipResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x11ResolveMembership\x12%.platform.v1.ResolveMembershipRequest\x1a&.platform.v1.ResolveMembershipResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_rbac_proto_rawDescOnce sync.Once

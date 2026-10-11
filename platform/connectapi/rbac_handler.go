@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	connect "connectrpc.com/connect"
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
-	platformv1connect "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1/platformv1connect"
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
-	"github.com/aocybersystems/eden-platform-go/platform/server"
 	"github.com/google/uuid"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
+	platformv1connect "go.aocyber.ai/eden-platform-go/gen/go/platform/v1/platformv1connect"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
+	"go.aocyber.ai/eden-platform-go/platform/server"
 )
 
 var _ platformv1connect.RBACServiceHandler = (*RBACHandler)(nil)

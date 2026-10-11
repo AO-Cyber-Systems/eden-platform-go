@@ -2215,7 +2215,7 @@ const file_platform_v1_aoedge_audit_proto_rawDesc = "" +
 	"\x0eroot_signature\x18\a \x01(\tR\rrootSignature\x12$\n" +
 	"\x0esigning_key_id\x18\b \x01(\tR\fsigningKeyId\x12\x1f\n" +
 	"\vevent_count\x18\t \x01(\x05R\n" +
-	"eventCountBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"eventCountB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_aoedge_audit_proto_rawDescOnce sync.Once

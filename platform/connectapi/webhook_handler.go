@@ -5,9 +5,9 @@ import (
 	"time"
 
 	connect "connectrpc.com/connect"
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
-	platformv1connect "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1/platformv1connect"
-	"github.com/aocybersystems/eden-platform-go/platform/webhook"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
+	platformv1connect "go.aocyber.ai/eden-platform-go/gen/go/platform/v1/platformv1connect"
+	"go.aocyber.ai/eden-platform-go/platform/webhook"
 	"github.com/google/uuid"
 )
 

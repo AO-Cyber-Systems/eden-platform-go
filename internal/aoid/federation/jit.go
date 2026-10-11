@@ -9,7 +9,7 @@ import (
 	"net/mail"
 	"strings"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 // Provision is the standalone JIT helper used by the Bridge. Splitting

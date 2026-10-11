@@ -61,8 +61,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
 )
 
 // recorder captures audit.Event values; satisfies the auditEmitter interface.

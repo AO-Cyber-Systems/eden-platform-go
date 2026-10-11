@@ -24,11 +24,11 @@ import (
 	"testing"
 
 	connect "connectrpc.com/connect"
-	experiencev1 "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1"
-	experiencev1connect "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1/experiencev1connect"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/experience"
-	"github.com/aocybersystems/eden-platform-go/platform/experience/fixtures"
+	experiencev1 "go.aocyber.ai/eden-platform-go/gen/go/experience/v1"
+	experiencev1connect "go.aocyber.ai/eden-platform-go/gen/go/experience/v1/experiencev1connect"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/experience"
+	"go.aocyber.ai/eden-platform-go/platform/experience/fixtures"
 )
 
 // --- principal scope constants -------------------------------------------

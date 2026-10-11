@@ -994,7 +994,7 @@ const file_platform_v1_auth_proto_rawDesc = "" +
 	"\fInitiateOIDC\x12 .platform.v1.InitiateOIDCRequest\x1a!.platform.v1.InitiateOIDCResponse\x12S\n" +
 	"\fInitiateSAML\x12 .platform.v1.InitiateSAMLRequest\x1a!.platform.v1.InitiateSAMLResponse\x12h\n" +
 	"\x13InitiateSocialLogin\x12'.platform.v1.InitiateSocialLoginRequest\x1a(.platform.v1.InitiateSocialLoginResponse\x12V\n" +
-	"\rUpdateProfile\x12!.platform.v1.UpdateProfileRequest\x1a\".platform.v1.UpdateProfileResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\rUpdateProfile\x12!.platform.v1.UpdateProfileRequest\x1a\".platform.v1.UpdateProfileResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_auth_proto_rawDescOnce sync.Once

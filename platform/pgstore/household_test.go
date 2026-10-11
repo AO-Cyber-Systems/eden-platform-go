@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
-	"github.com/aocybersystems/eden-platform-go/platform/company"
-	"github.com/aocybersystems/eden-platform-go/platform/household"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/company"
+	"go.aocyber.ai/eden-platform-go/platform/household"
 )
 
 func TestHouseholdStore_CreateAndQuery(t *testing.T) {

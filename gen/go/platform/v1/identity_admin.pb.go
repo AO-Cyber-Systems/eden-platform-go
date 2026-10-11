@@ -4864,7 +4864,7 @@ const file_platform_v1_identity_admin_proto_rawDesc = "" +
 	"\x1dSubmitRecertificationDecision\x12D.platform.v1.AccountAdminServiceSubmitRecertificationDecisionRequest\x1aE.platform.v1.AccountAdminServiceSubmitRecertificationDecisionResponse\x12\xa0\x01\n" +
 	"\x19GetRecertificationHistory\x12@.platform.v1.AccountAdminServiceGetRecertificationHistoryRequest\x1aA.platform.v1.AccountAdminServiceGetRecertificationHistoryResponse\x12\x97\x01\n" +
 	"\x16ClearAccountMFAFactors\x12=.platform.v1.AccountAdminServiceClearAccountMFAFactorsRequest\x1a>.platform.v1.AccountAdminServiceClearAccountMFAFactorsResponse\x12\x8b\x01\n" +
-	"\x12ListRecoveryEvents\x129.platform.v1.AccountAdminServiceListRecoveryEventsRequest\x1a:.platform.v1.AccountAdminServiceListRecoveryEventsResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x12ListRecoveryEvents\x129.platform.v1.AccountAdminServiceListRecoveryEventsRequest\x1a:.platform.v1.AccountAdminServiceListRecoveryEventsResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_identity_admin_proto_rawDescOnce sync.Once

@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/aocybersystems/eden-platform-go/platform/oidcrp"
 	oidc "github.com/coreos/go-oidc/v3/oidc"
+	"go.aocyber.ai/eden-platform-go/platform/oidcrp"
 	"golang.org/x/oauth2"
 )
 

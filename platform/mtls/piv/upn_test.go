@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/mtls/piv"
+	"go.aocyber.ai/eden-platform-go/platform/mtls/piv"
 )
 
 func loadCert(t *testing.T, name string) *x509.Certificate {

@@ -42,15 +42,19 @@ jobs:
           # registers via _ "github.com/golang-migrate/migrate/v4/database/pgx/v5".
           # The bare postgres:// scheme would require also importing the lib/pq-based
           # driver, which the codebase does not.
-          DATABASE_URL: pgx5://test:test@localhost:5432/eden_platform_test?sslmode=disable
+          # The service's throwaway credentials come from PGUSER/PGPASSWORD (pgx reads both when the
+          # URL names no user), so no credential sits in the URL.
+          DATABASE_URL: pgx5://localhost:5432/eden_platform_test?sslmode=disable
+          PGUSER: test
+          PGPASSWORD: test
       - name: aoid smoke (binary boot + endpoint curl)
         run: |
           set -euo pipefail
           ./aoid &
           AOID_PID=$!
-          trap "kill $AOID_PID 2>/dev/null || true" EXIT
+          trap 'kill "$AOID_PID" 2>/dev/null || true' EXIT
           # Poll readyz for up to 10 seconds.
-          for i in $(seq 1 50); do
+          for _ in $(seq 1 50); do
             if curl -sf http://127.0.0.1:8090/readyz >/dev/null; then
               break
             fi

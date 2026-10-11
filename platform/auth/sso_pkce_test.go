@@ -41,8 +41,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/devstore"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/devstore"
 
 	"github.com/google/uuid"
 )

@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/aocybersystems/eden-platform-go/platform/apierror"
+	"go.aocyber.ai/eden-platform-go/platform/apierror"
 )
 
 // WriteJSON encodes data as JSON and writes it with the given status code.

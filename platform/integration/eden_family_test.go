@@ -16,13 +16,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	billingrail "github.com/aocybersystems/eden-platform-go/platform/billing-rail"
-	"github.com/aocybersystems/eden-platform-go/platform/consent"
-	featureflags "github.com/aocybersystems/eden-platform-go/platform/feature-flags"
-	"github.com/aocybersystems/eden-platform-go/platform/household"
-	"github.com/aocybersystems/eden-platform-go/platform/livekit"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	billingrail "go.aocyber.ai/eden-platform-go/platform/billing-rail"
+	"go.aocyber.ai/eden-platform-go/platform/consent"
+	featureflags "go.aocyber.ai/eden-platform-go/platform/feature-flags"
+	"go.aocyber.ai/eden-platform-go/platform/household"
+	"go.aocyber.ai/eden-platform-go/platform/livekit"
 )
 
 // childThirteenYearsAgo returns a birthdate that makes a member under 13 at

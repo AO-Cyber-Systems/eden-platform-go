@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth/saml/idp"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/auth/saml/idp"
 )
 
 // Stack bundles every federation runtime component a server boots

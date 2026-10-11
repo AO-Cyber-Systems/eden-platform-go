@@ -8,9 +8,9 @@ import (
 	"time"
 
 	connect "connectrpc.com/connect"
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
-	platformv1connect "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1/platformv1connect"
 	"github.com/google/uuid"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
+	platformv1connect "go.aocyber.ai/eden-platform-go/gen/go/platform/v1/platformv1connect"
 )
 
 var _ platformv1connect.AuditServiceHandler = (*AuditHandler)(nil)

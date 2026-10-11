@@ -21,7 +21,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/fipsmode"
+	"go.aocyber.ai/eden-platform-go/platform/fipsmode"
 )
 
 func TestNewPolicyHasher_FIPSReturnsPBKDF2(t *testing.T) {

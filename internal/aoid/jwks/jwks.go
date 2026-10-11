@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 // Algorithm identifiers exposed by the JWKS document.

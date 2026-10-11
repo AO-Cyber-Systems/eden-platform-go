@@ -15,7 +15,7 @@
 package fixtures
 
 import (
-	experiencev1 "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1"
+	experiencev1 "go.aocyber.ai/eden-platform-go/gen/go/experience/v1"
 	"google.golang.org/protobuf/proto"
 )
 

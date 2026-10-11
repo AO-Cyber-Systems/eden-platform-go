@@ -6,14 +6,14 @@ import (
 	"testing"
 
 	connect "connectrpc.com/connect"
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
-	platformv1connect "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1/platformv1connect"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/company"
-	"github.com/aocybersystems/eden-platform-go/platform/devstore"
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
-	platformregistry "github.com/aocybersystems/eden-platform-go/platform/registry"
-	"github.com/aocybersystems/eden-platform-go/platform/server"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
+	platformv1connect "go.aocyber.ai/eden-platform-go/gen/go/platform/v1/platformv1connect"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/company"
+	"go.aocyber.ai/eden-platform-go/platform/devstore"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
+	platformregistry "go.aocyber.ai/eden-platform-go/platform/registry"
+	"go.aocyber.ai/eden-platform-go/platform/server"
 )
 
 type testEnv struct {

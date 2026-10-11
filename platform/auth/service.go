@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
 )
 
 // AuthResponse contains the tokens and user info returned after successful authentication.

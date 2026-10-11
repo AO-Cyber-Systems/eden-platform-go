@@ -11,7 +11,7 @@ import (
 	"io"
 	"math/big"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms/signature"
+	"go.aocyber.ai/eden-platform-go/platform/kms/signature"
 	"github.com/golang-jwt/jwt/v5"
 )
 

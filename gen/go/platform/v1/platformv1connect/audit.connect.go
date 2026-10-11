@@ -8,7 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	v1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
+	v1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
 	http "net/http"
 	strings "strings"
 )

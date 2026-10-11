@@ -2486,7 +2486,7 @@ const file_platform_v1_federation_admin_proto_rawDesc = "" +
 	"\x12DeleteDownstreamSP\x12<.platform.v1.FederationAdminServiceDeleteDownstreamSPRequest\x1a=.platform.v1.FederationAdminServiceDeleteDownstreamSPResponse\x12\xa3\x01\n" +
 	"\x18RegisterDownstreamClient\x12B.platform.v1.FederationAdminServiceRegisterDownstreamClientRequest\x1aC.platform.v1.FederationAdminServiceRegisterDownstreamClientResponse\x12\x91\x01\n" +
 	"\x12AddClientIdPOption\x12<.platform.v1.FederationAdminServiceAddClientIdPOptionRequest\x1a=.platform.v1.FederationAdminServiceAddClientIdPOptionResponse\x12\x9a\x01\n" +
-	"\x15RemoveClientIdPOption\x12?.platform.v1.FederationAdminServiceRemoveClientIdPOptionRequest\x1a@.platform.v1.FederationAdminServiceRemoveClientIdPOptionResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x15RemoveClientIdPOption\x12?.platform.v1.FederationAdminServiceRemoveClientIdPOptionRequest\x1a@.platform.v1.FederationAdminServiceRemoveClientIdPOptionResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_federation_admin_proto_rawDescOnce sync.Once
