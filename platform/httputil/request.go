@@ -5,7 +5,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/aocybersystems/eden-platform-go/platform/apierror"
+	"go.aocyber.ai/eden-platform-go/platform/apierror"
 )
 
 // MaxBodySize caps the request body size accepted by DecodeJSON and ReadBody

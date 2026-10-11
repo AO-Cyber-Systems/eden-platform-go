@@ -6,11 +6,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
-	"github.com/aocybersystems/eden-platform-go/platform/company"
-	"github.com/aocybersystems/eden-platform-go/platform/household"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/company"
+	"go.aocyber.ai/eden-platform-go/platform/household"
 )
 
 // TestHouseholdService_AuditPersists_NoCompany proves the real production shape

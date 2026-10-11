@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
 )
 
 // AuditContext carries actor + company + IP for audit emission, mirroring

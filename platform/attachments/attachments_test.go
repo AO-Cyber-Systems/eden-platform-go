@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/storage"
+	"go.aocyber.ai/eden-platform-go/platform/storage"
 )
 
 func TestAttachListRemoveFlow(t *testing.T) {

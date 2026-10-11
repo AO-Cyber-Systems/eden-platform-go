@@ -4,7 +4,7 @@ package platform.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+option go_package = "go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1";
 
 // federation_types.proto carries the canonical wire shapes for AOID's
 // inbound/outbound federation surface (Obj 6). The types are referenced

@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	platsaml "github.com/aocybersystems/eden-platform-go/platform/auth/saml"
 	"github.com/google/uuid"
+	platsaml "go.aocyber.ai/eden-platform-go/platform/auth/saml"
 )
 
 // Errors returned by federation registry / manager operations.

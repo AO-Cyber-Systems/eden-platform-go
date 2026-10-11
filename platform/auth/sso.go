@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
 
 	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	"github.com/crewjam/saml"

@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
 )
 
 // fakeBreakGlassIngester records the last IngestBreakGlass call and returns

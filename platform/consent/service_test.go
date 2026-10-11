@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
 	"github.com/google/uuid"
 )
 

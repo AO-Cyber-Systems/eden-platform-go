@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth/kmssigner"
 	"github.com/golang-jwt/jwt/v5"
+	"go.aocyber.ai/eden-platform-go/platform/auth/kmssigner"
 )
 
 // Two issuers, because the verifier is plural from day one and a suite built

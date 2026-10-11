@@ -7,10 +7,10 @@ import (
 	"strings"
 
 	connect "connectrpc.com/connect"
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
 )
 
 // The claims context key lives in platform/auth so that the canonical

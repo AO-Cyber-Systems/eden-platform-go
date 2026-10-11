@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"strings"
 
-	edenfips "github.com/aocybersystems/eden-platform-go/platform/fipsmode"
+	edenfips "go.aocyber.ai/eden-platform-go/platform/fipsmode"
 	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/pbkdf2"
 )

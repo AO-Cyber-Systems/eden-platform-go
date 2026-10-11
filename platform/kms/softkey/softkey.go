@@ -12,7 +12,7 @@ import (
 	"io"
 	"net/url"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 )
 
 // Resolver is the caller-supplied callback that turns a softkey URI into a

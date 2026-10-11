@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	platsaml "github.com/aocybersystems/eden-platform-go/platform/auth/saml"
-	"github.com/aocybersystems/eden-platform-go/platform/auth/saml/idp"
 	"github.com/google/uuid"
+	platsaml "go.aocyber.ai/eden-platform-go/platform/auth/saml"
+	"go.aocyber.ai/eden-platform-go/platform/auth/saml/idp"
 )
 
 // buildSignedSAMLResponse returns a base64-encoded signed SAML response

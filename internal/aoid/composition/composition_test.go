@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
-	"github.com/aocybersystems/eden-platform-go/platform/consent"
-	"github.com/aocybersystems/eden-platform-go/platform/household"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/config"
+	"go.aocyber.ai/eden-platform-go/platform/consent"
+	"go.aocyber.ai/eden-platform-go/platform/household"
 )
 
 func TestBuildInMemory_AssemblesAllServices(t *testing.T) {

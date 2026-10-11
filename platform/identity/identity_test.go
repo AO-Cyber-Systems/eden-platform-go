@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth/jwks"
-	"github.com/aocybersystems/eden-platform-go/platform/auth/kmssigner"
+	"go.aocyber.ai/eden-platform-go/platform/auth/jwks"
+	"go.aocyber.ai/eden-platform-go/platform/auth/kmssigner"
 )
 
 // These tests are the acceptance criteria for the package as a whole. The unit

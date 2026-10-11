@@ -1,6 +1,6 @@
 package auth
 
-import "github.com/aocybersystems/eden-platform-go/platform/fipsmode"
+import "go.aocyber.ai/eden-platform-go/platform/fipsmode"
 
 // NewPolicyHasher returns a PasswordHasher chosen according to the runtime
 // FIPS-mode flag exposed by platform/fipsmode. When fipsmode.Enabled() is

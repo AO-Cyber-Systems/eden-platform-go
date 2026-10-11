@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/oidcrp"
+	"go.aocyber.ai/eden-platform-go/platform/oidcrp"
 )
 
 // ---------------------------------------------------------------------------

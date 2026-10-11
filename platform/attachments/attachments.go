@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/storage"
+	"go.aocyber.ai/eden-platform-go/platform/storage"
 	"github.com/google/uuid"
 )
 

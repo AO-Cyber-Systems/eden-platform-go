@@ -9,8 +9,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
 	"github.com/stretchr/testify/require"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 )
 
 func TestNew_RejectsMissingHost(t *testing.T) {

@@ -535,7 +535,7 @@ const file_platform_v1_audit_query_proto_rawDesc = "" +
 	"\x05event\x18\x01 \x01(\v2\x17.platform.v1.AuditEventR\x05event2\x91\x02\n" +
 	"\x11AuditQueryService\x12\x81\x01\n" +
 	"\x10QueryAuditEvents\x125.platform.v1.AuditQueryServiceQueryAuditEventsRequest\x1a6.platform.v1.AuditQueryServiceQueryAuditEventsResponse\x12x\n" +
-	"\rGetAuditEvent\x122.platform.v1.AuditQueryServiceGetAuditEventRequest\x1a3.platform.v1.AuditQueryServiceGetAuditEventResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\rGetAuditEvent\x122.platform.v1.AuditQueryServiceGetAuditEventRequest\x1a3.platform.v1.AuditQueryServiceGetAuditEventResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_audit_query_proto_rawDescOnce sync.Once

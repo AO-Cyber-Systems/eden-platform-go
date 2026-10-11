@@ -7,7 +7,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	"github.com/aocybersystems/eden-platform-go/platform/mtls"
+	"go.aocyber.ai/eden-platform-go/platform/mtls"
 )
 
 // NewAdminContextInterceptor returns a Connect unary interceptor that:

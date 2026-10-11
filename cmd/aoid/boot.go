@@ -6,13 +6,13 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/composition"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/discovery"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/fixtures"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/issuer"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/jwks"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/server"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/composition"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/config"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/discovery"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/fixtures"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/issuer"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/jwks"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/server"
 )
 
 // bootService composes the platform packages aoid wraps (auth +

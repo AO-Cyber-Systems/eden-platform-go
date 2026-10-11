@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 // Test-list case 1 (Pitfall 7 fix): a token body carrying `"ent":[...]`

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/oidcrp"
+	"go.aocyber.ai/eden-platform-go/platform/oidcrp"
 )
 
 // newStubLoginGovOP returns an httptest.Server that serves the Login.gov-

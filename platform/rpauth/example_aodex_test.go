@@ -19,7 +19,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/rpauth"
+	"go.aocyber.ai/eden-platform-go/platform/rpauth"
 )
 
 // CurrentUser is AODex's existing principal, verbatim. Of its eight fields

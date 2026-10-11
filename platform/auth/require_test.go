@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	platformserver "github.com/aocybersystems/eden-platform-go/platform/server"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	platformserver "go.aocyber.ai/eden-platform-go/platform/server"
 )
 
 // TestRequireCompany covers the canonical happy + failure paths for the

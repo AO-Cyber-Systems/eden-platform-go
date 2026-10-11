@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/auth/oidc"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/auth/oidc"
 )
 
 // oidcPresets maps a consumer OIDC provider to its discovery issuer. Microsoft

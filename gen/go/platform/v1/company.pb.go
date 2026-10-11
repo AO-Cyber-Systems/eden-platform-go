@@ -913,7 +913,7 @@ const file_platform_v1_company_proto_rawDesc = "" +
 	"\rListCompanies\x12!.platform.v1.ListCompaniesRequest\x1a\".platform.v1.ListCompaniesResponse\x12S\n" +
 	"\fGetAncestors\x12 .platform.v1.GetAncestorsRequest\x1a!.platform.v1.GetAncestorsResponse\x12Y\n" +
 	"\x0eGetDescendants\x12\".platform.v1.GetDescendantsRequest\x1a#.platform.v1.GetDescendantsResponse\x12k\n" +
-	"\x14GetEffectiveSettings\x12(.platform.v1.GetEffectiveSettingsRequest\x1a).platform.v1.GetEffectiveSettingsResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x14GetEffectiveSettings\x12(.platform.v1.GetEffectiveSettingsRequest\x1a).platform.v1.GetEffectiveSettingsResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_company_proto_rawDescOnce sync.Once

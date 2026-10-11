@@ -15,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aocybersystems/eden-platform-go/platform/policycache"
+	"go.aocyber.ai/eden-platform-go/platform/policycache"
 )
 
 // listenerSetup acquires:

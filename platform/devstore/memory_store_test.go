@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/company"
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
+	"go.aocyber.ai/eden-platform-go/platform/company"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
 )
 
 // TestAuthStore_GetCompanyMembershipByUser_OldestFirst is the in-memory twin of

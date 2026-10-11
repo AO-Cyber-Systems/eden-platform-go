@@ -19,9 +19,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/adminauth"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.aocyber.ai/eden-platform-go/platform/adminauth"
 )
 
 func TestAdminIdentity_IsZero_ZeroValueIsZero(t *testing.T) {

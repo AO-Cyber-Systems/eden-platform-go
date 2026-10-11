@@ -4,7 +4,7 @@ package platform.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+option go_package = "go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1";
 
 // AC2EvidenceService produces NIST SP 800-53 AC-2 evidence reports for an
 // admin's tenant scope. All 5 RPCs are tenant-scoped (admin session

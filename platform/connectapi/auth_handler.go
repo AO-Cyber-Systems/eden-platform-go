@@ -6,11 +6,11 @@ import (
 	"strings"
 
 	connect "connectrpc.com/connect"
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/auth/social"
-	"github.com/aocybersystems/eden-platform-go/platform/server"
 	"github.com/google/uuid"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/auth/social"
+	"go.aocyber.ai/eden-platform-go/platform/server"
 )
 
 type AuthHandler struct {

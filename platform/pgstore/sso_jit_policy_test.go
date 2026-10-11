@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/pgstore"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/pgstore"
 )
 
 // COMPANION-AV05-AOID-JIT TRD-06 — the JIT provisioning policy moved OFF biz env

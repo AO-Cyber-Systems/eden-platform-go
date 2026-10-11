@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 // RegisterSocialHTTPHandlers registers the consumer social-login callback on the

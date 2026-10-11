@@ -5,7 +5,7 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/clients"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/clients"
 )
 
 //go:embed login.tmpl.html

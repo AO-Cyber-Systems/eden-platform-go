@@ -21,9 +21,9 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/aocybersystems/eden-platform-go/platform/adminauth"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.aocyber.ai/eden-platform-go/platform/adminauth"
 )
 
 // fakeResolver — inline test double, hand-built, no LLM-generated data.

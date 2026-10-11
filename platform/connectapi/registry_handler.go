@@ -8,11 +8,11 @@ import (
 	"sort"
 
 	connect "connectrpc.com/connect"
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
-	"github.com/aocybersystems/eden-platform-go/platform/company"
-	"github.com/aocybersystems/eden-platform-go/platform/registry"
-	"github.com/aocybersystems/eden-platform-go/platform/server"
 	"github.com/google/uuid"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
+	"go.aocyber.ai/eden-platform-go/platform/company"
+	"go.aocyber.ai/eden-platform-go/platform/registry"
+	"go.aocyber.ai/eden-platform-go/platform/server"
 )
 
 type RegistryHandler struct {

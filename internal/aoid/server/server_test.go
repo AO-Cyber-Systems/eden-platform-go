@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/config"
 )
 
 // runForTest spins up a Server on a free port and returns its base URL.

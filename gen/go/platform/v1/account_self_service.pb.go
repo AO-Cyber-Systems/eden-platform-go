@@ -1374,7 +1374,7 @@ const file_platform_v1_account_self_service_proto_rawDesc = "" +
 	"\rListMyApiKeys\x123.platform.v1.AccountSelfServiceListMyApiKeysRequest\x1a\".platform.v1.ListMyApiKeysResponse\x12}\n" +
 	"\x0eRevokeMyApiKey\x124.platform.v1.AccountSelfServiceRevokeMyApiKeyRequest\x1a5.platform.v1.AccountSelfServiceRevokeMyApiKeyResponse\x12k\n" +
 	"\x0eListMyIdPLinks\x124.platform.v1.AccountSelfServiceListMyIdPLinksRequest\x1a#.platform.v1.ListMyIdPLinksResponse\x12t\n" +
-	"\vUnlinkMyIdP\x121.platform.v1.AccountSelfServiceUnlinkMyIdPRequest\x1a2.platform.v1.AccountSelfServiceUnlinkMyIdPResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\vUnlinkMyIdP\x121.platform.v1.AccountSelfServiceUnlinkMyIdPRequest\x1a2.platform.v1.AccountSelfServiceUnlinkMyIdPResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_account_self_service_proto_rawDescOnce sync.Once

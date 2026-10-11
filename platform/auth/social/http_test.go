@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 // These tests are the regression gate for AOID obj-50 SDK-08 / D6.

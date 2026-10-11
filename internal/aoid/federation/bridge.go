@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 	"github.com/google/uuid"
 )
 

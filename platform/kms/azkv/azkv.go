@@ -28,8 +28,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
-	"github.com/aocybersystems/eden-platform-go/platform/kms/signature"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms/signature"
 )
 
 func init() {

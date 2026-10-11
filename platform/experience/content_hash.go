@@ -24,8 +24,8 @@ import (
 	"encoding/hex"
 	"sort"
 
-	"github.com/aocybersystems/eden-platform-go/platform/experience/fixtures"
-	experiencev1 "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1"
+	"go.aocyber.ai/eden-platform-go/platform/experience/fixtures"
+	experiencev1 "go.aocyber.ai/eden-platform-go/gen/go/experience/v1"
 	"google.golang.org/protobuf/proto"
 )
 

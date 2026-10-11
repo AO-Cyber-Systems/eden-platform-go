@@ -24,10 +24,10 @@ import (
 	"testing"
 
 	"connectrpc.com/connect"
-	"github.com/aocybersystems/eden-platform-go/platform/adminauth"
-	"github.com/aocybersystems/eden-platform-go/platform/server"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"go.aocyber.ai/eden-platform-go/platform/adminauth"
+	"go.aocyber.ai/eden-platform-go/platform/server"
 )
 
 // fakeAnyRequest is a minimal connect.AnyRequest used in unit tests.

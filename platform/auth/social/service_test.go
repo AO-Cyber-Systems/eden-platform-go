@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 // --- Hand-built fakes (no generated test data) ---------------------------------

@@ -14,7 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
 )
 
 // setupBuffer spins up a PostgresBufferStore against a real Postgres pointed

@@ -514,7 +514,7 @@ const file_platform_v1_svid_proto_rawDesc = "" +
 	"\tIssueSVID\x12\x1d.platform.v1.IssueSVIDRequest\x1a\x1e.platform.v1.IssueSVIDResponse\x12P\n" +
 	"\vListMySVIDs\x12\x1f.platform.v1.ListMySVIDsRequest\x1a .platform.v1.ListMySVIDsResponse\x12M\n" +
 	"\n" +
-	"RevokeSVID\x12\x1e.platform.v1.RevokeSVIDRequest\x1a\x1f.platform.v1.RevokeSVIDResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"RevokeSVID\x12\x1e.platform.v1.RevokeSVIDRequest\x1a\x1f.platform.v1.RevokeSVIDResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_svid_proto_rawDescOnce sync.Once

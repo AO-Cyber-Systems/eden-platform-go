@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/devstore"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/devstore"
 )
 
 func newTestBridge(t *testing.T) (*Bridge, *InMemorySPRegistry, *auth.Service, *audit.Logger) {

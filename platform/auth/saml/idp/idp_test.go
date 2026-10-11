@@ -14,7 +14,7 @@ import (
 	"github.com/beevik/etree"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	platsaml "github.com/aocybersystems/eden-platform-go/platform/auth/saml"
+	platsaml "go.aocyber.ai/eden-platform-go/platform/auth/saml"
 )
 
 func mustKey(t *testing.T) *platsaml.SigningKey {

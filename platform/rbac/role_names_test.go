@@ -3,7 +3,7 @@ package rbac_test
 import (
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
 )
 
 func TestRoleLevelByName_AllSystemRoles(t *testing.T) {

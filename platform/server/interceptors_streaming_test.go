@@ -9,9 +9,9 @@ import (
 	"time"
 
 	connect "connectrpc.com/connect"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
 )
 
 // fakeStreamConn is a minimal connect.StreamingHandlerConn for interceptor tests.

@@ -4,7 +4,7 @@ package platform.v1;
 
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1";
+option go_package = "go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1";
 
 // OAuthAdminService manages OAuth 2.1 client registrations on AOID.
 // Bound under super_admin or tenant_admin mTLS CNs (Obj 2 adminauth resolver).

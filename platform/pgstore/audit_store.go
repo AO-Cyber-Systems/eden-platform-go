@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/internal/db"
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
+	"go.aocyber.ai/eden-platform-go/internal/db"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"

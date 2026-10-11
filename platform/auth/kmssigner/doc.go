@@ -23,7 +23,7 @@
 // # Example — issuing a JWT with a KMS-backed key
 //
 //	import (
-//	    "github.com/aocybersystems/eden-platform-go/platform/auth/kmssigner"
+//	    "go.aocyber.ai/eden-platform-go/platform/auth/kmssigner"
 //	    "github.com/golang-jwt/jwt/v5"
 //	)
 //

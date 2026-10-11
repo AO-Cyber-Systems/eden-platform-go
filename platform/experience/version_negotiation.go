@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	experiencev1 "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1"
+	experiencev1 "go.aocyber.ai/eden-platform-go/gen/go/experience/v1"
 )
 
 // NegotiationResult is the typed outcome of negotiating a resolved spec against

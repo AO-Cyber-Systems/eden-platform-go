@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/devstore"
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/devstore"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
 )
 
 func setupRBACService(t *testing.T) (*rbac.Service, *devstore.Backend, uuid.UUID, uuid.UUID) {

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/apierror"
+	"go.aocyber.ai/eden-platform-go/platform/apierror"
 )
 
 func TestWriteJSON(t *testing.T) {

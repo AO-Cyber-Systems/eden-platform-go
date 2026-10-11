@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/aocybersystems/eden-platform-go/platform/company"
-	"github.com/aocybersystems/eden-platform-go/platform/devstore"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/company"
+	"go.aocyber.ai/eden-platform-go/platform/devstore"
 )
 
 func setupCompanyService(t *testing.T) (*company.Service, *devstore.CompanyStore) {

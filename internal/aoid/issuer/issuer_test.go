@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/clients"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/composition"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/fixtures"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/clients"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/composition"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/config"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/fixtures"
 )
 
 // testHarness boots an in-memory aoid composition + issuer and returns

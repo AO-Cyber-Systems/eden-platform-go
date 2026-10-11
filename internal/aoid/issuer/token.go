@@ -11,11 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/clients"
-	"github.com/aocybersystems/eden-platform-go/platform/auth"
 	"github.com/cloudflare/circl/sign/mldsa/mldsa65"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/clients"
+	"go.aocyber.ai/eden-platform-go/platform/auth"
 )
 
 // TokenHandler serves POST /oauth2/token. It dispatches by grant_type

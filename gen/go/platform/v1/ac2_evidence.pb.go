@@ -1321,7 +1321,7 @@ const file_platform_v1_ac2_evidence_proto_rawDesc = "" +
 	"\x0fGetRoleBindings\x125.platform.v1.AC2EvidenceServiceGetRoleBindingsRequest\x1a6.platform.v1.AC2EvidenceServiceGetRoleBindingsResponse\x12\x9b\x01\n" +
 	"\x18GetRecertificationStatus\x12>.platform.v1.AC2EvidenceServiceGetRecertificationStatusRequest\x1a?.platform.v1.AC2EvidenceServiceGetRecertificationStatusResponse\x12\x89\x01\n" +
 	"\x12GetDormantAccounts\x128.platform.v1.AC2EvidenceServiceGetDormantAccountsRequest\x1a9.platform.v1.AC2EvidenceServiceGetDormantAccountsResponse\x12\x92\x01\n" +
-	"\x15GetLifecycleDecisions\x12;.platform.v1.AC2EvidenceServiceGetLifecycleDecisionsRequest\x1a<.platform.v1.AC2EvidenceServiceGetLifecycleDecisionsResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x15GetLifecycleDecisions\x12;.platform.v1.AC2EvidenceServiceGetLifecycleDecisionsRequest\x1a<.platform.v1.AC2EvidenceServiceGetLifecycleDecisionsResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_ac2_evidence_proto_rawDescOnce sync.Once

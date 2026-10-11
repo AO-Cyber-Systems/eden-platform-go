@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/errortrack"
 	"github.com/getsentry/sentry-go"
+	"go.aocyber.ai/eden-platform-go/platform/errortrack"
 )
 
 // CapturingTransport records every event for assertion. It implements
@@ -442,7 +442,7 @@ func TestErrortrack_HTTPMiddleware_other_panic_preserves_stacktrace(t *testing.T
 		t.Errorf("expected the crash's top in-app frame to be the handler's own panic site (errortrack_test package), got module=%q function=%q", top.Module, top.Function)
 	}
 	for _, fr := range frames {
-		if fr.Module == "github.com/aocybersystems/eden-platform-go/platform/errortrack" {
+		if fr.Module == "go.aocyber.ai/eden-platform-go/platform/errortrack" {
 			t.Errorf("stacktrace contains an errortrack-package frame (function=%q); the panic's original stack must be untouched", fr.Function)
 		}
 	}

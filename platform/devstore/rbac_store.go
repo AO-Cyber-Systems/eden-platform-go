@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aocybersystems/eden-platform-go/platform/rbac"
 	"github.com/google/uuid"
+	"go.aocyber.ai/eden-platform-go/platform/rbac"
 )
 
 var _ rbac.RBACStore = (*RBACStore)(nil)

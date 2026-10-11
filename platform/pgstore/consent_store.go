@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/aocybersystems/eden-platform-go/internal/db"
-	"github.com/aocybersystems/eden-platform-go/platform/consent"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.aocyber.ai/eden-platform-go/internal/db"
+	"go.aocyber.ai/eden-platform-go/platform/consent"
 )
 
 var _ consent.Store = (*ConsentStore)(nil)

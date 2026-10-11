@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/aocybersystems/eden-platform-go/internal/db"
-	"github.com/aocybersystems/eden-platform-go/platform/company"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.aocyber.ai/eden-platform-go/internal/db"
+	"go.aocyber.ai/eden-platform-go/platform/company"
 )
 
 var _ company.CompanyStore = (*CompanyStore)(nil)

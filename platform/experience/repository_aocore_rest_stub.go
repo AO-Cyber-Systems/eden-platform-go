@@ -28,7 +28,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	experiencev1 "github.com/aocybersystems/eden-platform-go/gen/go/experience/v1"
+	experiencev1 "go.aocyber.ai/eden-platform-go/gen/go/experience/v1"
 )
 
 // aocoreOrgCassetteJSON is the committed, recorded org-scoped aocore exchange.

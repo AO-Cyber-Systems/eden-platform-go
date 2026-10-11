@@ -14,7 +14,7 @@ import (
 	"github.com/crewjam/saml/samlidp"
 	dsig "github.com/russellhaering/goxmldsig"
 
-	forkdsig "github.com/aocybersystems/eden-platform-go/internal/forked/goxmldsig"
+	forkdsig "go.aocyber.ai/eden-platform-go/internal/forked/goxmldsig"
 )
 
 // Sentinel errors for NewIDP — AOID's federation admin RPC maps each to a

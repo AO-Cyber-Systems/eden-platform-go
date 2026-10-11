@@ -5,9 +5,9 @@ import (
 	"sort"
 	"time"
 
-	platformv1 "github.com/aocybersystems/eden-platform-go/gen/go/platform/v1"
-	"github.com/aocybersystems/eden-platform-go/platform/audit"
 	"github.com/google/uuid"
+	platformv1 "go.aocyber.ai/eden-platform-go/gen/go/platform/v1"
+	"go.aocyber.ai/eden-platform-go/platform/audit"
 )
 
 var _ audit.AuditStore = (*AuditStore)(nil)

@@ -3397,7 +3397,7 @@ const file_experience_v1_experience_proto_rawDesc = "" +
 	"\x11ExperienceService\x12N\n" +
 	"\tStoreSpec\x12\x1f.experience.v1.StoreSpecRequest\x1a .experience.v1.StoreSpecResponse\x12T\n" +
 	"\vResolveSpec\x12!.experience.v1.ResolveSpecRequest\x1a\".experience.v1.ResolveSpecResponse\x12W\n" +
-	"\fValidateSpec\x12\".experience.v1.ValidateSpecRequest\x1a#.experience.v1.ValidateSpecResponseBNZLgithub.com/aocybersystems/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
+	"\fValidateSpec\x12\".experience.v1.ValidateSpecRequest\x1a#.experience.v1.ValidateSpecResponseBBZ@go.aocyber.ai/eden-platform-go/gen/go/experience/v1;experiencev1b\x06proto3"
 
 var (
 	file_experience_v1_experience_proto_rawDescOnce sync.Once

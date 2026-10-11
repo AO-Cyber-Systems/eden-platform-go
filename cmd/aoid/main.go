@@ -16,8 +16,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/config"
-	"github.com/aocybersystems/eden-platform-go/internal/aoid/server"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/config"
+	"go.aocyber.ai/eden-platform-go/internal/aoid/server"
 )
 
 func main() {

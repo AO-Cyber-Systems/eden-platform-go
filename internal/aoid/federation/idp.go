@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	platsaml "github.com/aocybersystems/eden-platform-go/platform/auth/saml"
-	"github.com/aocybersystems/eden-platform-go/platform/auth/saml/idp"
 	"github.com/google/uuid"
+	platsaml "go.aocyber.ai/eden-platform-go/platform/auth/saml"
+	"go.aocyber.ai/eden-platform-go/platform/auth/saml/idp"
 )
 
 // IdPManager constructs and caches per-tenant SAML IdP instances. The

@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/auth/jwks"
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/auth/jwks"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 )
 
 // These tests are about what a consumer receives, not about what the handler

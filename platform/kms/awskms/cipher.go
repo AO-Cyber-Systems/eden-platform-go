@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 	"github.com/aws/aws-sdk-go-v2/service/kms/types"
 	awskmssvc "github.com/aws/aws-sdk-go-v2/service/kms"
 )

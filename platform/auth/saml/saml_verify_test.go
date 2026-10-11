@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	platsaml "github.com/aocybersystems/eden-platform-go/platform/auth/saml"
-	"github.com/aocybersystems/eden-platform-go/platform/auth/saml/idp"
 	"github.com/beevik/etree"
+	platsaml "go.aocyber.ai/eden-platform-go/platform/auth/saml"
+	"go.aocyber.ai/eden-platform-go/platform/auth/saml/idp"
 )
 
 // Unit tests for platsaml.VerifyResponse — the signature-VERIFYING SAML

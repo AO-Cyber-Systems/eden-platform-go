@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aocybersystems/eden-platform-go/platform/webhook"
+	"go.aocyber.ai/eden-platform-go/platform/webhook"
 	"github.com/google/uuid"
 )
 

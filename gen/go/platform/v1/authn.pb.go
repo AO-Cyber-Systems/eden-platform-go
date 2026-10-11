@@ -2692,7 +2692,7 @@ const file_platform_v1_authn_proto_rawDesc = "" +
 	"\x15EndUserSessionService\x12A\n" +
 	"\x06WhoAmI\x12\x1a.platform.v1.WhoAmIRequest\x1a\x1b.platform.v1.WhoAmIResponse\x12Y\n" +
 	"\x0eListMySessions\x12\".platform.v1.ListMySessionsRequest\x1a#.platform.v1.ListMySessionsResponse\x12\\\n" +
-	"\x0fRevokeMySession\x12#.platform.v1.RevokeMySessionRequest\x1a$.platform.v1.RevokeMySessionResponseBJZHgithub.com/aocybersystems/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
+	"\x0fRevokeMySession\x12#.platform.v1.RevokeMySessionRequest\x1a$.platform.v1.RevokeMySessionResponseB>Z<go.aocyber.ai/eden-platform-go/gen/go/platform/v1;platformv1b\x06proto3"
 
 var (
 	file_platform_v1_authn_proto_rawDescOnce sync.Once

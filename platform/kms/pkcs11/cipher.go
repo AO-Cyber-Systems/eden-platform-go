@@ -12,7 +12,7 @@ import (
 
 	"github.com/ThalesGroup/crypto11"
 
-	"github.com/aocybersystems/eden-platform-go/platform/kms"
+	"go.aocyber.ai/eden-platform-go/platform/kms"
 )
 
 // Cipher is the PKCS#11-backed implementation of kms.KMSCipher. It targets a
