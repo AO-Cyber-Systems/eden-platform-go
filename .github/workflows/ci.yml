@@ -28,6 +28,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.27.1"
+      - name: go mod tidy is clean
+        # Fails when go.mod/go.sum are not tidy, or when tidy cannot run at all
+        # (e.g. otel log modules skewed against otel/sdk, so a dependency's own
+        # test imports a package no required module provides).
+        run: go mod tidy -diff
       - uses: bufbuild/buf-setup-action@v1
       - name: buf lint
         run: buf lint
